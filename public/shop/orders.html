@@ -92,6 +92,23 @@
     </div>
   </div>
 
+  <!-- Modal ตรวจรายการก่อนเช็คบิล -->
+  <div class="modal-overlay" id="checkoutModal">
+    <div class="modal">
+      <h3 id="coTitle">ตรวจสอบรายการก่อนเช็คบิล</h3>
+      <p class="sub" id="coSub">—</p>
+      <div id="coBody" style="max-height:50vh;overflow:auto;margin:8px 0;"></div>
+      <div class="bill-head" style="border-top:1px solid var(--border);padding-top:10px;">
+        <span style="color:var(--muted);font-size:13px;">ยอดรวมบิลนี้</span><span class="bill-total" id="coTotal">฿0</span>
+      </div>
+      <p class="sub" style="margin-top:10px;">กด "ยืนยันเช็คบิล" เพื่อปิดบิลนี้ เปิดบิลใหม่ให้โต๊ะเดิม และไปหน้าใบเสร็จสำหรับพิมพ์</p>
+      <div class="modal-actions">
+        <button class="mini-btn" id="coCancel" type="button">ยกเลิก</button>
+        <button class="mini-btn primary" id="coConfirm" type="button">ยืนยันเช็คบิล</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -171,7 +188,7 @@
 
       // ปุ่มในบล็อกโต๊ะ: ดูรายละเอียดรายการปัจจุบัน / เช็คบิล
       box.querySelectorAll('[data-detail]').forEach((b) => b.addEventListener('click', () => openBillDetail(Number(b.dataset.detail))));
-      box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => doCheckout(Number(b.dataset.checkout), b)));
+      box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => openCheckout(Number(b.dataset.checkout))));
 
       box.querySelectorAll('[data-ren]').forEach((b) => b.addEventListener('click', async () => {
         const code = prompt('เลขโต๊ะใหม่', b.dataset.code);
@@ -207,16 +224,48 @@
       </div>`;
     }
 
-    // เช็คบิล (ปิดบิล + เปิดบิลใหม่) — ใช้ร่วมกันทั้งการ์ดบิลและบล็อกโต๊ะ
-    async function doCheckout(tableId, btn) {
-      if (!confirm('ยืนยันเช็คบิลโต๊ะนี้? (ปิดบิลเดิมแล้วเปิดบิลใหม่ให้โต๊ะเดิมทันที)')) return;
-      if (btn) btn.disabled = true;
+    // เช็คบิล (ปิดบิล + เปิดบิลใหม่) — เปิดหน้าตรวจรายการก่อน แล้วค่อยยืนยัน
+    let checkoutTableId = null;
+    const checkoutModal = document.getElementById('checkoutModal');
+
+    function openCheckout(tableId) {
+      const o = openOrdersCache.find((x) => x.table_id === tableId);
+      if (!o || !o.items.length) { toast('บิลนี้ยังไม่มีรายการ'); return; }
+      checkoutTableId = tableId;
+      const activeCount = o.items.filter((i) => (i.status || 'pending') !== 'cancelled').length;
+      document.getElementById('coTitle').textContent = 'ตรวจสอบรายการก่อนเช็คบิล · โต๊ะ ' + o.table_code;
+      document.getElementById('coSub').textContent = 'บิล ' + billNoFmt(o.bill_no) + ' · ' + activeCount + ' รายการ — ตรวจสอบให้ครบก่อนกดยืนยัน';
+      document.getElementById('coBody').innerHTML = '<div class="bill-items">' + o.items.map((it) => itemRowHtml(it, false)).join('') + '</div>';
+      document.getElementById('coTotal').textContent = money(o.total);
+      tickTimers();
+      checkoutModal.classList.add('show');
+    }
+    function closeCheckout() { checkoutModal.classList.remove('show'); checkoutTableId = null; }
+    document.getElementById('coCancel').addEventListener('click', closeCheckout);
+    checkoutModal.addEventListener('click', (e) => { if (e.target === checkoutModal) closeCheckout(); });
+
+    document.getElementById('coConfirm').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const tableId = checkoutTableId;
+      if (!tableId) return;
+      // เปิดแท็บใหม่ล่วงหน้า (กันเบราว์เซอร์บล็อก popup) แล้วค่อยพาไปหน้าใบเสร็จหลังเช็คบิลสำเร็จ
+      const receiptWin = window.open('', '_blank');
+      btn.disabled = true;
       try {
         const r = await api('/api/shop/tables/' + tableId + '/checkout', { method: 'POST' });
+        const orderId = r.closed && r.closed.order_id;
+        closeCheckout();
         toast(r.message || 'เช็คบิลแล้ว');
+        const url = orderId ? '/shop/receipt.html?order=' + orderId : '';
+        if (url && receiptWin) receiptWin.location.href = url;
+        else if (url) window.location.href = url; // ถ้า popup ถูกบล็อก ให้ไปหน้าใบเสร็จในแท็บนี้
+        else if (receiptWin) receiptWin.close();
         await loadAll();
-      } catch (e) { alert(e.message); if (btn) btn.disabled = false; }
-    }
+      } catch (err) {
+        if (receiptWin) receiptWin.close();
+        alert(err.message);
+      } finally { btn.disabled = false; }
+    });
 
     // หน้าต่าง "รายละเอียดรายการปัจจุบัน" ของโต๊ะ
     function openBillDetail(tableId) {
@@ -265,7 +314,7 @@
         </div>`;
       }).join('');
 
-      box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => doCheckout(Number(b.dataset.checkout), b)));
+      box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => openCheckout(Number(b.dataset.checkout))));
       box.querySelectorAll('[data-detail]').forEach((b) => b.addEventListener('click', () => openBillDetail(Number(b.dataset.detail))));
       box.querySelectorAll('[data-delitem]').forEach((b) => b.addEventListener('click', async () => {
         if (!confirm('ลบรายการนี้ออกจากบิล?')) return;

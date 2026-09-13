@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ใบเสร็จรับเงิน | ระบบสมาชิก</title>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px 16px 48px;
+      font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, Arial, sans-serif;
+      color: #111; background: #f1f2f6; line-height: 1.55;
+    }
+    .actions { max-width: 720px; margin: 0 auto 14px; display: flex; gap: 8px; justify-content: flex-end; }
+    .actions button {
+      font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 16px;
+      border-radius: 9px; border: 1px solid #c9cdd6; background: #fff; color: #111; cursor: pointer;
+    }
+    .actions button.primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+
+    .receipt {
+      max-width: 720px; margin: 0 auto; background: #fff; border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(16,24,40,.10); padding: 34px 38px 28px;
+    }
+    .r-logo { text-align: center; margin-bottom: 10px; }
+    .r-logo img { width: 190px; max-width: 70%; height: auto; }
+    .r-shop { text-align: center; font-size: 19px; font-weight: 800; }
+    .r-shop-sub { text-align: center; font-size: 13px; color: #667085; margin-top: 3px; }
+    .r-title {
+      text-align: center; font-size: 16px; font-weight: 700; letter-spacing: .5px;
+      margin: 18px 0 16px; padding-top: 16px; border-top: 1px dashed #d0d5dd;
+    }
+    .r-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: 14px; margin-bottom: 18px; }
+    .r-meta > div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dotted #e4e7ec; padding-bottom: 5px; }
+    .r-meta span { color: #667085; }
+    .r-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .r-table th {
+      text-align: left; font-size: 12.5px; color: #667085; font-weight: 700;
+      padding: 8px 6px; border-bottom: 1.5px solid #111;
+    }
+    .r-table td { padding: 9px 6px; border-bottom: 1px solid #eceef3; vertical-align: top; }
+    .r-table .num { text-align: right; white-space: nowrap; }
+    .r-table .r-item-name { font-weight: 700; }
+    .r-table .r-item-opt { font-size: 12.5px; color: #667085; margin-top: 2px; }
+    .r-total-label { text-align: right; font-weight: 700; padding-top: 14px !important; border: none !important; }
+    .r-total { font-size: 19px; font-weight: 800; padding-top: 14px !important; border: none !important; }
+    .r-note { font-size: 12.5px; color: #b45309; margin: 12px 0 0; }
+    .r-thanks { text-align: center; font-size: 14.5px; font-weight: 700; margin: 22px 0 4px; }
+    .r-foot { text-align: center; font-size: 11.5px; color: #98a2b3; margin: 0; }
+    .r-loading { text-align: center; color: #667085; padding: 40px 0; }
+
+    @page { margin: 12mm; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .actions { display: none !important; }
+      .receipt { box-shadow: none; border-radius: 0; max-width: none; padding: 0; }
+      .r-table th { border-bottom-color: #000; }
+    }
+  </style>
+</head>
+<body>
+  <div class="actions">
+    <button class="primary" id="printBtn" type="button">🖨 พิมพ์ใบเสร็จ</button>
+    <button id="closeBtn" type="button">ปิดหน้านี้</button>
+  </div>
+  <div class="receipt" id="receipt">
+    <div class="r-loading" id="loading">กำลังโหลดใบเสร็จ...</div>
+  </div>
+
+  <script>
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
+    const orderId = (new URLSearchParams(location.search).get('order') || '').trim();
+
+    function fmtDateTime(v) {
+      if (!v) return '—';
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return '—';
+      const p = (n) => String(n).padStart(2, '0');
+      return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+
+    async function api(path) {
+      const res = await fetch(path);
+      let data; try { data = await res.json(); } catch { throw new Error('เซิร์ฟเวอร์ตอบสนองไม่ถูกต้อง (HTTP ' + res.status + ')'); }
+      if (!data.ok) { const e = new Error(data.message || 'โหลดข้อมูลไม่สำเร็จ'); e.status = res.status; throw e; }
+      return data;
+    }
+
+    function render(shop, order, items) {
+      const shown = items.filter((i) => (i.status || '') !== 'cancelled');
+      const cancelledCount = items.length - shown.length;
+      const rows = shown.map((it, idx) => {
+        let opts = []; try { opts = it.options_json ? JSON.parse(it.options_json) : []; } catch (e) {}
+        return `<tr>
+          <td class="num">${idx + 1}</td>
+          <td><div class="r-item-name">${esc(it.menu_name)}</div>${opts.length ? '<div class="r-item-opt">' + esc(opts.join(', ')) + '</div>' : ''}</td>
+          <td class="num">${it.quantity}</td>
+          <td class="num">${money(it.unit_price)}</td>
+          <td class="num">${money(it.line_total)}</td>
+        </tr>`;
+      }).join('');
+      const qtyTotal = shown.reduce((s, i) => s + Number(i.quantity || 0), 0);
+
+      document.getElementById('receipt').innerHTML = `
+        <div class="r-logo"><img src="/img/logo-wordmark.svg" alt="QPage"></div>
+        <div class="r-shop">${esc(shop.name || '')}</div>
+        <div class="r-shop-sub">${[shop.phone, shop.address].filter(Boolean).map(esc).join(' · ') || '&nbsp;'}</div>
+        <div class="r-title">ใบเสร็จรับเงิน</div>
+        <div class="r-meta">
+          <div><span>โต๊ะ</span><strong>${esc(order.table_code || '—')}</strong></div>
+          <div><span>เลขที่บิล</span><strong>${billNoFmt(order.bill_no)}</strong></div>
+          <div><span>วันที่</span><strong>${fmtDateTime(order.closed_at || order.created_at)}</strong></div>
+          <div><span>รายการ</span><strong>${shown.length} รายการ · ${qtyTotal} ชิ้น</strong></div>
+        </div>
+        <table class="r-table">
+          <thead><tr><th>#</th><th>รายการ</th><th class="num">จำนวน</th><th class="num">ราคา/หน่วย</th><th class="num">รวม</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#667085;">ไม่มีรายการ</td></tr>'}</tbody>
+          <tfoot><tr><td colspan="4" class="r-total-label">ยอดรวมทั้งสิ้น</td><td class="num r-total">${money(order.total)}</td></tr></tfoot>
+        </table>
+        ${cancelledCount ? '<p class="r-note">หมายเหตุ: มี ' + cancelledCount + ' รายการที่ถูกยกเลิก (ไม่คิดเงิน)</p>' : ''}
+        <p class="r-thanks">ขอบคุณที่ใช้บริการ</p>
+        <p class="r-foot">พิมพ์โดยระบบ QPage · qpage.website</p>`;
+    }
+
+    function renderError(message) {
+      document.getElementById('receipt').innerHTML = '<p class="r-loading">' + esc(message) + '</p>';
+    }
+
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('closeBtn').addEventListener('click', () => { window.close(); });
+
+    (async function init() {
+      if (!orderId || !/^\d+$/.test(orderId)) { renderError('ไม่พบเลขที่บิลที่ต้องการพิมพ์'); return; }
+      try {
+        const [me, data] = await Promise.all([api('/api/shop/me'), api('/api/shop/orders/' + orderId)]);
+        render(me.shop || {}, data.order || {}, data.items || []);
+        // เปิดหน้าต่างพิมพ์ให้อัตโนมัติหลังเรนเดอร์เสร็จ
+        setTimeout(() => { try { window.print(); } catch (e) { /* ผู้ใช้อาจปิดการพิมพ์ */ } }, 500);
+      } catch (err) {
+        renderError(err && err.status === 403 ? 'กรุณาเข้าสู่ระบบก่อนเปิดใบเสร็จ' : (err.message || 'โหลดใบเสร็จไม่สำเร็จ'));
+      }
+    })();
+  </script>
+</body>
+</html>

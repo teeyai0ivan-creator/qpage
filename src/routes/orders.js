@@ -294,4 +294,26 @@ router.get('/api/shop/orders/history', requireShop, async (req, res) => {
   res.json({ ok: true, orders: orders.map((o) => ({ ...o, items: byOrder[o.id] || [] })) });
 });
 
+// หน้าใบเสร็จ (พิมพ์) — เปิดจากปุ่มเช็คบิล
+router.get('/shop/receipt.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'receipt.html'));
+});
+
+// บิลเดียว + รายการ (ใช้แสดงใบเสร็จ) — ต้องเป็นบิลของร้านตัวเอง
+// หมายเหตุ: ต้องประกาศหลัง /api/shop/orders/open และ /orders/history เพื่อไม่ให้ทับเส้นทางนั้น
+router.get('/api/shop/orders/:id', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ ok: false, message: 'รหัสบิลไม่ถูกต้อง' });
+  const order = await db.findOrderById(id, shop.id);
+  if (!order) return res.status(404).json({ ok: false, message: 'ไม่พบบิลนี้' });
+  const items = await db.listOrderItems(id);
+  const table = order.table_id ? await db.findTableById(order.table_id, shop.id) : null;
+  res.json({ ok: true, order: { ...order, table_code: table ? table.code : '' }, items });
+});
+
 module.exports = router;
