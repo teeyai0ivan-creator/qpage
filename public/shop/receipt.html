@@ -54,10 +54,10 @@
     .r-thanks { text-align: center; font-size: 12.5px; font-weight: 700; margin: 12px 0 5px; }
     /* บรรทัดเครดิต + โลโก้ QPage ย่อเล็ก อยู่บรรทัดเดียวกัน */
     .r-foot {
-      display: flex; align-items: center; justify-content: center; gap: 5px;
+      display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap;
       font-size: 10px; color: #98a2b3; margin: 0;
     }
-    .r-foot img { height: 11px; width: auto; opacity: .85; }
+    .r-foot img { height: 16px; width: auto; opacity: .9; flex-shrink: 0; }
     .r-loading { text-align: center; color: #667085; padding: 30px 0; }
 
     /* ---------- กระดาษม้วน 58mm (แคบสุด) ---------- */
@@ -66,7 +66,7 @@
     body.paper-58mm .r-table { font-size: 10.5px; }
     body.paper-58mm .r-shop { font-size: 14px; }
     body.paper-58mm .r-total { font-size: 14px; }
-    body.paper-58mm .r-foot img { height: 10px; }
+    body.paper-58mm .r-foot img { height: 14px; }
     /* ---------- กระดาษ A4 ---------- */
     body.paper-a4 { font-size: 14px; }
     body.paper-a4 .receipt { max-width: 720px; padding: 34px 38px 26px; border-radius: 14px; }
@@ -78,7 +78,7 @@
     body.paper-a4 .r-total { font-size: 19px; }
     body.paper-a4 .r-thanks { font-size: 14.5px; }
     body.paper-a4 .r-foot { font-size: 11.5px; }
-    body.paper-a4 .r-foot img { height: 13px; }
+    body.paper-a4 .r-foot img { height: 18px; }
 
     @media print {
       body { background: #fff; padding: 0; }
