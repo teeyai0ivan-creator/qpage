@@ -129,6 +129,27 @@ function itemLines(items = [], limit = 20) {
   return rows.join('\n');
 }
 
+/** รายการทั้งบิล (รวมรายการที่ถูกยกเลิก โดยกำกับไว้และไม่คิดเงิน) */
+function billLines(items = [], limit = 30) {
+  const rows = items.slice(0, limit).map((it) => {
+    const opts = optionsOf(it.options_json);
+    return it.status === 'cancelled'
+      ? `• ${it.quantity} × ${it.menu_name}${opts} (ยกเลิก)`
+      : `• ${it.quantity} × ${it.menu_name}${opts} = ${money(it.line_total)}`;
+  });
+  if (items.length > limit) rows.push(`… และอีก ${items.length - limit} รายการ`);
+  return rows.join('\n');
+}
+
+/** เวลาไทย (UTC+7) แบบ วัน/เดือน/ปี ชั่วโมง:นาที — ไทยไม่มีเวลา Daylight saving จึงบวกคงที่ได้ */
+function bangkokTime(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const t = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(t.getUTCDate())}/${p(t.getUTCMonth() + 1)}/${t.getUTCFullYear()} ${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`;
+}
+
 function buildOrderNewText({ shopName, tableCode, billNo, items, total, source }) {
   return [
     `🔔 ออเดอร์ใหม่ — ${shopName}`,
@@ -161,15 +182,17 @@ function buildItemCancelText({ shopName, tableCode, item, reason }) {
   ].join('\n');
 }
 
-function buildCheckoutText({ shopName, tableCode, billNo, total, itemCount, byStaff }) {
+function buildCheckoutText({ shopName, tableCode, billNo, total, itemCount, items = [], at }) {
+  const cancelled = items.filter((i) => i.status === 'cancelled').length;
   return [
     `🧾 เช็คบิลแล้ว — ${shopName}`,
     `โต๊ะ ${tableCode} · บิล ${billFmt(billNo)}`,
+    `🕒 ${bangkokTime(at)}`,
     '',
-    `${itemCount} รายการ · ยอดรวม ${money(total)}`,
-    byStaff ? 'ปิดบิลโดยพนักงาน' : '',
-    'เปิดบิลใหม่ให้โต๊ะนี้เรียบร้อยแล้ว',
-  ].filter(Boolean).join('\n');
+    items.length ? billLines(items) : '(ไม่มีรายการ)',
+    '',
+    `รวม ${itemCount} รายการ${cancelled ? ` (ยกเลิก ${cancelled})` : ''} · ยอดรวม ${money(total)}`,
+  ].join('\n');
 }
 
 function buildTestText({ shopName, groupName }) {
@@ -222,6 +245,7 @@ module.exports = {
   sendTelegram,
   sendMessage,
   notifyShop,
+  bangkokTime,
   buildTestText,
   buildOrderNewText,
   buildItemDoneText,

@@ -171,6 +171,7 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
 
   const open = await db.findOpenOrder(shop.id, table.id);
   let closed = null;
+  let closedItems = [];
   if (open) {
     const items = await db.listOrderItems(open.id);
     // ห้ามเช็คบิลถ้ายังมีรายการรอทำ/กำลังทำ (ทุกจุด: ครัว + แคชเชียร์)
@@ -187,6 +188,7 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
       total: Number(open.total),
       item_count: items.filter((i) => i.status !== 'cancelled').length,
     };
+    closedItems = items;
   }
   // เปิดบิลใหม่ว่างให้โต๊ะเดิมทันที
   await db.createOrder({ shopId: shop.id, tableId: table.id });
@@ -199,6 +201,7 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
       billNo: closed.bill_no,
       total: closed.total,
       itemCount: closed.item_count,
+      items: closedItems,
     }));
   }
   res.json({ ok: true, message: `เช็คบิลโต๊ะ "${table.code}" แล้ว`, closed });
