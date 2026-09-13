@@ -358,11 +358,27 @@
     // หน้าของลูกค้าจึงต้องออกจากโหมดสั่ง และพาไป "หน้าดูร้าน" (อ่านอย่างเดียว) เพื่อให้สแกน QR ใหม่
     let billId0 = null;
     let leaving = false;
+
+    // จำ "บิลล่าสุดที่อุปกรณ์นี้เคยเปิดสั่ง" ไว้ (คงอยู่แม้รีเฟรช) — ใช้แยกว่าเป็นลิงก์เดิมที่ค้างอยู่
+    // หรือเป็นการเปิด/สแกนรอบใหม่: ถ้าบิลที่จำไว้ถูกเช็คบิลไปแล้ว จะไม่พาเข้าหน้าสั่ง ให้ไปหน้าดูร้านก่อน
+    const LAST_BILL_KEY = 'qpage_last_bill';
+    const RESUME = new URLSearchParams(location.search).get('resume') === '1';
+    function readLastBill() {
+      try {
+        const j = JSON.parse(localStorage.getItem(LAST_BILL_KEY) || 'null');
+        return j && j.token === token && j.billId ? j : null;
+      } catch (e) { return null; }
+    }
+    function writeLastBill(billId) {
+      try { localStorage.setItem(LAST_BILL_KEY, JSON.stringify({ token, billId: Number(billId) })); } catch (e) { /* ข้าม */ }
+    }
+
     function leaveToShop() {
       if (leaving) return;   // กันเรียกซ้ำ
       leaving = true;
       const code = S && S.shop && S.shop.public_code ? S.shop.public_code : '';
-      if (code) location.replace('/s/' + encodeURIComponent(code) + '?bill_closed=1');
+      // ส่ง token โต๊ะไปด้วย เพื่อให้หน้าดูร้านมีปุ่ม "เริ่มสั่งอาหารที่โต๊ะนี้" (เริ่มบิลใหม่)
+      if (code) location.replace('/s/' + encodeURIComponent(code) + '?bill_closed=1&t=' + encodeURIComponent(token));
       else location.reload();
     }
 
@@ -466,6 +482,11 @@
         sel = {};
         // จำบิลที่หน้านี้กำลังสั่งอยู่ (ถ้าร้านเช็คบิล บิลจะเปลี่ยนเลข → พาออกไปหน้าดูร้าน)
         billId0 = S.bill ? S.bill.order_id : null;
+        const last = readLastBill();
+        // รีเฟรช/เปิดลิงก์เดิมของอุปกรณ์นี้ หลังบิลถูกเช็คบิลไปแล้ว → ไม่เข้าหน้าสั่ง ให้ไปหน้าดูเมนูก่อน
+        // (จะเริ่มสั่งบิลใหม่ต้องกดปุ่มยืนยันในหน้าดูร้าน = เท่ากับสแกน QR ใหม่)
+        if (!RESUME && last && billId0 && Number(last.billId) !== Number(billId0)) { leaveToShop(); return; }
+        writeLastBill(billId0);
         render();
         startBillWatch();
       } catch (err) {
