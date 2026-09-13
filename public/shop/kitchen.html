@@ -39,10 +39,10 @@
     </div>
 
     <div class="kitchen-tabs">
-      <button class="mini-btn primary" data-filter="all" type="button">ทั้งหมด</button>
-      <button class="mini-btn" data-filter="pending" type="button">รอทำ</button>
-      <button class="mini-btn" data-filter="cooking" type="button">กำลังทำ</button>
-      <button class="mini-btn" data-filter="done" type="button">เสร็จแล้ว</button>
+      <button class="mini-btn primary" data-filter="all" type="button"><span class="f-label">ทั้งหมด</span></button>
+      <button class="mini-btn" data-filter="pending" type="button"><span class="f-label">รอทำ</span><span class="f-badge" id="fPendingBadge" style="display:none;">0</span></button>
+      <button class="mini-btn" data-filter="cooking" type="button"><span class="f-label">กำลังทำ</span></button>
+      <button class="mini-btn" data-filter="done" type="button"><span class="f-label">เสร็จแล้ว</span></button>
     </div>
 
     <div class="kitchen-tabs">
@@ -146,6 +146,14 @@
     }
 
     function render() {
+      // ป้ายตัวเลขแจ้งเตือนบนปุ่ม "รอทำ/ยังไม่จัด" — นับทุกรายการที่ยังไม่เริ่มทำของจุดนี้
+      const pendingCount = items.filter((i) => i.status === 'pending').length;
+      const badge = document.getElementById('fPendingBadge');
+      if (badge) {
+        badge.textContent = pendingCount > 99 ? '99+' : String(pendingCount);
+        badge.style.display = pendingCount ? '' : 'none';
+      }
+
       const list = filter === 'all' ? items : items.filter((i) => i.status === filter);
       const box = document.getElementById('kitchenList');
       if (!list.length) { box.innerHTML = '<div class="cat-empty">ไม่มีรายการ' + (filter === 'all' ? '' : 'ในสถานะนี้') + '</div>'; return; }
@@ -228,12 +236,13 @@
       if (d) d.textContent = L.desc;
       const sw = document.getElementById('stationSwitch');
       if (sw) { sw.textContent = L.switchLabel; sw.href = L.switchHref; }
-      const fl = document.querySelector('[data-filter="pending"]');
-      if (fl) fl.textContent = L.stPending;
-      const fc = document.querySelector('[data-filter="cooking"]');
-      if (fc) fc.textContent = L.stCooking;
-      const fd = document.querySelector('[data-filter="done"]');
-      if (fd) fd.textContent = L.stDone;
+      const setLabel = (filter, text) => {
+        const el = document.querySelector('[data-filter="' + filter + '"] .f-label');
+        if (el) el.textContent = text;
+      };
+      setLabel('pending', L.stPending);
+      setLabel('cooking', L.stCooking);
+      setLabel('done', L.stDone);
       // สาเหตุยกเลิก: ครัวใช้ "วัตถุดิบหมด" / แคชเชียร์ใช้ "ของหมด"
       const r0 = document.querySelector('input[name="creason"]');
       if (r0) {
