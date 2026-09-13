@@ -1541,7 +1541,7 @@ async function closeOrder(orderId) {
 async function listOpenOrders(shopId) {
   const [rows] = await pool.execute(
     `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no, t.code AS table_code,
-            (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
+            (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
        FROM orders o JOIN \`tables\` t ON t.id = o.table_id
       WHERE o.shop_id = ? AND o.status = 'open'
       ORDER BY t.code ASC`,
@@ -1554,7 +1554,7 @@ async function listOpenOrders(shopId) {
 async function listClosedOrders(shopId, { tableId = null, limit = 50 } = {}) {
   const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
   let sql = `SELECT o.id, o.table_id, o.bill_no, o.total, o.opened_at, o.closed_at, t.code AS table_code,
-                    (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
+                    (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
                FROM orders o JOIN \`tables\` t ON t.id = o.table_id
               WHERE o.shop_id = ? AND o.status = 'closed'`;
   const params = [shopId];

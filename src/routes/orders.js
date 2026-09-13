@@ -174,19 +174,21 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
   let closedItems = [];
   if (open) {
     const items = await db.listOrderItems(open.id);
+    // นับ "รายการ" เป็นจำนวนจาน (ผลรวม quantity) ให้ตรงกับที่แสดงบนหน้าจอและในแจ้งเตือน
+    const platesOf = (list) => list.reduce((n, i) => n + (Number(i.quantity) || 0), 0);
     // ห้ามเช็คบิลถ้ายังมีรายการรอทำ/กำลังทำ (ทุกจุด: ครัว + แคชเชียร์)
-    const uncleared = items.filter((i) => i.status === 'pending' || i.status === 'cooking');
-    if (uncleared.length) {
+    const uncleared = platesOf(items.filter((i) => i.status === 'pending' || i.status === 'cooking'));
+    if (uncleared) {
       return res.status(409).json({
         ok: false,
-        message: `ยังเช็คบิลไม่ได้ — ยังมีรายการไม่เคลียร์ ${uncleared.length} รายการ (รอทำ/กำลังทำ ทั้งครัวและแคชเชียร์)`,
+        message: `ยังเช็คบิลไม่ได้ — ยังมีรายการไม่เคลียร์ ${uncleared} รายการ (รอทำ/กำลังทำ ทั้งครัวและแคชเชียร์)`,
       });
     }
     await db.closeOrder(open.id);
     closed = {
       order_id: open.id, table_code: table.code, bill_no: open.bill_no || null,
       total: Number(open.total),
-      item_count: items.filter((i) => i.status !== 'cancelled').length,
+      item_count: platesOf(items.filter((i) => i.status !== 'cancelled')),
     };
     closedItems = items;
   }
@@ -200,7 +202,6 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
       tableCode: closed.table_code,
       billNo: closed.bill_no,
       total: closed.total,
-      itemCount: closed.item_count,
       items: closedItems,
     }));
   }

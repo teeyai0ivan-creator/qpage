@@ -182,8 +182,11 @@ function buildItemCancelText({ shopName, tableCode, item, reason }) {
   ].join('\n');
 }
 
-function buildCheckoutText({ shopName, tableCode, billNo, total, itemCount, items = [], at }) {
-  const cancelled = items.filter((i) => i.status === 'cancelled').length;
+function buildCheckoutText({ shopName, tableCode, billNo, total, items = [], at }) {
+  // นับ "รายการ" เป็นจำนวนจาน (ผลรวม quantity) ไม่ใช่จำนวนบรรทัดเมนู
+  const sumQty = (list) => list.reduce((n, it) => n + (Number(it.quantity) || 0), 0);
+  const cancelled = items.filter((i) => i.status === 'cancelled');
+  const plates = sumQty(items.filter((i) => i.status !== 'cancelled'));
   return [
     `🧾 เช็คบิลแล้ว — ${shopName}`,
     `โต๊ะ ${tableCode} · บิล ${billFmt(billNo)}`,
@@ -191,7 +194,7 @@ function buildCheckoutText({ shopName, tableCode, billNo, total, itemCount, item
     '',
     items.length ? billLines(items) : '(ไม่มีรายการ)',
     '',
-    `รวม ${itemCount} รายการ${cancelled ? ` (ยกเลิก ${cancelled})` : ''} · ยอดรวม ${money(total)}`,
+    `รวม ${plates} รายการ${cancelled.length ? ` (ยกเลิก ${sumQty(cancelled)})` : ''} · ยอดรวม ${money(total)}`,
   ].join('\n');
 }
 

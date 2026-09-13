@@ -127,7 +127,8 @@
 
     function render(shop, order, items) {
       const shown = items.filter((i) => (i.status || '') !== 'cancelled');
-      const cancelledCount = items.length - shown.length;
+      // นับ "รายการ" เป็นจำนวนจาน (ผลรวม quantity) ให้ตรงกับแจ้งเตือนและหน้าจออื่น
+      const cancelledQty = items.filter((i) => (i.status || '') === 'cancelled').reduce((s, i) => s + Number(i.quantity || 0), 0);
       const rows = shown.map((it, idx) => {
         let opts = []; try { opts = it.options_json ? JSON.parse(it.options_json) : []; } catch (e) {}
         const sub = (opts.length ? esc(opts.join(', ')) + ' · ' : '') + money(it.unit_price) + '/หน่วย';
@@ -149,14 +150,14 @@
           <div><span>โต๊ะ</span><strong>${esc(order.table_code || '—')}</strong></div>
           <div><span>เลขที่บิล</span><strong>${billNoFmt(order.bill_no)}</strong></div>
           <div><span>วันที่</span><strong>${fmtDateTime(order.closed_at || order.created_at)}</strong></div>
-          <div><span>รายการ</span><strong>${shown.length} รายการ · ${qtyTotal} ชิ้น</strong></div>
+          <div><span>รายการ</span><strong>${qtyTotal} รายการ · ${shown.length} เมนู</strong></div>
         </div>
         <table class="r-table">
           <thead><tr><th>#</th><th>รายการ</th><th class="num">จำนวน</th><th class="num">รวม</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:#667085;">ไม่มีรายการ</td></tr>'}</tbody>
           <tfoot><tr><td colspan="3" class="r-total-label">ยอดรวมทั้งสิ้น</td><td class="num r-total">${money(order.total)}</td></tr></tfoot>
         </table>
-        ${cancelledCount ? '<p class="r-note">หมายเหตุ: มี ' + cancelledCount + ' รายการที่ถูกยกเลิก (ไม่คิดเงิน)</p>' : ''}
+        ${cancelledQty ? '<p class="r-note">หมายเหตุ: มี ' + cancelledQty + ' รายการที่ถูกยกเลิก (ไม่คิดเงิน)</p>' : ''}
         <p class="r-thanks">ขอบคุณที่ใช้บริการ</p>
         <p class="r-foot">พิมพ์โดยระบบ QPage · qpage.website <img src="/img/logo-wordmark.svg" alt="QPage"></p>`;
     }

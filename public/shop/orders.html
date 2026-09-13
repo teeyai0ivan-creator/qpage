@@ -131,6 +131,8 @@
     }
     const qrUrl = (id) => '/api/shop/tables/' + id + '/qr?origin=' + encodeURIComponent(location.origin);
     const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
+    // นับ "รายการ" เป็นจำนวนจาน (ผลรวม quantity) ให้ตรงกับบิล/ใบเสร็จ/แจ้งเตือน
+    const platesOf = (items) => (items || []).reduce((n, it) => n + (Number(it.quantity) || 0), 0);
 
     // เปิดหน้าต่างพิมพ์ป้าย: QR + เลขโต๊ะ + เลขที่บิลปัจจุบัน
     function printLabel(t) {
@@ -162,7 +164,7 @@
         // บิลที่เปิดอยู่ของโต๊ะนี้ (ถ้ามี) — ใช้แสดงปุ่มเช็คบิล/ดูรายละเอียดในบล็อกโต๊ะเลย
         const o = openOrdersCache.find((x) => x.table_id === t.id);
         const hasItems = Boolean(o && o.items && o.items.length);
-        const uncleared = hasItems ? o.items.filter((i) => i.status === 'pending' || i.status === 'cooking').length : 0;
+        const uncleared = hasItems ? platesOf(o.items.filter((i) => i.status === 'pending' || i.status === 'cooking')) : 0;
         return `
         <div class="table-card">
           <img class="table-qr" src="${qrUrl(t.id)}" alt="QR โต๊ะ ${esc(t.code)}">
@@ -233,7 +235,7 @@
       const o = openOrdersCache.find((x) => x.table_id === tableId);
       if (!o || !o.items.length) { toast('บิลนี้ยังไม่มีรายการ'); return; }
       checkoutTableId = tableId;
-      const activeCount = o.items.filter((i) => (i.status || 'pending') !== 'cancelled').length;
+      const activeCount = platesOf(o.items.filter((i) => (i.status || 'pending') !== 'cancelled'));
       document.getElementById('coTitle').textContent = 'ตรวจสอบรายการก่อนเช็คบิล · โต๊ะ ' + o.table_code;
       document.getElementById('coSub').textContent = 'บิล ' + billNoFmt(o.bill_no) + ' · ' + activeCount + ' รายการ — ตรวจสอบให้ครบก่อนกดยืนยัน';
       document.getElementById('coBody').innerHTML = '<div class="bill-items">' + o.items.map((it) => itemRowHtml(it, false)).join('') + '</div>';
@@ -280,7 +282,7 @@
         bodyEl.innerHTML = '<div class="cat-empty">ยังไม่มีรายการในบิลนี้</div>';
         totalEl.textContent = money(0);
       } else {
-        titleEl.textContent = 'บิล ' + billNoFmt(o.bill_no) + ' · โต๊ะ ' + o.table_code + ' · ' + o.items.length + ' รายการ';
+        titleEl.textContent = 'บิล ' + billNoFmt(o.bill_no) + ' · โต๊ะ ' + o.table_code + ' · ' + platesOf(o.items.filter((i) => i.status !== 'cancelled')) + ' รายการ';
         bodyEl.innerHTML = '<div class="bill-items">' + o.items.map((it) => itemRowHtml(it, false)).join('') + '</div>';
         totalEl.textContent = money(o.total);
       }
@@ -296,7 +298,7 @@
       const box = document.getElementById('billList');
       if (!orders.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีบิลที่เปิดอยู่</div>'; return; }
       box.innerHTML = orders.map((o) => {
-        const uncleared = o.items.filter((i) => i.status === 'pending' || i.status === 'cooking').length;
+        const uncleared = platesOf(o.items.filter((i) => i.status === 'pending' || i.status === 'cooking'));
         return `
         <div class="bill-card">
           <div class="bill-head">
