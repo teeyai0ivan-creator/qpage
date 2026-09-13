@@ -111,14 +111,18 @@ router.post('/api/public/order/:token/items', async (req, res) => {
   let order = await db.findOpenOrder(table.shop_id, table.id);
   if (!order) order = { id: await db.createOrder({ shopId: table.shop_id, tableId: table.id }) };
 
-  // หน้าที่ลูกค้าเปิดค้างไว้ผูกกับ "บิล" ใบหนึ่ง — ถ้าร้านเช็คบิลไปแล้ว ห้ามส่งเข้าใบใหม่
-  // (ต้องสแกน QR ที่โต๊ะใหม่เพื่อเริ่มบิลใหม่)
+  // หน้าที่ลูกค้าเปิดค้างไว้ผูกกับ "บิล" ใบหนึ่ง — ต้องส่งเลขบิลที่หน้านั้นกำลังดูอยู่มาด้วยเสมอ
+  // ถ้าไม่ส่งมา (หน้าเก่าที่เปิดค้าง) หรือเลขบิลไม่ตรงกับบิลที่เปิดอยู่ (ร้านเพิ่งเช็คบิลไป) → ปฏิเสธ
+  // ลูกค้าต้องรีเฟรชหน้า/สแกน QR ที่โต๊ะใหม่ เพื่อเริ่มผูกกับบิลใบใหม่
   const sentBillId = Number(req.body?.billId) || null;
-  if (sentBillId && sentBillId !== Number(order.id)) {
+  if (!sentBillId || sentBillId !== Number(order.id)) {
     return res.status(409).json({
       ok: false,
       closed: true,
-      message: 'บิลก่อนหน้าถูกเช็คบิลแล้ว — กรุณาสแกน QR ที่โต๊ะอีกครั้งเพื่อสั่งใหม่',
+      stale: !sentBillId,
+      message: !sentBillId
+        ? 'หน้าสั่งอาหารนี้เปิดค้างไว้นานเกินไป — กรุณารีเฟรชหน้า หรือสแกน QR ที่โต๊ะอีกครั้งเพื่อสั่งใหม่'
+        : 'บิลก่อนหน้าถูกเช็คบิลแล้ว — กรุณาสแกน QR ที่โต๊ะอีกครั้งเพื่อสั่งใหม่',
     });
   }
 
