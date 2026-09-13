@@ -23,14 +23,15 @@
       <a class="btn btn-outline btn-small" href="/shop/orders.html">สั่งอาหาร</a>
       <a class="btn btn-outline btn-small" href="/shop/history.html">ประวัติ</a>
       <a class="btn btn-outline btn-small" href="/shop/menu.html">จัดการเมนู</a>
+      <a class="btn btn-outline btn-small" id="stationSwitch" href="/shop/cashier.html">แคชเชียร์</a>
       <a class="btn btn-outline btn-small" href="#" id="logoutBtn">ออกจากระบบ</a>
     </div>
   </nav>
 
   <div class="shop-wrap">
     <div class="shop-head">
-      <h1>ครัว</h1>
-      <p>รายการอาหารจากบิลที่เปิดอยู่ — กด "เริ่มทำ" เมื่อเริ่ม และ "เคลียร์อาหาร" เมื่อเสร็จ (อัปเดตอัตโนมัติทุก 10 วินาที)</p>
+      <h1 id="pageTitle">ครัว</h1>
+      <p id="pageDesc">รายการอาหารจากบิลที่เปิดอยู่ — กด "เริ่มทำ" เมื่อเริ่ม และ "เคลียร์อาหาร" เมื่อเสร็จ (อัปเดตอัตโนมัติทุก 10 วินาที)</p>
       <div class="shop-actions">
         <button class="mini-btn" id="refreshBtn" type="button">รีเฟรช</button>
         <span id="lastUpdate" style="font-size:12.5px;color:var(--muted);align-self:center;"></span>
@@ -77,7 +78,26 @@
 
   <script>
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const STATUS_LABEL = { pending: 'รอทำ', cooking: 'กำลังทำ', done: 'เสร็จแล้ว' };
+
+    // ---------- จุดแสดงผลของหน้านี้: ครัว (/shop/kitchen.html) หรือแคชเชียร์ (/shop/cashier.html) ----------
+    // หมวดหมู่แต่ละหมวดถูกตั้ง "เส้นทาง" ได้ว่าจะส่งรายการไปครัวหรือแคชเชียร์ (ตั้งที่หน้าจัดการเมนู)
+    const STATION = /cashier/i.test(location.pathname) ? 'cashier' : 'kitchen';
+    const IS_CASHIER = STATION === 'cashier';
+    const L = IS_CASHIER
+      ? {
+        title: 'แคชเชียร์', switchLabel: 'ครัว', switchHref: '/shop/kitchen.html',
+        desc: 'รายการจากหมวดหมู่ที่ตั้งเส้นทางไว้ที่แคชเชียร์ — กด "เริ่มจัด" เมื่อเริ่ม และ "จัดเสร็จ" เมื่อเสร็จ (อัปเดตอัตโนมัติทุก 10 วินาที)',
+        stPending: 'ยังไม่จัด', stCooking: 'กำลังจัด', stDone: 'จัดเสร็จ', actStart: 'เริ่มจัด', actDone: 'จัดเสร็จ',
+        outOfStock: 'ของหมด',
+      }
+      : {
+        title: 'ครัว', switchLabel: 'แคชเชียร์', switchHref: '/shop/cashier.html',
+        desc: 'รายการอาหารจากบิลที่เปิดอยู่ — กด "เริ่มทำ" เมื่อเริ่ม และ "เคลียร์อาหาร" เมื่อเสร็จ (อัปเดตอัตโนมัติทุก 10 วินาที)',
+        stPending: 'รอทำ', stCooking: 'กำลังทำ', stDone: 'เสร็จแล้ว', actStart: 'เริ่มทำ', actDone: 'เคลียร์อาหาร',
+        outOfStock: 'วัตถุดิบหมด',
+      };
+
+    const STATUS_LABEL = { pending: L.stPending, cooking: L.stCooking, done: L.stDone };
     const STATUS_CLASS = { pending: 'st-pending', cooking: 'st-cooking', done: 'st-done' };
     let filter = 'all';
     let groupBy = 'bill';   // 'bill' = ตามโต๊ะ/บิล, 'menu' = รวมเมนูเดียวกันจากทุกโต๊ะ
@@ -101,10 +121,10 @@
     function itemHtml(i, showCtx) {
       let opts = []; try { opts = i.options_json ? JSON.parse(i.options_json) : []; } catch (e) {}
       const btn = i.status === 'pending'
-        ? '<button class="mini-btn primary" data-set="' + i.id + '" data-status="cooking" type="button">เริ่มทำ</button>'
+        ? '<button class="mini-btn primary" data-set="' + i.id + '" data-status="cooking" type="button">' + L.actStart + '</button>'
         : i.status === 'cooking'
-          ? '<button class="mini-btn primary" data-set="' + i.id + '" data-status="done" type="button">เคลียร์อาหาร</button>'
-          : '<span class="mini-btn" style="opacity:.6;cursor:default;">เสร็จแล้ว</span>';
+          ? '<button class="mini-btn primary" data-set="' + i.id + '" data-status="done" type="button">' + L.actDone + '</button>'
+          : '<span class="mini-btn" style="opacity:.6;cursor:default;">' + L.stDone + '</span>';
       const cancelBtn = i.status !== 'done'
         ? '<button class="mini-btn danger" data-cancel="' + i.id + '" data-name="' + esc(i.menu_name) + '" type="button">ยกเลิก</button>'
         : '';
@@ -197,8 +217,35 @@
     }
     setInterval(tickTimers, 1000);
 
+    // ปรับข้อความทั้งหน้าให้ตรงกับจุดที่เปิด (ครัว หรือ แคชเชียร์)
+    function applyStationLabels() {
+      document.title = L.title + ' | ระบบสมาชิก';
+      const nameEl = document.getElementById('shopName');
+      if (nameEl) nameEl.textContent = L.title;
+      const t = document.getElementById('pageTitle');
+      if (t) t.textContent = L.title;
+      const d = document.getElementById('pageDesc');
+      if (d) d.textContent = L.desc;
+      const sw = document.getElementById('stationSwitch');
+      if (sw) { sw.textContent = L.switchLabel; sw.href = L.switchHref; }
+      const fl = document.querySelector('[data-filter="pending"]');
+      if (fl) fl.textContent = L.stPending;
+      const fc = document.querySelector('[data-filter="cooking"]');
+      if (fc) fc.textContent = L.stCooking;
+      const fd = document.querySelector('[data-filter="done"]');
+      if (fd) fd.textContent = L.stDone;
+      // สาเหตุยกเลิก: ครัวใช้ "วัตถุดิบหมด" / แคชเชียร์ใช้ "ของหมด"
+      const r0 = document.querySelector('input[name="creason"]');
+      if (r0) {
+        r0.value = L.outOfStock;
+        const label = r0.closest('label');
+        if (label) label.childNodes[label.childNodes.length - 1].textContent = ' ' + L.outOfStock;
+      }
+    }
+    applyStationLabels();
+
     async function load() {
-      const data = await api('/api/shop/kitchen');
+      const data = await api('/api/shop/kitchen?station=' + STATION);
       items = data.items || [];
       document.getElementById('lastUpdate').textContent = 'อัปเดตล่าสุด ' + new Date().toLocaleTimeString('th-TH');
       render();

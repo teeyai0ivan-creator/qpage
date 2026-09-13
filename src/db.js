@@ -168,6 +168,7 @@ async function initSchema() {
       parent_id  BIGINT NULL,
       name       VARCHAR(120) NOT NULL,
       sort_order INT NOT NULL DEFAULT 0,
+      station    VARCHAR(10) NOT NULL DEFAULT 'kitchen',
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_categories_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
       CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE
@@ -242,6 +243,9 @@ async function initSchema() {
   await ensureColumn('shop_purchases', 'expires_at', 'expires_at DATETIME NULL');
   await ensureColumn('shop_purchases', 'revoked_at', 'revoked_at DATETIME NULL');
   await ensureColumn('shop_purchases', 'revoked_by', 'revoked_by BIGINT NULL');
+
+  // เส้นทางแสดงผลของหมวดหมู่: 'kitchen' (ครัว) | 'cashier' (แคชเชียร์)
+  await ensureColumn('categories', 'station', "station VARCHAR(10) NOT NULL DEFAULT 'kitchen'");
 
   // ── แพ็กเกจ (owner ตั้งขาย — ผู้ใช้ซื้อแล้วเปิดร้านได้) ─────────────────
   await pool.execute(`
@@ -811,10 +815,10 @@ async function findCategoryById(id, shopId) {
   return rows[0] || null;
 }
 
-async function createCategory({ shopId, parentId = null, name, sortOrder = 0 }) {
+async function createCategory({ shopId, parentId = null, name, sortOrder = 0, station = 'kitchen' }) {
   const [result] = await pool.execute(
-    'INSERT INTO categories (shop_id, parent_id, name, sort_order) VALUES (?, ?, ?, ?)',
-    [shopId, parentId, name, sortOrder]
+    'INSERT INTO categories (shop_id, parent_id, name, sort_order, station) VALUES (?, ?, ?, ?, ?)',
+    [shopId, parentId, name, sortOrder, station === 'cashier' ? 'cashier' : 'kitchen']
   );
   return Number(result.insertId);
 }
@@ -825,6 +829,7 @@ async function updateCategory(id, shopId, fields) {
   if (fields.name !== undefined) { sets.push('name = ?'); params.push(fields.name); }
   if (fields.parentId !== undefined) { sets.push('parent_id = ?'); params.push(fields.parentId); }
   if (fields.sortOrder !== undefined) { sets.push('sort_order = ?'); params.push(fields.sortOrder); }
+  if (fields.station !== undefined) { sets.push('station = ?'); params.push(fields.station === 'cashier' ? 'cashier' : 'kitchen'); }
   if (sets.length) await pool.execute(`UPDATE categories SET ${sets.join(', ')} WHERE id = ? AND shop_id = ?`, [...params, id, shopId]);
 }
 
@@ -1372,18 +1377,22 @@ async function addOrderItems(orderId, items) {
 }
 
 /** รายการอาหารของบิลที่ยังเปิดอยู่ทั้งหมด (สำหรับหน้าครัว) — ไม่รวมรายการที่ถูกยกเลิก */
-async function listKitchenItems(shopId) {
+/** รายการในบิลที่เปิดอยู่ แยกตามจุดแสดงผล: station = 'kitchen' (ครัว) | 'cashier' (แคชเชียร์) */
+async function listKitchenItems(shopId, station = 'kitchen') {
+  const st = station === 'cashier' ? 'cashier' : 'kitchen';
   const [rows] = await pool.execute(
     `SELECT oi.id, oi.order_id, oi.menu_id, oi.menu_name, oi.quantity, oi.options_json, oi.status,
             oi.created_at, oi.started_at, oi.done_at, o.bill_no, t.code AS table_code,
-            m.image_url
+            m.image_url, COALESCE(c.station, 'kitchen') AS station
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
        JOIN \`tables\` t ON t.id = o.table_id
        LEFT JOIN menus m ON m.id = oi.menu_id
+       LEFT JOIN categories c ON c.id = m.category_id
       WHERE o.shop_id = ? AND o.status = 'open' AND oi.status <> 'cancelled'
+        AND COALESCE(c.station, 'kitchen') = ?
       ORDER BY FIELD(oi.status, 'pending', 'cooking', 'done'), oi.id ASC`,
-    [shopId]
+    [shopId, st]
   );
   return rows;
 }

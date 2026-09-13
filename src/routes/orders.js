@@ -172,12 +172,12 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
   let closed = null;
   if (open) {
     const items = await db.listOrderItems(open.id);
-    // ห้ามเช็คบิลถ้าครัวยังไม่เคลียร์ (มีรายการรอทำ/กำลังทำ)
+    // ห้ามเช็คบิลถ้ายังมีรายการรอทำ/กำลังทำ (ทุกจุด: ครัว + แคชเชียร์)
     const uncleared = items.filter((i) => i.status === 'pending' || i.status === 'cooking');
     if (uncleared.length) {
       return res.status(409).json({
         ok: false,
-        message: `ยังเช็คบิลไม่ได้ — ครัวยังไม่เคลียร์ ${uncleared.length} รายการ (รอทำ/กำลังทำ)`,
+        message: `ยังเช็คบิลไม่ได้ — ยังมีรายการไม่เคลียร์ ${uncleared.length} รายการ (รอทำ/กำลังทำ ทั้งครัวและแคชเชียร์)`,
       });
     }
     await db.closeOrder(open.id);
@@ -230,9 +230,9 @@ router.delete('/api/shop/order-items/:id', requireShop, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// หน้าครัว + สถานะรายจาน
+// หน้าครัว + หน้าแคชเชียร์ (ใช้หน้าจอเดียวกัน ต่างกันที่ "จุดแสดงผล") + สถานะรายจาน
 // ---------------------------------------------------------------------------
-router.get('/shop/kitchen.html', requireShopPage, async (req, res) => {
+router.get(['/shop/kitchen.html', '/shop/cashier.html'], requireShopPage, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
   if (!shop) return res.redirect('/shop/setup.html');
   res.set('Cache-Control', 'no-store');
@@ -242,8 +242,9 @@ router.get('/shop/kitchen.html', requireShopPage, async (req, res) => {
 router.get('/api/shop/kitchen', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
-  const items = await db.listKitchenItems(shop.id);
-  res.json({ ok: true, items });
+  const station = req.query.station === 'cashier' ? 'cashier' : 'kitchen';
+  const items = await db.listKitchenItems(shop.id, station);
+  res.json({ ok: true, station, items });
 });
 
 // เปลี่ยนสถานะรายจาน: pending (รอทำ) | cooking (กำลังทำ) | done (เคลียร์/เสร็จ) | cancelled (ยกเลิก + ต้องระบุสาเหตุ)

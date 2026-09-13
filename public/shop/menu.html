@@ -22,6 +22,7 @@
       </button>
       <a class="btn btn-outline btn-small" href="/shop/orders.html">สั่งอาหาร</a>
       <a class="btn btn-outline btn-small" href="/shop/kitchen.html">ครัว</a>
+      <a class="btn btn-outline btn-small" href="/shop/cashier.html">แคชเชียร์</a>
       <a class="btn btn-outline btn-small" href="/shop/history.html">ประวัติ</a>
       <a class="btn btn-outline btn-small" href="/shop/setup.html">ตั้งค่าข้อมูลร้าน</a>
       <a class="btn btn-outline btn-small" id="viewShopLink" href="#" target="_blank">ดูร้าน</a>
@@ -41,13 +42,18 @@
       <div>
         <div class="shop-card">
           <h2>หมวดหมู่ <span class="count" id="catCount"></span></h2>
-          <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
             <input class="mini-input" id="newCatName" placeholder="ชื่อหมวดหมู่ เช่น อาหาร" style="flex:1;min-width:140px;">
             <select class="mini-input" id="newCatParent">
               <option value="">— หมวดหลัก —</option>
             </select>
+            <select class="mini-input" id="newCatStation" title="ส่งรายการของหมวดนี้ไปที่ไหน">
+              <option value="kitchen">🍳 ส่งเข้า ครัว</option>
+              <option value="cashier">🧾 ส่งเข้า แคชเชียร์</option>
+            </select>
             <button class="mini-btn primary" id="addCatBtn" type="button">เพิ่ม</button>
           </div>
+          <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;">เลือก "เส้นทาง" ของหมวด: เมนูในหมวดนี้จะไปแสดงที่หน้าครัว หรือหน้าแคชเชียร์ (แก้ทีหลังได้)</p>
           <div id="catList"></div>
         </div>
       </div>
@@ -155,18 +161,31 @@
       document.getElementById('newCatParent').innerHTML = parentOptionsHtml();
       const box = document.getElementById('catList');
       if (!tops.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีหมวดหมู่ — เพิ่มหมวดแรกด้านบนได้เลย</div>'; return; }
+      const stationSelect = (c, small) => `<select class="mini-input station-sel" data-stationcat="${c.id}" title="เส้นทางแสดงผลของหมวดนี้" style="width:auto;${small ? 'font-size:12px;padding:4px 6px;' : ''}">`
+        + `<option value="kitchen"${c.station === 'cashier' ? '' : ' selected'}>🍳 ครัว</option>`
+        + `<option value="cashier"${c.station === 'cashier' ? ' selected' : ''}>🧾 แคชเชียร์</option></select>`;
       box.innerHTML = tops.map((c) => {
         const subs = state.categories.filter((x) => x.parent_id === c.id);
         return `<div class="cat-item">
           <div class="cat-row">
             <span class="cat-name">${esc(c.name)}${subs.length ? ' <small>(' + subs.length + ' หมวดย่อย)</small>' : ''}</span>
+            ${stationSelect(c)}
             <button class="mini-btn" data-addsub="${c.id}" type="button">+ หมวดย่อย</button>
             <button class="mini-btn" data-rencat="${c.id}" data-name="${esc(c.name)}" type="button">เปลี่ยนชื่อ</button>
             <button class="mini-btn danger" data-delcat="${c.id}" type="button">ลบ</button>
           </div>
-          ${subs.length ? '<div class="sub">' + subs.map((s) => `<div class="cat-row"><span class="cat-name">• ${esc(s.name)}</span><button class="mini-btn" data-rencat="${s.id}" data-name="${esc(s.name)}" type="button">เปลี่ยนชื่อ</button><button class="mini-btn danger" data-delcat="${s.id}" type="button">ลบ</button></div>`).join('') + '</div>' : ''}
+          ${subs.length ? '<div class="sub">' + subs.map((s) => `<div class="cat-row"><span class="cat-name">• ${esc(s.name)}</span>${stationSelect(s, true)}<button class="mini-btn" data-rencat="${s.id}" data-name="${esc(s.name)}" type="button">เปลี่ยนชื่อ</button><button class="mini-btn danger" data-delcat="${s.id}" type="button">ลบ</button></div>`).join('') + '</div>' : ''}
         </div>`;
       }).join('');
+
+      // เปลี่ยนเส้นทางของหมวด (ครัว ↔ แคชเชียร์) — มีผลกับรายการใหม่ที่ครัว/แคชเชียร์จะเห็น
+      box.querySelectorAll('[data-stationcat]').forEach((sel) => sel.addEventListener('change', async () => {
+        try {
+          await api('/api/shop/categories/' + sel.dataset.stationcat, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ station: sel.value }) });
+          toast(sel.value === 'cashier' ? 'ย้ายหมวดนี้ไปแคชเชียร์แล้ว' : 'ย้ายหมวดนี้ไปครัวแล้ว');
+          await refresh();
+        } catch (e) { alert(e.message); await refresh(); }
+      }));
 
       box.querySelectorAll('[data-rencat]').forEach((b) => b.addEventListener('click', async () => {
         const name = prompt('ชื่อหมวดหมู่ใหม่', b.dataset.name);
@@ -191,8 +210,9 @@
       const name = el.value.trim();
       if (!name) return alert('กรุณากรอกชื่อหมวดหมู่');
       const parentId = document.getElementById('newCatParent').value;
+      const station = document.getElementById('newCatStation').value === 'cashier' ? 'cashier' : 'kitchen';
       try {
-        await api('/api/shop/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, parentId: parentId ? Number(parentId) : null }) });
+        await api('/api/shop/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, parentId: parentId ? Number(parentId) : null, station }) });
         el.value = ''; toast('เพิ่มหมวดหมู่แล้ว'); await refresh();
       } catch (e) { alert(e.message); }
     });

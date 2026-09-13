@@ -267,7 +267,14 @@ router.post('/api/shop/categories', requireShop, async (req, res) => {
     if (!parent) return res.status(400).json({ ok: false, message: 'ไม่พบหมวดหมู่หลักที่เลือก' });
     if (parent.parent_id) return res.status(400).json({ ok: false, message: 'ซ้อนหมวดหมู่ย่อยได้ไม่เกิน 1 ชั้น' });
   }
-  const id = await db.createCategory({ shopId: shop.id, parentId, name, sortOrder: Number(req.body?.sortOrder) || 0 });
+  const id = await db.createCategory({
+    shopId: shop.id,
+    parentId,
+    name,
+    sortOrder: Number(req.body?.sortOrder) || 0,
+    // เส้นทางแสดงผลของหมวดนี้: ส่งรายการไปครัว หรือแคชเชียร์
+    station: req.body?.station === 'cashier' ? 'cashier' : 'kitchen',
+  });
   res.json({ ok: true, message: 'เพิ่มหมวดหมู่แล้ว', id });
 });
 
@@ -284,6 +291,8 @@ router.put('/api/shop/categories/:id', requireShop, async (req, res) => {
     fields.name = name;
   }
   if (req.body?.sortOrder !== undefined) fields.sortOrder = Number(req.body.sortOrder) || 0;
+  // เส้นทางแสดงผลของหมวดนี้: ส่งรายการไปครัว หรือแคชเชียร์
+  if (req.body?.station !== undefined) fields.station = req.body.station === 'cashier' ? 'cashier' : 'kitchen';
   await db.updateCategory(id, shop.id, fields);
   res.json({ ok: true, message: 'บันทึกหมวดหมู่แล้ว' });
 });
