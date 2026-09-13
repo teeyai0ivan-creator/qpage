@@ -10,6 +10,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const otp = require('../lib/otp');
+const mailer = require('../lib/mailer');
 const { isValidThaiPhone, normalizeThaiPhone, passwordStrengthScore } = require('../lib/validators');
 const { devMode } = require('../lib/settings');
 const { isAdminRole, isShop } = require('../lib/roles');
@@ -134,7 +135,9 @@ router.post('/api/google-setup/complete', requirePendingGoogle, async (req, res)
 
   const passwordHash = await bcrypt.hash(String(password), 10);
   await db.completeGoogleSetup(req.user.id, { passwordHash, phone: normalizedPhone });
-  console.log(`✅ [Google] สมัครสมาชิกเสร็จสมบูรณ์: ${req.user.email} (เบอร์ ${normalizedPhone})`);
+  // แจ้งเมล "สมัครสมาชิกสำเร็จ" เหมือนเส้นทางสมัครด้วยอีเมล (ส่งแบบไม่บล็อกคำตอบ)
+  mailer.sendWelcomeEmail({ email: req.user.email, baseUrl: `${req.protocol}://${req.get('host')}` });
+  console.log(`✅ [Google] สมัครสมาชิกเสร็จสมบูรณ์: ${req.user.email} (เบอร์ ${normalizedPhone}) → ส่งเมลแจ้งผลแล้ว`);
 
   res.json({ ok: true, message: 'สมัครสมาชิกเสร็จสมบูรณ์', redirect: '/settings/profile' });
 });
