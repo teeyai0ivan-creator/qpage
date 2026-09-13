@@ -1378,7 +1378,8 @@ async function addOrderItems(orderId, items) {
 
 /** รายการอาหารของบิลที่ยังเปิดอยู่ทั้งหมด (สำหรับหน้าครัว) — ไม่รวมรายการที่ถูกยกเลิก */
 /** รายการในบิลที่เปิดอยู่ แยกตามจุดแสดงผล: station = 'kitchen' (ครัว) | 'cashier' (แคชเชียร์)
- *  เรียงตามลำดับที่ลูกค้าสั่ง (คิวก่อน-หลัง) — สถานะเปลี่ยนแล้วตำแหน่งไม่ขยับ รายการใหม่ต่อท้ายเสมอ */
+ *  เรียงตามลำดับที่ลูกค้าสั่ง (คิวก่อน-หลัง) — เปลี่ยนสถานะแล้วตำแหน่งไม่ขยับ
+ *  ยกเว้นรายการที่ "เสร็จแล้ว" จะจมไปล่างสุดเสมอ และรายการใหม่ต่อท้ายคิว (เหนือกลุ่มที่เสร็จแล้ว) */
 async function listKitchenItems(shopId, station = 'kitchen') {
   const st = station === 'cashier' ? 'cashier' : 'kitchen';
   const [rows] = await pool.execute(
@@ -1392,7 +1393,7 @@ async function listKitchenItems(shopId, station = 'kitchen') {
        LEFT JOIN categories c ON c.id = m.category_id
       WHERE o.shop_id = ? AND o.status = 'open' AND oi.status <> 'cancelled'
         AND COALESCE(c.station, 'kitchen') = ?
-      ORDER BY oi.id ASC`,
+      ORDER BY (oi.status = 'done') ASC, oi.id ASC`,
     [shopId, st]
   );
   return rows;
