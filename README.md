@@ -85,11 +85,12 @@
 - **หน้าประวัติออเดอร์** `/shop/history.html` — ดูย้อนหลังเป็นบิล ๆ ต่อโต๊ะ (กดที่บิลเพื่อกางดูรายการ/ตัวเลือก/ยอด และเวลาเปิด-ปิดบิล) **กรองตามโต๊ะ** ได้ กำหนดจำนวนบิลล่าสุด (50/100/200) และ **ออกรายการเป็น CSV** ได้ และในแต่ละบิลที่กางออกมีปุ่ม **"🖨 ขอใบเสร็จ (พิมพ์ใหม่)"** เปิดหน้าใบเสร็จของบิลนั้นในแท็บใหม่เพื่อพิมพ์ซ้ำได้
 - **บิลถูกเช็คบิล → หน้าลูกค้าที่เปิดค้างออกจากโหมดสั่งอัตโนมัติ** — หน้าสั่งอาหารของลูกค้าผูกกับเลขที่บิลตอนเปิด ถ้าร้านกดเช็คบิล (ระบบตรวจทุก 8 วินาที) หน้าจะพาไป **หน้าดูร้าน** `/s/<code>?bill_closed=1` ซึ่งดูเมนูได้อย่างเดียว สั่งไม่ได้ พร้อมแจ้งว่าให้สแกน QR ที่โต๊ะใหม่ และฝั่งเซิร์ฟเวอร์ก็ปฏิเสธการส่งออเดอร์ที่อ้างบิลเก่า (409) กันของหลุดเข้าบิลใหม่
 - **สถานะรายจาน** — หน้าลูกค้าแสดงสถานะของแต่ละรายการ (รอทำ/กำลังทำ/เสร็จแล้ว) และ **ยกเลิกรายการได้เฉพาะที่ครัวยังไม่กดเริ่มทำ** (ถ้าเริ่มทำ/เสร็จแล้วจะยกเลิกไม่ได้)
+- **ตั้งค่าการแจ้งเตือน** `/shop/notify.html` — ตั้ง **กลุ่มแจ้งเตือน** ผ่าน **LINE (Messaging API)** หรือ **Telegram (Bot API)** ได้ **มากกว่า 1 กลุ่ม** แต่ละกลุ่มเลือกเองว่าจะรับเหตุการณ์อะไรบ้าง: มีออเดอร์ใหม่ / อาหารทำเสร็จ / ยกเลิกรายการ / เช็คบิล (ปิดบิล) — ตั้งชื่อกลุ่มและแยกปลายทางได้ (เช่น กลุ่มครัวรับออเดอร์ใหม่ กลุ่มผู้จัดการรับเฉพาะเช็คบิล) Telegram ระบุ Topic ID ได้เมื่อส่งในหัวข้อ เปิด-ปิดแต่ละกลุ่มด้วยสวิตช์ จำกัด 20 กลุ่ม/ร้าน มีปุ่ม **ทดสอบส่ง** ที่บอกสาเหตุจากผู้ให้บริการถ้าไม่สำเร็จ และเก็บผลการส่งล่าสุดไว้บนการ์ด การส่งเป็นแบบ best-effort — ล้มเหลวแล้วไม่กระทบการสั่งอาหารหรือเช็คบิล (ตั้ง env `LINE_API_BASE`/`TELEGRAM_API_BASE` เพื่อเปลี่ยนปลายทาง API ได้ ใช้ตอนทดสอบ)
 - **ยกเลิกจากครัว** — ครัวกดปุ่ม "ยกเลิก" ที่รายการได้ (ตอนยังไม่เสร็จ) โดยต้อง **เลือกสาเหตุ: วัตถุดิบหมด หรือ อื่น ๆ (พิมพ์ระบุ)** — รายการที่ยกเลิกจะ **ไม่ถูกคิดเงิน** และลูกค้าเห็นสถานะ "ยกเลิก" พร้อมสาเหตุนั้น (การยกเลิกไม่ลบข้อมูล เก็บไว้เป็นประวัติ)
 - ราคาและตัวเลือกถูก **คำนวณ/ตรวจที่เซิร์ฟเวอร์เสมอ** (ไม่เชื่อค่าจาก client) และบันทึกชื่อ/ราคาเมนู ณ ตอนสั่งไว้ในบิล
 - QR สร้างในเครื่องด้วยไลบรารี `qrcode` (ทำงานออฟไลน์ได้)
 
-API: `GET/POST/PUT/DELETE /api/shop/tables`, `GET /api/shop/tables/:id/qr` (PNG), `GET /api/shop/orders/open`, `POST /api/shop/tables/:id/checkout`, `GET /api/shop/orders/history`, `GET /api/public/order/:token`, `POST /api/public/order/:token/items`
+API: `GET/POST/PUT/DELETE /api/shop/tables`, `GET /api/shop/tables/:id/qr` (PNG), `GET /api/shop/orders/open`, `POST /api/shop/tables/:id/checkout`, `GET /api/shop/orders/history`, `GET/POST/PUT/DELETE /api/shop/notify-groups`, `POST /api/shop/notify-test`, `GET /api/public/order/:token`, `POST /api/public/order/:token/items`
 
 API หลัก: `POST /api/shop/purchase`, `GET/POST/PUT /api/shop(/me)`, CRUD `/api/shop/categories|menus|option-groups|option-items`, `PUT /api/shop/menus/:id/groups`, `POST /api/shop/upload`, และ `GET /api/public/shops/:code`
 
@@ -169,19 +170,20 @@ src/
     crypto.js  time.js             sha256/token และเวลา UTC
     validators.js  settings.js     ตรวจข้อมูลนำเข้า / อ่านค่าตั้งระบบ
     result-page.js                 หน้าผลลัพธ์ยืนยันอีเมล
+    notify.js                      แจ้งเตือนเจ้าของร้านผ่าน LINE / Telegram
   middleware/
     auth.js  guards.js             session helpers / guard หน้าเว็บ
     rate-limit.js  recaptcha.js    กันบอท
   routes/
     auth.js  password-reset.js     สมัคร/ล็อกอิน/OTP/ลืมรหัสผ่าน
-    google.js  account.js  admin.js  shop.js  orders.js  public.js
+    google.js  account.js  admin.js  shop.js  orders.js  notify.js  public.js
 public/
   index.html        หน้าแรก (ปุ่มเข้าสู่ระบบ/สมัครสมาชิก/บัญชีของฉัน)
   login.html  register.html  forgot.html
   google-login.html  google-setup.html  privacy.html
   dashboard/index.html          หน้าบัญชี (โปรไฟล์ + ความปลอดภัย)
   admin/                        หลังบ้านแอดมิน (index, otp, users, profile, admin.css)
-  shop/                         หน้าร้านค้า (purchase, setup, menu, orders=สั่งอาหาร, kitchen=ครัว, cashier=แคชเชียร์, receipt=ใบเสร็จ, history=ประวัติ, index=หน้าร้านสาธารณะ)
+  shop/                         หน้าร้านค้า (purchase, setup, menu, orders=สั่งอาหาร, kitchen=ครัว, cashier=แคชเชียร์, receipt=ใบเสร็จ, history=ประวัติ, notify=ตั้งค่าการแจ้งเตือน, index=หน้าร้านสาธารณะ)
   order/index.html              หน้าสั่งอาหารของลูกค้า (/order/:token)
   css/ (style.css, settings.css, shop.css)  js/theme.js
   uploads/                      รูปที่อัปโหลด (โลโก้/รูปเมนู)

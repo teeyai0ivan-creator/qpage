@@ -11,6 +11,7 @@ const { getCurrentUser, requireShop } = require('../middleware/auth');
 const { isShop } = require('../lib/roles');
 const { randomToken } = require('../lib/crypto');
 const { buildOrderItems } = require('../lib/order-builder');
+const notify = require('../lib/notify');
 
 const router = express.Router();
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
@@ -182,13 +183,24 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
     }
     await db.closeOrder(open.id);
     closed = {
-      order_id: open.id, table_code: table.code, total: Number(open.total),
+      order_id: open.id, table_code: table.code, bill_no: open.bill_no || null,
+      total: Number(open.total),
       item_count: items.filter((i) => i.status !== 'cancelled').length,
     };
   }
   // เปิดบิลใหม่ว่างให้โต๊ะเดิมทันที
   await db.createOrder({ shopId: shop.id, tableId: table.id });
   console.log(`🧾 เช็คบิลโต๊ะ ${table.code} (${shop.name})${closed ? ' ยอด ' + closed.total : ' (ไม่มีรายการ)'}`);
+
+  if (closed) {
+    void notify.notifyShop(shop.id, 'checkout', notify.buildCheckoutText({
+      shopName: shop.name,
+      tableCode: closed.table_code,
+      billNo: closed.bill_no,
+      total: closed.total,
+      itemCount: closed.item_count,
+    }));
+  }
   res.json({ ok: true, message: `เช็คบิลโต๊ะ "${table.code}" แล้ว`, closed });
 });
 
@@ -211,6 +223,16 @@ router.post('/api/shop/tables/:id/items', requireShop, async (req, res) => {
   const fresh = await db.findOpenOrder(shop.id, table.id);
   const items = await db.listOrderItems(open.id);
   console.log(`🧾 [แคชเชียร์] เพิ่มอาหาร โต๊ะ ${table.code} ${prepared.length} รายการ`);
+
+  void notify.notifyShop(shop.id, 'order_new', notify.buildOrderNewText({
+    shopName: shop.name,
+    tableCode: table.code,
+    billNo: fresh.bill_no,
+    items: items.slice(-prepared.length),
+    total: Number(fresh.total),
+    source: 'แคชเชียร์เพิ่มเอง',
+  }));
+
   res.json({
     ok: true,
     message: 'เพิ่มอาหารเข้าบิลแล้ว',
@@ -265,11 +287,19 @@ router.post('/api/shop/order-items/:id/status', requireShop, async (req, res) =>
     if (!reason) return res.status(400).json({ ok: false, field: 'reason', message: 'กรุณาระบุสาเหตุการยกเลิก' });
     await db.cancelOrderItem(id, item.order_id, reason);
     console.log(`❌ [ครัว] ยกเลิกรายการ #${id} (${item.menu_name}) — ${reason}`);
+    void notify.notifyShop(shop.id, 'item_cancel', notify.buildItemCancelText({
+      shopName: shop.name, tableCode: item.table_code, item, reason,
+    }));
     return res.json({ ok: true, message: `ยกเลิกรายการแล้ว (${reason})` });
   }
 
   await db.setOrderItemStatus(id, shop.id, status);
   const msg = status === 'cooking' ? 'เริ่มทำแล้ว' : status === 'done' ? 'เคลียร์อาหารแล้ว' : 'อัปเดตแล้ว';
+  if (status === 'done') {
+    void notify.notifyShop(shop.id, 'item_done', notify.buildItemDoneText({
+      shopName: shop.name, tableCode: item.table_code, item,
+    }));
+  }
   res.json({ ok: true, message: msg });
 });
 

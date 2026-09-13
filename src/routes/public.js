@@ -6,6 +6,7 @@
 const express = require('express');
 const db = require('../db');
 const { buildOrderItems } = require('../lib/order-builder');
+const notify = require('../lib/notify');
 
 const router = express.Router();
 
@@ -133,6 +134,15 @@ router.post('/api/public/order/:token/items', async (req, res) => {
   const billItems = await db.listOrderItems(order.id);
   console.log(`🍽️ ออเดอร์ใหม่ โต๊ะ ${table.code} (${table.shop_name}) ${prepared.length} รายการ`);
 
+  // แจ้งเตือนเจ้าของร้าน (best-effort — ไม่หน่วงการตอบกลับของลูกค้า)
+  void notify.notifyShop(table.shop_id, 'order_new', notify.buildOrderNewText({
+    shopName: table.shop_name,
+    tableCode: table.code,
+    billNo: fresh.bill_no,
+    items: billItems.slice(-prepared.length),
+    total: Number(fresh.total),
+  }));
+
   res.json({
     ok: true,
     message: 'ส่งออเดอร์แล้ว',
@@ -160,6 +170,14 @@ router.post('/api/public/order/:token/items/:itemId/cancel', async (req, res) =>
   const fresh = await db.findOpenOrder(table.shop_id, table.id);
   const billItems = await db.listOrderItems(open.id);
   console.log(`❌ ยกเลิกรายการ โต๊ะ ${table.code} (${table.shop_name}): ${item.menu_name}`);
+
+  void notify.notifyShop(table.shop_id, 'item_cancel', notify.buildItemCancelText({
+    shopName: table.shop_name,
+    tableCode: table.code,
+    item,
+    reason: 'ลูกค้ายกเลิกเอง',
+  }));
+
   res.json({
     ok: true,
     message: 'ยกเลิกรายการแล้ว',

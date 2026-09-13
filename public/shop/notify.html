@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ตั้งค่าการแจ้งเตือน | ระบบสมาชิก</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/shop.css">
+  <script src="/js/theme.js"></script>
+  <style>
+    .ng-intro { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 18px; }
+    .ng-intro summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+    .ng-intro[open] summary { margin-bottom: 10px; }
+    .ng-intro ol { margin: 6px 0 12px; padding-left: 22px; color: var(--muted); font-size: 13px; line-height: 1.9; }
+    .ng-intro code { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
+
+    .ng-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+
+    .ng-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; background: var(--surface-2); }
+    .ng-card.off { opacity: .62; }
+    .ng-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .ng-name { font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ng-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.7; word-break: break-all; }
+    .ng-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+    .ch-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; color: #fff; }
+    .ch-line { background: #06C755; }
+    .ch-telegram { background: #229ED9; }
+    .ch-badge svg { width: 12px; height: 12px; }
+
+    .ev-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .ev-chip { font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--ring); color: var(--accent); border: 1px solid var(--border-strong); }
+    .ev-chip.off { background: transparent; color: var(--muted); border-color: var(--border); font-weight: 600; }
+
+    .ng-last { font-size: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); color: var(--muted); }
+    .ng-last b { font-weight: 700; }
+    .ng-last .ok { color: var(--success); }
+    .ng-last .err { color: var(--danger); }
+
+    /* สวิตช์เปิด/ปิดกลุ่ม */
+    .switch { position: relative; display: inline-block; width: 44px; height: 25px; flex: 0 0 auto; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .track { position: absolute; inset: 0; background: var(--border-strong); border-radius: 999px; transition: background .15s ease; cursor: pointer; }
+    .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.28); transition: transform .15s ease; }
+    .switch input:checked + .track { background: var(--accent); }
+    .switch input:checked + .track::after { transform: translateX(19px); }
+
+    /* ตัวเลือกเหตุการณ์แบบชิปในฟอร์ม */
+    .ev-pick { display: grid; gap: 8px; }
+    .ev-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; background: var(--surface); }
+    .ev-opt:hover { background: var(--surface-hover); }
+    .ev-opt input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--accent); flex: 0 0 auto; }
+    .ev-opt .t { font-size: 13.5px; font-weight: 700; }
+    .ev-opt .d { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.6; }
+
+    .ch-fields { display: none; }
+    .ch-fields.show { display: block; }
+    .modal.wide { max-width: 560px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+    @media (max-width: 620px) { .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+</head>
+<body>
+  <nav class="site-nav">
+    <a class="brand" href="/shop">
+      <div class="brand-logo"><img src="/img/logo.svg" alt="QPage"></div>
+      <span class="brand-name" id="shopName">ร้านของฉัน</span>
+    </a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="theme-toggle" type="button" aria-label="สลับธีม" style="position:static;">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" style="display:none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <a class="btn btn-outline btn-small" href="/shop/orders.html">สั่งอาหาร</a>
+      <a class="btn btn-outline btn-small" href="/shop/kitchen.html">ครัว</a>
+      <a class="btn btn-outline btn-small" href="/shop/cashier.html">แคชเชียร์</a>
+      <a class="btn btn-outline btn-small" href="/shop/history.html">ประวัติ</a>
+      <a class="btn btn-outline btn-small" href="/shop/menu.html">เมนู</a>
+      <a class="btn btn-outline btn-small" href="/shop/setup.html">ตั้งค่าข้อมูลร้าน</a>
+      <a class="btn btn-outline btn-small" href="#" id="logoutBtn">ออกจากระบบ</a>
+    </div>
+  </nav>
+
+  <div class="shop-wrap">
+    <div class="shop-head">
+      <h1>ตั้งค่าการแจ้งเตือน</h1>
+      <p>ตั้งกลุ่มแจ้งเตือนผ่าน <b>LINE</b> หรือ <b>Telegram</b> ได้มากกว่า 1 กลุ่ม — แต่ละกลุ่มเลือกเองว่าจะรับแจ้งเตือนเรื่องอะไร เช่น มีออเดอร์ใหม่ / เช็คบิล / ยกเลิกรายการ</p>
+    </div>
+
+    <details class="ng-intro">
+      <summary>📖 วิธีขอโทเคนและปลายทาง (LINE / Telegram)</summary>
+      <h4 style="font-size:13.5px;margin:10px 0 0;">LINE (Messaging API)</h4>
+      <ol>
+        <li>เข้า <code>developers.line.biz</code> → สร้าง Provider และ Channel ประเภท <b>Messaging API</b></li>
+        <li>คัดลอก <b>Channel access token (long-lived)</b> จากแท็บ Messaging API มาวางในช่องโทเคน</li>
+        <li>เพิ่มเพื่อน/เชิญบอทเข้ากลุ่มที่ต้องการรับแจ้งเตือน</li>
+        <li>เอา <b>ปลายทาง</b> จาก Webhook ที่บอทได้รับ — userId ขึ้นต้นด้วย <code>U</code>, groupId ขึ้นต้นด้วย <code>C</code>, roomId ขึ้นต้นด้วย <code>R</code></li>
+      </ol>
+      <h4 style="font-size:13.5px;margin:10px 0 0;">Telegram (Bot API)</h4>
+      <ol>
+        <li>คุยกับ <code>@BotFather</code> → ส่ง <code>/newbot</code> → ได้ <b>Bot token</b> มาวางในช่องโทเคน</li>
+        <li>สร้างกลุ่ม แล้วเพิ่มบอทเข้ากลุ่ม (ต้องเป็นแอดมินถ้าจะส่งในหัวข้อ)</li>
+        <li>เอา <b>Chat ID</b> ของกลุ่ม (ค่าติดลบ เช่น <code>-1001234567890</code>) จาก <code>@userinfobot</code> หรือดูจาก Webhook</li>
+        <li>ถ้าส่งในหัวข้อ (Topic) ของกลุ่ม ให้ใส่ <b>Topic ID</b> ด้วย ไม่ใส่ก็ได้</li>
+      </ol>
+      <p style="font-size:12.5px;color:var(--muted);margin:0;">ไม่แน่ใจว่าตั้งถูกไหม? กดปุ่ม <b>ทดสอบส่ง</b> ได้เลย — ถ้าผิดพลาด ระบบจะบอกสาเหตุที่ผู้ให้บริการตอบกลับมาให้ครับ</p>
+    </details>
+
+    <div class="ng-toolbar">
+      <button class="mini-btn primary" id="addBtn" type="button">＋ เพิ่มกลุ่มแจ้งเตือน</button>
+      <span style="font-size:12.5px;color:var(--muted);" id="groupCount"></span>
+    </div>
+
+    <div id="groupList"></div>
+  </div>
+
+  <!-- ฟอร์มเพิ่ม/แก้ไขกลุ่ม -->
+  <div class="modal-overlay" id="groupModal">
+    <div class="modal wide">
+      <h3 id="modalTitle">เพิ่มกลุ่มแจ้งเตือน</h3>
+      <p class="sub">เลือกช่องทาง กรอกปลายทาง และติ๊กเหตุการณ์ที่ต้องการให้แจ้งเตือน</p>
+
+      <div class="field">
+        <label for="fName">ชื่อกลุ่ม</label>
+        <input class="mini-input" id="fName" style="width:100%;" maxlength="120" placeholder="เช่น กลุ่มครัว, กลุ่มผู้จัดการ, ห้องแคชเชียร์">
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="fChannel">ช่องทาง</label>
+          <select class="mini-input" id="fChannel" style="width:100%;">
+            <option value="line">LINE</option>
+            <option value="telegram">Telegram</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>สถานะ</label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;">
+            <span class="switch"><input type="checkbox" id="fActive" checked><span class="track"></span></span>
+            <span id="fActiveLabel">เปิดใช้งาน</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="ch-fields show" id="lineFields">
+        <div class="field">
+          <label for="fLineToken">Channel access token (long-lived)</label>
+          <input class="mini-input" id="fLineToken" style="width:100%;" maxlength="255" autocomplete="off" placeholder="วางโทเคนจากหน้า Messaging API">
+        </div>
+        <div class="field">
+          <label for="fLineTarget">ปลายทาง (userId / groupId / roomId)</label>
+          <input class="mini-input" id="fLineTarget" style="width:100%;" maxlength="120" autocomplete="off" placeholder="เช่น C1a2b3c4d5…">
+        </div>
+      </div>
+
+      <div class="ch-fields" id="tgFields">
+        <div class="field">
+          <label for="fTgToken">Bot token</label>
+          <input class="mini-input" id="fTgToken" style="width:100%;" maxlength="255" autocomplete="off" placeholder="เช่น 123456789:AA…">
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="fTgChat">Chat ID</label>
+            <input class="mini-input" id="fTgChat" style="width:100%;" maxlength="120" autocomplete="off" placeholder="เช่น -1001234567890">
+          </div>
+          <div class="field">
+            <label for="fTgThread">Topic ID (ไม่บังคับ)</label>
+            <input class="mini-input" id="fTgThread" style="width:100%;" maxlength="40" autocomplete="off" placeholder="ใส่เมื่อส่งในหัวข้อ">
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>เหตุการณ์ที่ให้แจ้งเตือน</label>
+        <div class="ev-pick" id="eventPicker"></div>
+        <div class="field-error" id="errEvents" style="display:none;"></div>
+      </div>
+
+      <div class="error-msg" id="modalError" style="display:none;"></div>
+
+      <div class="modal-actions">
+        <button class="mini-btn" id="testBtn" type="button">ทดสอบส่ง</button>
+        <button class="mini-btn" id="cancelBtn" type="button">ยกเลิก</button>
+        <button class="mini-btn primary" id="saveBtn" type="button">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const dt = (iso) => { if (!iso) return '—'; const d = new Date(iso); if (isNaN(d)) return iso; const p = (n) => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
+    const mask = (s) => { s = String(s || ''); return s ? (s.length > 4 ? '••••' + s.slice(-4) : '••••') : ''; };
+
+    let toastTimer = null;
+    function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let data; try { data = await res.json(); } catch { const e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
+      if (!data.ok) { const e = new Error(data.message || 'เกิดข้อผิดพลาด'); e.status = res.status; e.data = data; throw e; }
+      return data;
+    }
+    const postJson = (path, body, method) => api(path, { method: method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+    let EVENTS = [];
+    let groups = [];
+    let editingId = null;
+
+    const CH_ICON = {
+      line: '<svg viewBox="0 0 24 24" fill="none"><path d="M21 10.5c0-4.1-4-7.5-9-7.5S3 6.4 3 10.5c0 3.7 3.2 6.8 7.5 7.4.3.1.7.2.8.5.1.2.1.6 0 .8l-.1.8c0 .2-.2.9.8.5s5.2-3 7.1-5.2c1.3-1.4 1.9-2.8 1.9-4.3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+      telegram: '<svg viewBox="0 0 24 24" fill="none"><path d="M21 4L3 11l5 2 2 6 3-4 5 4 3-15z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    };
+    const chName = (c) => (c === 'telegram' ? 'Telegram' : 'LINE');
+
+    // ---------- เรนเดอร์รายการกลุ่ม ----------
+    function renderGroups() {
+      const box = document.getElementById('groupList');
+      document.getElementById('groupCount').textContent = groups.length ? `ทั้งหมด ${groups.length} กลุ่ม` : '';
+      if (!groups.length) {
+        box.innerHTML = '<div class="cat-empty" style="padding:18px 0;">ยังไม่มีกลุ่มแจ้งเตือน — กด “＋ เพิ่มกลุ่มแจ้งเตือน” เพื่อเริ่มตั้งค่า</div>';
+        return;
+      }
+      box.innerHTML = groups.map((g) => {
+        const subs = g.events || [];
+        const target = g.channel === 'telegram'
+          ? `Chat ID: ${esc(mask(g.tg_chat))}${g.tg_thread ? ' · Topic ' + esc(g.tg_thread) : ''}`
+          : `ปลายทาง: ${esc(mask(g.line_target))}`;
+        const tokenShown = g.channel === 'telegram' ? mask(g.tg_token) : mask(g.line_token);
+        return `<div class="ng-card ${g.active ? '' : 'off'}" data-id="${g.id}">
+          <div class="ng-head">
+            <div style="flex:1;min-width:200px;">
+              <div class="ng-name">
+                ${esc(g.name)}
+                <span class="ch-badge ${g.channel === 'telegram' ? 'ch-telegram' : 'ch-line'}">${CH_ICON[g.channel] || ''}${chName(g.channel)}</span>
+                ${g.active ? '' : '<span class="ev-chip off">ปิดใช้งาน</span>'}
+              </div>
+              <div class="ng-sub">โทเคน: ${esc(tokenShown || '—')} · ${target}</div>
+            </div>
+            <label class="switch" title="${g.active ? 'ปิดใช้งานกลุ่มนี้' : 'เปิดใช้งานกลุ่มนี้'}">
+              <input type="checkbox" data-toggle="${g.id}" ${g.active ? 'checked' : ''}>
+              <span class="track"></span>
+            </label>
+          </div>
+          <div class="ev-chips">
+            ${EVENTS.map((e) => `<span class="ev-chip ${subs.includes(e.key) ? '' : 'off'}">${subs.includes(e.key) ? '' : '○ '}${esc(e.label)}</span>`).join('')}
+          </div>
+          ${g.last_at ? `<div class="ng-last">ส่งล่าสุด ${dt(g.last_at)} — <b class="${g.last_ok ? 'ok' : 'err'}">${esc(g.last_status || (g.last_ok ? 'สำเร็จ' : 'ไม่สำเร็จ'))}</b></div>` : '<div class="ng-last">ยังไม่เคยส่งข้อความ</div>'}
+          <div class="ng-actions">
+            <button class="mini-btn" data-test="${g.id}" type="button">ทดสอบส่ง</button>
+            <button class="mini-btn" data-edit="${g.id}" type="button">แก้ไข</button>
+            <button class="mini-btn danger" data-del="${g.id}" type="button">ลบ</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ---------- ฟอร์ม ----------
+    function renderEventPicker(selected) {
+      document.getElementById('eventPicker').innerHTML = EVENTS.map((e) => `
+        <label class="ev-opt">
+          <input type="checkbox" value="${esc(e.key)}" ${selected.includes(e.key) ? 'checked' : ''}>
+          <span><span class="t">${esc(e.label)}</span><span class="d">${esc(e.desc)}</span></span>
+        </label>`).join('');
+    }
+
+    function pickedEvents() {
+      return Array.from(document.querySelectorAll('#eventPicker input:checked')).map((i) => i.value);
+    }
+
+    function syncChannelFields() {
+      const ch = document.getElementById('fChannel').value;
+      document.getElementById('lineFields').classList.toggle('show', ch === 'line');
+      document.getElementById('tgFields').classList.toggle('show', ch === 'telegram');
+    }
+
+    function showModalError(msg) {
+      const box = document.getElementById('modalError');
+      box.textContent = msg || '';
+      box.style.display = msg ? 'block' : 'none';
+    }
+
+    function openModal(group) {
+      editingId = group ? group.id : null;
+      document.getElementById('modalTitle').textContent = group ? 'แก้ไขกลุ่มแจ้งเตือน' : 'เพิ่มกลุ่มแจ้งเตือน';
+      document.getElementById('fName').value = group ? group.name : '';
+      document.getElementById('fChannel').value = group ? group.channel : 'line';
+      document.getElementById('fActive').checked = group ? !!group.active : true;
+      document.getElementById('fLineToken').value = group ? (group.line_token || '') : '';
+      document.getElementById('fLineTarget').value = group ? (group.line_target || '') : '';
+      document.getElementById('fTgToken').value = group ? (group.tg_token || '') : '';
+      document.getElementById('fTgChat').value = group ? (group.tg_chat || '') : '';
+      document.getElementById('fTgThread').value = group ? (group.tg_thread || '') : '';
+      renderEventPicker(group && group.events ? group.events : []);
+      showModalError('');
+      document.getElementById('fActiveLabel').textContent = document.getElementById('fActive').checked ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+      syncChannelFields();
+      document.getElementById('groupModal').classList.add('show');
+    }
+
+    function closeModal() { document.getElementById('groupModal').classList.remove('show'); }
+
+    function formPayload() {
+      const ch = document.getElementById('fChannel').value;
+      return {
+        id: editingId,
+        name: document.getElementById('fName').value.trim(),
+        channel: ch,
+        active: document.getElementById('fActive').checked,
+        lineToken: document.getElementById('fLineToken').value.trim(),
+        lineTarget: document.getElementById('fLineTarget').value.trim(),
+        tgToken: document.getElementById('fTgToken').value.trim(),
+        tgChat: document.getElementById('fTgChat').value.trim(),
+        tgThread: document.getElementById('fTgThread').value.trim(),
+        events: pickedEvents(),
+      };
+    }
+
+    async function load() {
+      const data = await api('/api/shop/notify-groups');
+      EVENTS = data.events || [];
+      groups = data.groups || [];
+      renderGroups();
+      if (editingId) renderEventPicker(pickedEvents());
+    }
+
+    // ---------- เหตุการณ์บนหน้า ----------
+    document.getElementById('addBtn').addEventListener('click', () => openModal(null));
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    document.getElementById('fChannel').addEventListener('change', syncChannelFields);
+    document.getElementById('fActive').addEventListener('change', (e) => {
+      document.getElementById('fActiveLabel').textContent = e.target.checked ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+    });
+    document.getElementById('groupModal').addEventListener('click', (e) => { if (e.target.id === 'groupModal') closeModal(); });
+
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      const p = formPayload();
+      showModalError('');
+      if (!p.name) { showModalError('กรุณาตั้งชื่อกลุ่มแจ้งเตือน'); return; }
+      if (!p.events.length) { showModalError('เลือกอย่างน้อย 1 เหตุการณ์ที่ต้องการให้แจ้งเตือน'); return; }
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true; btn.classList.add('loading');
+      try {
+        const body = Object.assign({}, p); delete body.id;
+        const r = editingId
+          ? await postJson('/api/shop/notify-groups/' + editingId, body, 'PUT')
+          : await postJson('/api/shop/notify-groups', body);
+        toast(r.message || 'บันทึกแล้ว');
+        closeModal();
+        await load();
+      } catch (e) {
+        showModalError(e.message);
+      } finally {
+        btn.disabled = false; btn.classList.remove('loading');
+      }
+    });
+
+    document.getElementById('testBtn').addEventListener('click', async () => {
+      const p = formPayload();
+      showModalError('');
+      const btn = document.getElementById('testBtn');
+      btn.disabled = true; btn.classList.add('loading');
+      try {
+        const r = await postJson('/api/shop/notify-test', p);
+        toast(r.message || 'ส่งข้อความทดสอบแล้ว');
+        if (editingId) await load();
+      } catch (e) {
+        showModalError(e.message);
+      } finally {
+        btn.disabled = false; btn.classList.remove('loading');
+      }
+    });
+
+    // ปุ่มในแต่ละการ์ด
+    document.getElementById('groupList').addEventListener('click', async (e) => {
+      const t = e.target.closest('button');
+      if (!t) return;
+      const editId = t.getAttribute('data-edit');
+      const delId = t.getAttribute('data-del');
+      const testId = t.getAttribute('data-test');
+
+      if (editId) {
+        const g = groups.find((x) => String(x.id) === editId);
+        if (g) openModal(g);
+        return;
+      }
+      if (delId) {
+        const g = groups.find((x) => String(x.id) === delId);
+        if (!g) return;
+        if (!confirm(`ลบกลุ่ม "${g.name}" ?`)) return;
+        try { const r = await postJson('/api/shop/notify-groups/' + delId, {}, 'DELETE'); toast(r.message || 'ลบแล้ว'); await load(); }
+        catch (err) { toast(err.message); }
+        return;
+      }
+      if (testId) {
+        const g = groups.find((x) => String(x.id) === testId);
+        if (!g) return;
+        t.disabled = true; t.classList.add('loading');
+        try {
+          const r = await postJson('/api/shop/notify-test', { id: g.id, channel: g.channel });
+          toast(r.message || 'ส่งข้อความทดสอบแล้ว');
+        } catch (err) { toast(err.message); }
+        finally { t.disabled = false; t.classList.remove('loading'); await load(); }
+      }
+    });
+
+    // สวิตช์เปิด/ปิดในกลุ่ม
+    document.getElementById('groupList').addEventListener('change', async (e) => {
+      const id = e.target.getAttribute('data-toggle');
+      if (!id) return;
+      const g = groups.find((x) => String(x.id) === id);
+      if (!g) return;
+      try {
+        const r = await postJson('/api/shop/notify-groups/' + id, { active: e.target.checked }, 'PUT');
+        toast(r.message || 'บันทึกแล้ว');
+      } catch (err) {
+        toast(err.message);
+        e.target.checked = !e.target.checked;
+      }
+      await load();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    (async () => {
+      try {
+        const me = await api('/api/shop/me');
+        if (!me.shop) { window.location.href = '/shop/setup.html'; return; }
+        document.getElementById('shopName').textContent = me.shop.name || 'ร้านของฉัน';
+        await load();
+      } catch (e) {
+        if (e.status === 403) { window.location.href = '/shop'; return; }
+        document.getElementById('groupList').innerHTML = '<div class="cat-empty">' + esc(e.message) + '</div>';
+      }
+    })();
+  </script>
+</body>
+</html>

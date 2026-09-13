@@ -339,6 +339,30 @@ async function initSchema() {
   await ensureColumn('order_items', 'done_at', 'done_at DATETIME NULL');
   await ensureColumn('order_items', 'cancel_reason', 'cancel_reason VARCHAR(255) NULL');
   await ensureColumn('order_items', 'options_ids_json', 'options_ids_json TEXT NULL');
+
+  // ── กลุ่มแจ้งเตือน (LINE / Telegram) ของแต่ละร้าน ─────────────────────
+  // 1 ร้านมีได้หลายกลุ่ม แต่ละกลุ่มเลือกช่องทาง + ปลายทาง + เหตุการณ์ที่ต้องการรับเอง
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS notify_groups (
+      id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+      shop_id     BIGINT NOT NULL,
+      name        VARCHAR(120) NOT NULL,
+      channel     VARCHAR(16) NOT NULL DEFAULT 'line',
+      active      TINYINT(1) NOT NULL DEFAULT 1,
+      line_token  VARCHAR(255) NOT NULL DEFAULT '',
+      line_target VARCHAR(120) NOT NULL DEFAULT '',
+      tg_token    VARCHAR(255) NOT NULL DEFAULT '',
+      tg_chat     VARCHAR(120) NOT NULL DEFAULT '',
+      tg_thread   VARCHAR(40) NOT NULL DEFAULT '',
+      events_json TEXT NULL,
+      last_status VARCHAR(255) NOT NULL DEFAULT '',
+      last_ok     TINYINT(1) NULL,
+      last_at     DATETIME NULL,
+      created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_notify_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 }
 
 // เพิ่มคอลัมน์ถ้ายังไม่มี (ใช้กับตารางที่สร้างจาก schema เก่า)
@@ -1330,6 +1354,74 @@ async function deleteTable(id, shopId) {
   await pool.execute('DELETE FROM `tables` WHERE id = ? AND shop_id = ?', [id, shopId]);
 }
 
+// ---------------------------------------------------------------------------
+// กลุ่มแจ้งเตือน (LINE / Telegram)
+// ---------------------------------------------------------------------------
+async function listNotifyGroups(shopId) {
+  const [rows] = await pool.execute(
+    'SELECT * FROM notify_groups WHERE shop_id = ? ORDER BY id ASC',
+    [shopId]
+  );
+  return rows;
+}
+
+/** เฉพาะกลุ่มที่เปิดใช้งาน (ใช้ตอนยิงแจ้งเตือนจริง) */
+async function listActiveNotifyGroups(shopId) {
+  const [rows] = await pool.execute(
+    'SELECT * FROM notify_groups WHERE shop_id = ? AND active = 1 ORDER BY id ASC',
+    [shopId]
+  );
+  return rows;
+}
+
+async function findNotifyGroupById(id, shopId) {
+  const [rows] = await pool.execute('SELECT * FROM notify_groups WHERE id = ? AND shop_id = ?', [id, shopId]);
+  return rows[0] || null;
+}
+
+async function createNotifyGroup(g) {
+  const [result] = await pool.execute(
+    `INSERT INTO notify_groups
+       (shop_id, name, channel, active, line_token, line_target, tg_token, tg_chat, tg_thread, events_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      g.shopId, g.name, g.channel, g.active ? 1 : 0,
+      g.lineToken || '', g.lineTarget || '', g.tgToken || '', g.tgChat || '', g.tgThread || '',
+      g.eventsJson || null,
+    ]
+  );
+  return Number(result.insertId);
+}
+
+async function updateNotifyGroup(id, shopId, fields) {
+  const sets = [];
+  const params = [];
+  const map = {
+    name: 'name', channel: 'channel', active: 'active',
+    lineToken: 'line_token', lineTarget: 'line_target',
+    tgToken: 'tg_token', tgChat: 'tg_chat', tgThread: 'tg_thread',
+    eventsJson: 'events_json',
+  };
+  for (const [key, column] of Object.entries(map)) {
+    if (fields[key] !== undefined) { sets.push(`${column} = ?`); params.push(key === 'active' ? (fields[key] ? 1 : 0) : fields[key]); }
+  }
+  if (!sets.length) return;
+  sets.push('updated_at = UTC_TIMESTAMP()');
+  await pool.execute(`UPDATE notify_groups SET ${sets.join(', ')} WHERE id = ? AND shop_id = ?`, [...params, id, shopId]);
+}
+
+async function deleteNotifyGroup(id, shopId) {
+  await pool.execute('DELETE FROM notify_groups WHERE id = ? AND shop_id = ?', [id, shopId]);
+}
+
+/** เก็บผลการส่งล่าสุดไว้โชว์บนหน้าเว็บ (ไม่ให้ล้มเหลวแล้วพังการบันทึก) */
+async function setNotifyGroupResult(id, ok, status) {
+  await pool.execute(
+    'UPDATE notify_groups SET last_ok = ?, last_status = ?, last_at = UTC_TIMESTAMP() WHERE id = ?',
+    [ok ? 1 : 0, String(status || '').slice(0, 255), id]
+  );
+}
+
 async function findOpenOrder(shopId, tableId) {
   const [rows] = await pool.execute(
     "SELECT * FROM orders WHERE shop_id = ? AND table_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1",
@@ -1401,8 +1493,10 @@ async function listKitchenItems(shopId, station = 'kitchen') {
 
 async function findOrderItemOwned(id, shopId) {
   const [rows] = await pool.execute(
-    `SELECT oi.*, o.status AS order_status FROM order_items oi
+    `SELECT oi.*, o.status AS order_status, t.code AS table_code
+       FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
+       LEFT JOIN \`tables\` t ON t.id = o.table_id
       WHERE oi.id = ? AND o.shop_id = ?`,
     [id, shopId]
   );
@@ -1585,6 +1679,13 @@ module.exports = {
   createTable,
   updateTableCode,
   deleteTable,
+  listNotifyGroups,
+  listActiveNotifyGroups,
+  findNotifyGroupById,
+  createNotifyGroup,
+  updateNotifyGroup,
+  deleteNotifyGroup,
+  setNotifyGroupResult,
   findOpenOrder,
   findOrderById,
   createOrder,

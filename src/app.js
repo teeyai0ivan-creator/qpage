@@ -17,6 +17,7 @@ const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payments');
 const shopRoutes = require('./routes/shop');
 const orderRoutes = require('./routes/orders');
+const notifyRoutes = require('./routes/notify');
 const publicRoutes = require('./routes/public');
 
 const app = express();
@@ -59,6 +60,8 @@ app.use(accountRoutes);
 app.use(shopRoutes);
 // โต๊ะ/QR/บิล + หน้าสั่งอาหารลูกค้า (/order/:token)
 app.use(orderRoutes);
+// ตั้งค่าการแจ้งเตือน (LINE / Telegram) ของเจ้าของร้าน
+app.use(notifyRoutes);
 app.use(publicRoutes);
 
 // ไฟล์หน้าเว็บ (.html) บังคับให้ตรวจสอบของใหม่ทุกครั้ง (no-cache) — กันเบราว์เซอร์ (โดยเฉพาะมือถือ)
