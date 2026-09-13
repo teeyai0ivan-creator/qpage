@@ -357,21 +357,31 @@
     // ลูกค้าที่เปิดหน้าค้างไว้จะผูกกับบิลใบเดิม — พอร้านกดเช็คบิลแล้ว บิลใหม่จะถูกเปิดให้โต๊ะเดิม
     // หน้าของลูกค้าจึงต้องออกจากโหมดสั่ง และพาไป "หน้าดูร้าน" (อ่านอย่างเดียว) เพื่อให้สแกน QR ใหม่
     let billId0 = null;
+    let leaving = false;
     function leaveToShop() {
+      if (leaving) return;   // กันเรียกซ้ำ
+      leaving = true;
       const code = S && S.shop && S.shop.public_code ? S.shop.public_code : '';
       if (code) location.replace('/s/' + encodeURIComponent(code) + '?bill_closed=1');
       else location.reload();
     }
+
+    // ตรวจว่าบิลที่หน้านี้ผูกอยู่ ยังเป็นบิลที่เปิดอยู่ของโต๊ะไหม (ร้านกดเช็คบิลแล้วหรือยัง)
+    async function billStillOpen() {
+      if (leaving || !billId0) return true;
+      try {
+        const data = await api('/api/public/order/' + encodeURIComponent(token) + '/bill');
+        const cur = data.order_id != null ? Number(data.order_id) : null;
+        if (cur && cur !== Number(billId0)) { leaveToShop(); return false; }
+      } catch (e) { /* เน็ตหลุดชั่วคราว — ลองรอบหน้า/ให้เซิร์ฟเวอร์กันอีกชั้น */ }
+      return true;
+    }
+
     function startBillWatch() {
-      setInterval(async () => {
-        if (document.hidden || !billId0) return;
-        try {
-          // เรียกแบบเบา ๆ (ไม่ดึงเมนูทั้งร้าน) ทุก 8 วินาที
-          const data = await api('/api/public/order/' + encodeURIComponent(token) + '/bill');
-          const cur = data.order_id != null ? Number(data.order_id) : null;
-          if (cur && cur !== Number(billId0)) leaveToShop();
-        } catch (e) { /* เน็ตหลุดชั่วคราว — ลองรอบหน้า */ }
-      }, 8000);
+      // ตรวจเป็นระยะ + ตรวจทันทีเมื่อกลับมาที่แท็บนี้ (ไม่ต้องรอรอบถัดไป)
+      setInterval(() => { if (!document.hidden) billStillOpen(); }, 5000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) billStillOpen(); });
+      window.addEventListener('focus', () => billStillOpen());
     }
 
     async function submitOrder() {
@@ -380,6 +390,8 @@
       const btns = [document.getElementById('orderBtn'), document.getElementById('cartOrderBtn')].filter(Boolean);
       btns.forEach((b) => { b.disabled = true; });
       try {
+        // ตรวจก่อนส่งทุกครั้ง — ถ้าร้านเพิ่งเช็คบิล ให้เด้งไปหน้าดูร้านแทนการส่งออเดอร์
+        if (!(await billStillOpen())) return;
         // ส่งรหัสบิลที่หน้านี้กำลังดูอยู่ไปด้วย — ถ้าร้านเช็คบิลไปแล้ว เซิร์ฟเวอร์จะปฏิเสธ (409)
         const payload = { billId: S.bill ? S.bill.order_id : null, items: entries.map((c) => ({ menuId: c.menuId, quantity: c.quantity, optionItemIds: c.optionItemIds })) };
         const data = await api('/api/public/order/' + encodeURIComponent(token) + '/items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
