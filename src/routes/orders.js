@@ -336,6 +336,14 @@ router.get('/shop/receipt.html', requireShopPage, async (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'shop', 'receipt.html'));
 });
 
+// หน้าป้ายโต๊ะ (พิมพ์) — เปิดจากปุ่ม "พิมพ์ป้าย (มีเลขบิล)" ใช้รูปแบบเดียวกับใบเสร็จ
+router.get('/shop/label.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'label.html'));
+});
+
 // บิลเดียว + รายการ (ใช้แสดงใบเสร็จ) — ต้องเป็นบิลของร้านตัวเอง
 // หมายเหตุ: ต้องประกาศหลัง /api/shop/orders/open และ /orders/history เพื่อไม่ให้ทับเส้นทางนั้น
 router.get('/api/shop/orders/:id', requireShop, async (req, res) => {

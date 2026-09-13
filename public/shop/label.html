@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ป้ายโต๊ะ | ระบบสมาชิก</title>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 20px 12px 40px;
+      font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, Arial, sans-serif;
+      color: #111; background: #eff0f5; line-height: 1.5; font-size: 13px;
+    }
+    /* แถบปุ่ม (ไม่พิมพ์) */
+    .actions { max-width: 720px; margin: 0 auto 12px; display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+    .actions .paper-pick { margin-right: auto; font-size: 13px; color: #475467; display: flex; align-items: center; gap: 6px; }
+    .actions select { font-family: inherit; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1px solid #c9cdd6; background: #fff; color: #111; }
+    .actions button {
+      font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 15px;
+      border-radius: 9px; border: 1px solid #c9cdd6; background: #fff; color: #111; cursor: pointer;
+    }
+    .actions button.primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+
+    /* ---------- ป้ายโต๊ะ (ค่าเริ่มต้น = ม้วน 80mm) ---------- */
+    .label {
+      max-width: 80mm; margin: 0 auto; background: #fff; text-align: center;
+      box-shadow: 0 8px 24px rgba(16,24,40,.10); padding: 14px 12px 16px;
+    }
+    .l-logo { text-align: center; margin: 0 0 8px; }
+    .l-logo img { display: block; margin: 0 auto; width: 90%; height: 30mm; object-fit: contain; }
+    .l-shop { font-size: 16px; font-weight: 700; color: #344054; margin-bottom: 6px; }
+    .l-table { font-size: 46px; font-weight: 800; line-height: 1.15; letter-spacing: .5px; }
+    .l-bill { font-size: 17px; font-weight: 600; margin: 2px 0 10px; }
+    .l-qr { width: 60mm; height: 60mm; display: block; margin: 0 auto; }
+    .l-hint { font-size: 14px; color: #475467; margin-top: 8px; }
+    .l-loading { text-align: center; color: #667085; font-size: 13px; padding: 28px 0; }
+
+    /* ---------- กระดาษม้วน 58mm (แคบสุด) ---------- */
+    body.paper-58mm .label { max-width: 58mm; padding: 10px 8px 12px; }
+    body.paper-58mm .l-logo img { width: 94%; height: 22mm; }
+    body.paper-58mm .l-shop { font-size: 13px; }
+    body.paper-58mm .l-table { font-size: 34px; }
+    body.paper-58mm .l-bill { font-size: 14px; }
+    body.paper-58mm .l-qr { width: 44mm; height: 44mm; }
+    body.paper-58mm .l-hint { font-size: 12px; }
+
+    /* ---------- A4 ---------- */
+    body.paper-a4 .label { max-width: 190mm; padding: 30px 26px 34px; }
+    body.paper-a4 .l-logo img { width: 70%; height: 50mm; }
+    body.paper-a4 .l-shop { font-size: 22px; }
+    body.paper-a4 .l-table { font-size: 84px; }
+    body.paper-a4 .l-bill { font-size: 24px; }
+    body.paper-a4 .l-qr { width: 90mm; height: 90mm; }
+    body.paper-a4 .l-hint { font-size: 18px; }
+
+    /* ---------- ตอนพิมพ์: เอาแถบปุ่ม/เงาออก ให้เต็มหน้ากระดาษ ---------- */
+    @media print {
+      body { background: #fff; padding: 0; font-size: 12px; }
+      .actions { display: none !important; }
+      .label { box-shadow: none; border-radius: 0; max-width: none; padding: 0; }
+    }
+  </style>
+</head>
+<body class="paper-80mm">
+  <div class="actions">
+    <label class="paper-pick">ขนาดกระดาษ
+      <select id="paperSel">
+        <option value="58mm">ม้วน 58mm</option>
+        <option value="80mm" selected>ม้วน 80mm (ค่าเริ่มต้น)</option>
+        <option value="a4">A4</option>
+      </select>
+    </label>
+    <button class="primary" id="printBtn" type="button">🖨 พิมพ์ป้าย</button>
+    <button id="closeBtn" type="button">ปิดหน้านี้</button>
+  </div>
+
+  <div class="label" id="label">
+    <div class="l-loading" id="loading">กำลังโหลดป้าย...</div>
+  </div>
+
+  <script>
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
+    const tableId = (new URLSearchParams(location.search).get('table') || '').trim();
+
+    async function api(path) {
+      const res = await fetch(path);
+      let data; try { data = await res.json(); } catch { throw new Error('เซิร์ฟเวอร์ตอบสนองไม่ถูกต้อง (HTTP ' + res.status + ')'); }
+      if (!data.ok) { const e = new Error(data.message || 'โหลดข้อมูลไม่สำเร็จ'); e.status = res.status; throw e; }
+      return data;
+    }
+
+    // ---------- เลือกขนาดกระดาษ (ใช้ค่าเดียวกับใบเสร็จ เพราะเครื่องพิมพ์เดียวกัน) ----------
+    const PAPER_KEY = 'qpage_receipt_paper';
+    function applyPaper(mm) {
+      const size = mm === 'a4' ? 'A4' : mm + ' auto';
+      const margin = mm === 'a4' ? '12mm' : '3mm';
+      let st = document.getElementById('paperStyle');
+      if (!st) { st = document.createElement('style'); st.id = 'paperStyle'; document.head.appendChild(st); }
+      st.textContent = '@page { size: ' + size + '; margin: ' + margin + '; }';
+      document.body.className = 'paper-' + mm;
+    }
+    const paperSel = document.getElementById('paperSel');
+    try { const saved = localStorage.getItem(PAPER_KEY); if (saved) paperSel.value = saved; } catch (e) { /* ข้าม */ }
+    applyPaper(paperSel.value);
+    paperSel.addEventListener('change', () => {
+      try { localStorage.setItem(PAPER_KEY, paperSel.value); } catch (e) { /* ข้าม */ }
+      applyPaper(paperSel.value);
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('closeBtn').addEventListener('click', () => { window.close(); });
+
+    function renderError(message) {
+      document.getElementById('label').innerHTML = '<p class="l-loading">' + esc(message) + '</p>';
+    }
+
+    function render(shop, table) {
+      const logo = shop.logo_url ? esc(shop.logo_url) : '';
+      const qr = '/api/shop/tables/' + encodeURIComponent(table.id) + '/qr?origin=' + encodeURIComponent(location.origin);
+      document.getElementById('label').innerHTML = `
+        ${logo ? `<div class="l-logo"><img src="${logo}" alt="" onerror="this.parentNode.style.display='none'"></div>` : ''}
+        ${shop.name ? `<div class="l-shop">${esc(shop.name)}</div>` : ''}
+        <div class="l-table">โต๊ะ ${esc(table.code)}</div>
+        <div class="l-bill">บิล ${billNoFmt(table.bill_no)}</div>
+        <img class="l-qr" src="${qr}" alt="QR โต๊ะ ${esc(table.code)}">
+        <div class="l-hint">สแกนเพื่อสั่งอาหาร</div>`;
+      document.title = 'ป้ายโต๊ะ ' + table.code + (shop.name ? ' · ' + shop.name : '');
+    }
+
+    (async function init() {
+      if (!/^\d+$/.test(tableId)) { renderError('ไม่พบโต๊ะที่ต้องการพิมพ์ป้าย'); return; }
+      try {
+        const [me, data] = await Promise.all([api('/api/shop/me'), api('/api/shop/tables')]);
+        const table = (data.tables || []).find((t) => String(t.id) === tableId);
+        if (!table) { renderError('ไม่พบโต๊ะนี้ในร้านของคุณ'); return; }
+        render(me.shop || {}, {
+          id: table.id, code: table.code,
+          bill_no: table.open_order ? table.open_order.bill_no : null,
+        });
+        // สั่งพิมพ์อัตโนมัติหลังเรนเดอร์ (ถ้าเบราว์เซอร์ไม่พิมพ์ กดปุ่ม "พิมพ์ป้าย" ได้)
+        setTimeout(() => { try { window.print(); } catch (e) { /* ผู้ใช้อาจปิดการพิมพ์ */ } }, 600);
+      } catch (err) {
+        renderError(err && err.status === 403 ? 'กรุณาเข้าสู่ระบบก่อนเปิดป้ายโต๊ะ' : (err.message || 'โหลดป้ายไม่สำเร็จ'));
+      }
+    })();
+  </script>
+</body>
+</html>

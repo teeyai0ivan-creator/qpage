@@ -136,60 +136,11 @@
     // จำนวนจานของบิลที่เปิดอยู่ — เทียบเป็นตัวเลขเสมอ (ค่า 0 ต้องถือว่า "ว่าง")
     const billPlates = (o) => (o ? Number(o.item_count) || 0 : 0);
 
-    // เปิดหน้าต่างพิมพ์ป้าย: โลโก้ร้าน + เลขโต๊ะ + เลขที่บิลปัจจุบัน + QR
-    // พิมพ์บนกระดาษม้วน โดยใช้ขนาดเดียวกับใบเสร็จ (เครื่องพิมพ์เครื่องเดียวกัน) — ค่าเริ่มต้นม้วน 80mm
-    function labelPaper() {
-      try { return localStorage.getItem('qpage_receipt_paper') || '80mm'; } catch (e) { return '80mm'; }
-    }
+    // เปิดหน้าป้ายโต๊ะสำหรับพิมพ์ (หน้าจริงแบบเดียวกับใบเสร็จ — พิมพ์บนกระดาษม้วนได้แน่นอน)
     function printLabel(t) {
-      const billNo = t.open_order ? t.open_order.bill_no : null;
-      const url = location.origin + qrUrl(t.id);
-      const shop = (shopData && shopData.shop) || {};
-      const logo = shop.logo_url ? (/^https?:/i.test(shop.logo_url) ? shop.logo_url : location.origin + shop.logo_url) : '';
-      const paper = labelPaper();
-      const mm = paper === 'a4' ? 'a4' : (paper === '58mm' ? '58mm' : '80mm');
-      const pageSize = mm === 'a4' ? 'A4' : mm + ' auto';
-      const qrMm = mm === '58mm' ? 44 : (mm === 'a4' ? 90 : 62);
-      const logoMm = mm === '58mm' ? 24 : (mm === 'a4' ? 48 : 32);
-      const wrapMm = mm === 'a4' ? '180mm' : mm;
-      const w = window.open('', '_blank');
-      if (!w) return alert('เบราว์เซอร์บล็อกป๊อปอัป กรุณาอนุญาตแล้วลองใหม่');
-      w.document.write('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8">' +
-        '<title>ป้ายโต๊ะ ' + esc(t.code) + '</title>' +
-        '<style>' +
-        '@page { size: ' + pageSize + '; margin: 3mm; }' +
-        'body { font-family:-apple-system,"Segoe UI","Sarabun",sans-serif; text-align:center; margin:0; padding:2mm 0; color:#111; }' +
-        '.wrap { max-width:' + wrapMm + '; margin:0 auto; }' +
-        '.logo { margin:0 auto 4mm; }' +
-        // ยืดโลโก้ให้เต็มความกว้างกระดาษ (ไฟล์โลโก้เล็กก็ขยายขึ้น) โดย object-fit:contain ไม่ให้ภาพเบี้ยว
-        '.logo img { display:block; margin:0 auto; width:88%; height:' + logoMm + 'mm; object-fit:contain; }' +
-        '.shop { font-size:' + (mm === '58mm' ? 12 : 14) + 'px; font-weight:600; color:#333; margin-bottom:3mm; }' +
-        '.table { font-size:' + (mm === '58mm' ? 26 : 32) + 'px; font-weight:800; letter-spacing:.5px; }' +
-        '.bill { font-size:' + (mm === '58mm' ? 12 : 14) + 'px; margin:1mm 0 3mm; }' +
-        '.qr { width:' + qrMm + 'mm; height:' + qrMm + 'mm; display:block; margin:0 auto; }' +
-        '.hint { font-size:' + (mm === '58mm' ? 11 : 12.5) + 'px; color:#555; margin-top:3mm; }' +
-        '.no-print { padding:4px 0 10px; }' +
-        '.no-print button { font-family:inherit; font-size:15px; font-weight:700; padding:10px 22px; margin:0 4px; border:none; border-radius:10px; background:#4f46e5; color:#fff; cursor:pointer; }' +
-        '.no-print button.ghost { background:#fff; color:#475467; border:1px solid #d0d5dd; }' +
-        '.no-print .tip { font-size:12px; color:#667085; margin-top:8px; }' +
-        '@media print { .no-print { display:none !important; } }' +
-        '</style></head><body>' +
-        '<div class="no-print">' +
-        '<button type="button" onclick="window.print()">🖨 พิมพ์ป้าย</button>' +
-        '<button type="button" class="ghost" onclick="window.close()">ปิด</button>' +
-        '<div class="tip">ถ้าหน้าต่างนี้ไม่พิมพ์เอง ให้กดปุ่ม “พิมพ์ป้าย” (ปุ่มจะไม่ติดไปกับกระดาษ)</div>' +
-        '</div>' +
-        '<div class="wrap">' +
-        (logo ? '<div class="logo"><img src="' + esc(logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
-        (shop.name ? '<div class="shop">' + esc(shop.name) + '</div>' : '') +
-        '<div class="table">โต๊ะ ' + esc(t.code) + '</div>' +
-        '<div class="bill">บิล ' + billNoFmt(billNo) + '</div>' +
-        '<img class="qr" src="' + url + '" alt="QR">' +
-        '<div class="hint">สแกนเพื่อสั่งอาหาร</div>' +
-        '</div>' +
-        '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},400);});<\/script>' +
-        '</body></html>');
-      w.document.close();
+      const url = '/shop/label.html?table=' + encodeURIComponent(t.id);
+      const w = window.open(url, '_blank');
+      if (!w) location.href = url; // ถ้าเบราว์เซอร์บล็อกป๊อปอัป ให้เปิดในแท็บนี้แทน
     }
 
     let tablesCache = [];
