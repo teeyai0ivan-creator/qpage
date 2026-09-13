@@ -1305,7 +1305,7 @@ async function findTableByToken(token) {
 async function findOrderableTableByToken(token) {
   const [rows] = await pool.execute(
     `SELECT t.id, t.shop_id, t.code, t.token,
-            s.name AS shop_name, s.logo_url, s.phone, s.line_url, s.maps_url
+            s.name AS shop_name, s.public_code, s.logo_url, s.phone, s.line_url, s.maps_url
        FROM \`tables\` t
        JOIN shops s ON s.id = t.shop_id
        JOIN users u ON u.id = s.user_id

@@ -77,6 +77,15 @@
         if (shop.line_url) contact.push(`<a href="${esc(shop.line_url)}" target="_blank" rel="noopener">💬 LINE ร้านค้า</a>`);
         if (shop.maps_url) contact.push(`<a href="${esc(shop.maps_url)}" target="_blank" rel="noopener">📍 ดูแผนที่</a>`);
 
+        // ถ้าถูกพามาที่นี่เพราะ "บิลถูกเช็คบิลแล้ว" → อธิบายว่าหน้านี้ดูได้อย่างเดียว สั่งไม่ได้
+        const billClosed = new URLSearchParams(location.search).get('bill_closed') === '1';
+        const closedNotice = billClosed
+          ? `<div class="pub-closed-notice">
+              <strong>🧾 บิลก่อนหน้าของคุณถูกเช็คบิลแล้ว</strong>
+              <span>หน้านี้เป็นหน้าดูร้าน (ดูเมนูได้อย่างเดียว สั่งอาหารไม่ได้) — หากต้องการสั่งเพิ่ม กรุณาสแกน QR Code ที่โต๊ะอีกครั้ง</span>
+            </div>`
+          : '';
+
         document.getElementById('app').innerHTML = `
           <header class="pub-hero">
             <div class="pub-hero-inner">
@@ -87,7 +96,7 @@
               </div>
             </div>
           </header>
-          <main class="pub-body">${body}</main>
+          <main class="pub-body">${closedNotice}${body}</main>
         `;
         document.title = shop.name + ' | เมนูร้านค้า';
       } catch (err) {

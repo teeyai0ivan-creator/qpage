@@ -353,13 +353,35 @@
     });
 
     // ---------- ส่งออเดอร์ (ใช้ร่วมกันทั้งปุ่มในแถบล่างและปุ่มในป๊อปอัพ) ----------
+    // ---------- บิลของหน้านี้ถูกเช็คบิลแล้วหรือยัง ----------
+    // ลูกค้าที่เปิดหน้าค้างไว้จะผูกกับบิลใบเดิม — พอร้านกดเช็คบิลแล้ว บิลใหม่จะถูกเปิดให้โต๊ะเดิม
+    // หน้าของลูกค้าจึงต้องออกจากโหมดสั่ง และพาไป "หน้าดูร้าน" (อ่านอย่างเดียว) เพื่อให้สแกน QR ใหม่
+    let billId0 = null;
+    function leaveToShop() {
+      const code = S && S.shop && S.shop.public_code ? S.shop.public_code : '';
+      if (code) location.replace('/s/' + encodeURIComponent(code) + '?bill_closed=1');
+      else location.reload();
+    }
+    function startBillWatch() {
+      setInterval(async () => {
+        if (document.hidden || !billId0) return;
+        try {
+          // เรียกแบบเบา ๆ (ไม่ดึงเมนูทั้งร้าน) ทุก 8 วินาที
+          const data = await api('/api/public/order/' + encodeURIComponent(token) + '/bill');
+          const cur = data.order_id != null ? Number(data.order_id) : null;
+          if (cur && cur !== Number(billId0)) leaveToShop();
+        } catch (e) { /* เน็ตหลุดชั่วคราว — ลองรอบหน้า */ }
+      }, 8000);
+    }
+
     async function submitOrder() {
       const entries = Object.values(sel).filter((x) => x.quantity > 0);
       if (!entries.length) return;
       const btns = [document.getElementById('orderBtn'), document.getElementById('cartOrderBtn')].filter(Boolean);
       btns.forEach((b) => { b.disabled = true; });
       try {
-        const payload = { items: entries.map((c) => ({ menuId: c.menuId, quantity: c.quantity, optionItemIds: c.optionItemIds })) };
+        // ส่งรหัสบิลที่หน้านี้กำลังดูอยู่ไปด้วย — ถ้าร้านเช็คบิลไปแล้ว เซิร์ฟเวอร์จะปฏิเสธ (409)
+        const payload = { billId: S.bill ? S.bill.order_id : null, items: entries.map((c) => ({ menuId: c.menuId, quantity: c.quantity, optionItemIds: c.optionItemIds })) };
         const data = await api('/api/public/order/' + encodeURIComponent(token) + '/items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         sel = {};
         S.bill = data.bill;
@@ -367,6 +389,7 @@
         render();
         alert('ส่งออเดอร์แล้ว ✓');
       } catch (err) {
+        if (err.status === 409) { alert(err.message || 'บิลนี้ถูกเช็คบิลแล้ว'); leaveToShop(); return; }
         alert(err.message || 'ส่งออเดอร์ไม่สำเร็จ');
         btns.forEach((b) => { b.disabled = false; });
       }
@@ -429,7 +452,10 @@
       try {
         S = await api('/api/public/order/' + encodeURIComponent(token));
         sel = {};
+        // จำบิลที่หน้านี้กำลังสั่งอยู่ (ถ้าร้านเช็คบิล บิลจะเปลี่ยนเลข → พาออกไปหน้าดูร้าน)
+        billId0 = S.bill ? S.bill.order_id : null;
         render();
+        startBillWatch();
       } catch (err) {
         document.getElementById('app').innerHTML = '<div class="pub-empty" style="padding-top:80px;">' + esc(err.message || 'ไม่พบโต๊ะนี้') + '</div>';
       }

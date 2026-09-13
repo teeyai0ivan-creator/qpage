@@ -72,12 +72,25 @@ router.get('/api/public/order/:token', async (req, res) => {
   res.json({
     ok: true,
     shop: {
-      name: table.shop_name, logo_url: table.logo_url, phone: table.phone,
+      name: table.shop_name, public_code: table.public_code, logo_url: table.logo_url, phone: table.phone,
       line_url: table.line_url, maps_url: table.maps_url,
     },
     table: { code: table.code },
     categories, menus, optionGroups, optionItems, menuGroups,
     bill,
+  });
+});
+
+// เบา ๆ: ตรวจว่าบิลที่เปิดอยู่ของโต๊ะนี้คือใบไหน (หน้าลูกค้าใช้ตรวจว่าถูกเช็คบิลไปหรือยัง)
+router.get('/api/public/order/:token/bill', async (req, res) => {
+  const table = await db.findOrderableTableByToken(String(req.params.token || ''));
+  if (!table) return res.status(404).json({ ok: false, message: 'ไม่พบโต๊ะนี้ หรือร้านปิดให้บริการชั่วคราว' });
+  const open = await db.findOpenOrder(table.shop_id, table.id);
+  res.json({
+    ok: true,
+    order_id: open ? open.id : null,
+    bill_no: open ? (open.bill_no || null) : null,
+    total: open ? Number(open.total) : 0,
   });
 });
 
@@ -97,6 +110,17 @@ router.post('/api/public/order/:token/items', async (req, res) => {
 
   let order = await db.findOpenOrder(table.shop_id, table.id);
   if (!order) order = { id: await db.createOrder({ shopId: table.shop_id, tableId: table.id }) };
+
+  // หน้าที่ลูกค้าเปิดค้างไว้ผูกกับ "บิล" ใบหนึ่ง — ถ้าร้านเช็คบิลไปแล้ว ห้ามส่งเข้าใบใหม่
+  // (ต้องสแกน QR ที่โต๊ะใหม่เพื่อเริ่มบิลใหม่)
+  const sentBillId = Number(req.body?.billId) || null;
+  if (sentBillId && sentBillId !== Number(order.id)) {
+    return res.status(409).json({
+      ok: false,
+      closed: true,
+      message: 'บิลก่อนหน้าถูกเช็คบิลแล้ว — กรุณาสแกน QR ที่โต๊ะอีกครั้งเพื่อสั่งใหม่',
+    });
+  }
 
   await db.addOrderItems(order.id, prepared);
   const fresh = await db.findOpenOrder(table.shop_id, table.id);
