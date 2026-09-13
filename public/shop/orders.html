@@ -133,6 +133,8 @@
     const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
     // นับ "รายการ" เป็นจำนวนจาน (ผลรวม quantity) ให้ตรงกับบิล/ใบเสร็จ/แจ้งเตือน
     const platesOf = (items) => (items || []).reduce((n, it) => n + (Number(it.quantity) || 0), 0);
+    // จำนวนจานของบิลที่เปิดอยู่ — เทียบเป็นตัวเลขเสมอ (ค่า 0 ต้องถือว่า "ว่าง")
+    const billPlates = (o) => (o ? Number(o.item_count) || 0 : 0);
 
     // เปิดหน้าต่างพิมพ์ป้าย: QR + เลขโต๊ะ + เลขที่บิลปัจจุบัน
     function printLabel(t) {
@@ -171,7 +173,7 @@
           <div class="table-info">
             <div class="table-code">โต๊ะ ${esc(t.code)}</div>
             <div class="table-sub">${t.open_order
-              ? 'บิล ' + billNoFmt(t.open_order.bill_no) + (t.open_order.item_count ? ' · ' + t.open_order.item_count + ' รายการ · ' + money(t.open_order.total) : ' · ยังไม่มีรายการ')
+              ? 'บิล ' + billNoFmt(t.open_order.bill_no) + (billPlates(t.open_order) ? ' · ' + billPlates(t.open_order) + ' รายการ · ' + money(t.open_order.total) : ' · ยังไม่มีรายการ')
               : 'ยังไม่เปิดบิล'}</div>
             ${hasItems ? `<div class="table-actions">
               <button class="mini-btn" data-detail="${t.id}" type="button">ดูรายละเอียดรายการปัจจุบัน</button>
@@ -181,10 +183,10 @@
               <a class="mini-btn" href="${qrUrl(t.id)}" download="table-${esc(t.code)}-qr.png">ดาวน์โหลด QR</a>
               <button class="mini-btn" data-print="${t.id}" type="button">พิมพ์ป้าย (มีเลขบิล)</button>
               <button class="mini-btn" data-ren="${t.id}" data-code="${esc(t.code)}" type="button">เปลี่ยนเลข</button>
-              <button class="mini-btn danger" data-del="${t.id}" ${t.open_order && t.open_order.item_count ? 'disabled title="ต้องเช็คบิลก่อนจึงจะลบได้"' : ''} type="button">ลบ</button>
+              <button class="mini-btn danger" data-del="${t.id}" ${billPlates(t.open_order) ? 'disabled title="ต้องเช็คบิลก่อนจึงจะลบได้"' : ''} type="button">ลบ</button>
             </div>
             ${uncleared ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีรายการรอทำ/กำลังทำ ' + uncleared + ' รายการ — เช็คบิลไม่ได้</div>' : ''}
-            ${t.open_order && t.open_order.item_count ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีบิลที่ยังไม่เช็คบิล — ลบไม่ได้จนกว่าจะกดเช็คบิล</div>' : ''}
+            ${billPlates(t.open_order) ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีบิลที่ยังไม่เช็คบิล — ลบไม่ได้จนกว่าจะกดเช็คบิล</div>' : ''}
           </div>
         </div>`;
       }).join('');
@@ -292,7 +294,7 @@
 
     async function loadBills() {
       const data = await api('/api/shop/orders/open');
-      const orders = (data.orders || []).filter((o) => o.item_count > 0);
+      const orders = (data.orders || []).filter((o) => billPlates(o) > 0);
       openOrdersCache = orders;
       document.getElementById('billCount').textContent = orders.length ? '(' + orders.length + ')' : '';
       const box = document.getElementById('billList');

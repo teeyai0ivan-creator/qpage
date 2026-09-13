@@ -1547,7 +1547,8 @@ async function listOpenOrders(shopId) {
       ORDER BY t.code ASC`,
     [shopId]
   );
-  return rows;
+  // SUM() ของ MySQL คืนค่าเป็นสตริง (เช่น "0") — แปลงเป็นตัวเลขก่อน ไม่งั้นเงื่อนไข if ฝั่งหน้าเว็บจะเห็นเป็นจริง
+  return rows.map((r) => ({ ...r, item_count: Number(r.item_count) || 0 }));
 }
 
 // ประวัติบิลที่ปิดแล้ว (ดูย้อนหลัง) — กรองตามโต๊ะได้
@@ -1561,7 +1562,7 @@ async function listClosedOrders(shopId, { tableId = null, limit = 50 } = {}) {
   if (tableId) { sql += ' AND o.table_id = ?'; params.push(tableId); }
   sql += ` ORDER BY o.closed_at DESC, o.id DESC LIMIT ${safeLimit}`;
   const [rows] = await pool.execute(sql, params);
-  return rows;
+  return rows.map((r) => ({ ...r, item_count: Number(r.item_count) || 0 }));
 }
 
 // รายการของหลายบิลพร้อมกัน (สำหรับหน้าประวัติ)
