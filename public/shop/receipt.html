@@ -23,8 +23,8 @@
       max-width: 720px; margin: 0 auto; background: #fff; border-radius: 14px;
       box-shadow: 0 10px 30px rgba(16,24,40,.10); padding: 34px 38px 28px;
     }
-    .r-logo { text-align: center; margin-bottom: 10px; }
-    .r-logo img { width: 190px; max-width: 70%; height: auto; }
+    .r-shop-logo { text-align: center; margin-bottom: 10px; }
+    .r-shop-logo img { max-height: 96px; max-width: 60%; height: auto; object-fit: contain; }
     .r-shop { text-align: center; font-size: 19px; font-weight: 800; }
     .r-shop-sub { text-align: center; font-size: 13px; color: #667085; margin-top: 3px; }
     .r-title {
@@ -47,7 +47,10 @@
     .r-total { font-size: 19px; font-weight: 800; padding-top: 14px !important; border: none !important; }
     .r-note { font-size: 12.5px; color: #b45309; margin: 12px 0 0; }
     .r-thanks { text-align: center; font-size: 14.5px; font-weight: 700; margin: 22px 0 4px; }
-    .r-foot { text-align: center; font-size: 11.5px; color: #98a2b3; margin: 0; }
+    /* โลโก้ระบบ (QPage) อยู่ท้ายบิล ย่อขนาดลง */
+    .r-brand { text-align: center; margin-top: 14px; }
+    .r-brand img { width: 110px; max-width: 45%; height: auto; opacity: .92; }
+    .r-foot { text-align: center; font-size: 11.5px; color: #98a2b3; margin: 4px 0 0; }
     .r-loading { text-align: center; color: #667085; padding: 40px 0; }
 
     @page { margin: 12mm; }
@@ -105,7 +108,7 @@
       const qtyTotal = shown.reduce((s, i) => s + Number(i.quantity || 0), 0);
 
       document.getElementById('receipt').innerHTML = `
-        <div class="r-logo"><img src="/img/logo-wordmark.svg" alt="QPage"></div>
+        ${shop.logo_url ? '<div class="r-shop-logo"><img src="' + esc(shop.logo_url) + '" alt="' + esc(shop.name || '') + '"></div>' : ''}
         <div class="r-shop">${esc(shop.name || '')}</div>
         <div class="r-shop-sub">${[shop.phone, shop.address].filter(Boolean).map(esc).join(' · ') || '&nbsp;'}</div>
         <div class="r-title">ใบเสร็จรับเงิน</div>
@@ -122,6 +125,7 @@
         </table>
         ${cancelledCount ? '<p class="r-note">หมายเหตุ: มี ' + cancelledCount + ' รายการที่ถูกยกเลิก (ไม่คิดเงิน)</p>' : ''}
         <p class="r-thanks">ขอบคุณที่ใช้บริการ</p>
+        <div class="r-brand"><img src="/img/logo-wordmark.svg" alt="QPage"></div>
         <p class="r-foot">พิมพ์โดยระบบ QPage · qpage.website</p>`;
     }
 
