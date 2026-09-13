@@ -340,6 +340,9 @@ async function initSchema() {
   await ensureColumn('order_items', 'cancel_reason', 'cancel_reason VARCHAR(255) NULL');
   await ensureColumn('order_items', 'options_ids_json', 'options_ids_json TEXT NULL');
 
+  // ตัวเลือกที่ "มาร์คเป็นค่าเริ่มต้น" → เวลาลูกค้าเลือกเมนูที่ใช้กลุ่มนี้ ระบบจะติ๊กให้อัตโนมัติ
+  await ensureColumn('option_items', 'is_default', 'is_default TINYINT(1) NOT NULL DEFAULT 0');
+
   // ── กลุ่มแจ้งเตือน (Telegram) ของแต่ละร้าน ─────────────────────────────
   // 1 ร้านมีได้หลายกลุ่ม แต่ละกลุ่มตั้งปลายทาง + เหตุการณ์ที่ต้องการรับเอง
   // (คอลัมน์ channel/line_token/line_target เป็นของเดิมสมัยรองรับ LINE — เก็บไว้ไม่ให้ข้อมูลเก่าหาย แต่ไม่ใช้แล้ว)
@@ -951,12 +954,39 @@ async function listOptionItems(shopId) {
   return rows;
 }
 
-async function createOptionItem({ groupId, name, priceDelta = 0, sortOrder = 0 }) {
+async function createOptionItem({ groupId, name, priceDelta = 0, sortOrder = 0, isDefault = 0 }) {
   const [result] = await pool.execute(
-    'INSERT INTO option_items (group_id, name, price_delta, sort_order) VALUES (?, ?, ?, ?)',
-    [groupId, name, priceDelta, sortOrder]
+    'INSERT INTO option_items (group_id, name, price_delta, sort_order, is_default) VALUES (?, ?, ?, ?, ?)',
+    [groupId, name, priceDelta, sortOrder, isDefault ? 1 : 0]
   );
   return Number(result.insertId);
+}
+
+/**
+ * มาร์ค/ยกเลิกค่าเริ่มต้นของตัวเลือก
+ * กลุ่มที่ "เลือกได้อย่างเดียว" มีค่าเริ่มต้นได้ทีละตัว — มาร์คตัวใหม่จะยกเลิกตัวเดิมในกลุ่มเดียวกันให้
+ * @returns {Promise<{id:number, group_id:number, multi:number}|null>} null ถ้าไม่พบตัวเลือกในร้านนี้
+ */
+async function setOptionItemDefault(id, shopId, isDefault) {
+  const [rows] = await pool.execute(
+    `SELECT oi.id, oi.group_id, g.multi FROM option_items oi
+       JOIN option_groups g ON g.id = oi.group_id
+      WHERE oi.id = ? AND g.shop_id = ?`,
+    [id, shopId]
+  );
+  const item = rows[0];
+  if (!item) return null;
+  if (isDefault && Number(item.multi) !== 1) {
+    await pool.execute(
+      'UPDATE option_items oi JOIN option_groups g ON g.id = oi.group_id SET oi.is_default = 0 WHERE oi.group_id = ? AND g.shop_id = ?',
+      [item.group_id, shopId]
+    );
+  }
+  await pool.execute(
+    'UPDATE option_items oi JOIN option_groups g ON g.id = oi.group_id SET oi.is_default = ? WHERE oi.id = ? AND g.shop_id = ?',
+    [isDefault ? 1 : 0, id, shopId]
+  );
+  return item;
 }
 
 async function findOptionItemOwned(id, shopId) {
@@ -1646,6 +1676,7 @@ module.exports = {
   createOptionItem,
   findOptionItemOwned,
   updateOptionItem,
+  setOptionItemDefault,
   deleteOptionItem,
   listMenuOptionGroups,
   setMenuOptionGroups,

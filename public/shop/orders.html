@@ -414,7 +414,7 @@
         return `<div class="opt-group" style="margin:10px 0;">
           <div class="g-head"><span class="n">${esc(g.name)} <small style="color:var(--muted);font-weight:500;">(${g.required ? 'บังคับ' : 'ไม่บังคับ'}${g.multi ? ' · หลายอย่าง' : ' · เลือก 1'})</small></span></div>
           <div style="display:grid;gap:6px;margin-top:8px;">
-            ${items.map((i) => `<label style="display:flex;gap:8px;align-items:center;font-size:14px;"><input type="${g.multi ? 'checkbox' : 'radio'}" name="ag${g.id}" value="${i.id}"> <span>${esc(i.name)}${Number(i.price_delta) ? ' <small style="color:var(--muted);">+' + money(i.price_delta).replace('฿', '') + '฿</small>' : ''}</span></label>`).join('')}
+            ${items.map((i) => `<label style="display:flex;gap:8px;align-items:center;font-size:14px;"><input type="${g.multi ? 'checkbox' : 'radio'}" name="ag${g.id}" value="${i.id}" ${Number(i.is_default) === 1 ? 'checked' : ''}> <span>${esc(i.name)}${Number(i.price_delta) ? ' <small style="color:var(--muted);">+' + money(i.price_delta).replace('฿', '') + '฿</small>' : ''}</span></label>`).join('')}
           </div>
         </div>`;
       }).join('');

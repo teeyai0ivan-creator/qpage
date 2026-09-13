@@ -60,6 +60,11 @@
 .opt-group .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .opt-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; }
 .opt-chip button { border: none; background: none; color: var(--danger); cursor: pointer; font-size: 14px; line-height: 1; }
+/* ดาวมาร์ค "ค่าเริ่มต้น" ของตัวเลือก (ระบบจะเลือกให้อัตโนมัติเมื่อลูกค้าเลือกเมนูที่ใช้กลุ่มนี้) */
+.opt-chip button.star { color: var(--muted); font-size: 13px; padding: 0; }
+.opt-chip button.star:hover { color: var(--warning); }
+.opt-chip.is-default { border-color: var(--warning-border); background: var(--warning-bg); }
+.opt-chip.is-default button.star { color: var(--warning); }
 
 .mini-input { padding: 8px 11px; font-size: 13px; font-family: var(--font); color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); outline: none; }
 .mini-btn { padding: 7px 12px; font-size: 12.5px; font-weight: 700; font-family: var(--font); border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; }

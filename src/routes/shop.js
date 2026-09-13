@@ -432,7 +432,9 @@ router.post('/api/shop/option-groups/:id/items', requireShop, async (req, res) =
   const name = clip(req.body?.name, 120);
   if (!name) return res.status(400).json({ ok: false, message: 'กรุณากรอกชื่อตัวเลือก' });
   const priceDelta = Number(req.body?.priceDelta) || 0;
-  const id = await db.createOptionItem({ groupId: gid, name, priceDelta, sortOrder: Number(req.body?.sortOrder) || 0 });
+  const id = await db.createOptionItem({ groupId: gid, name, priceDelta, sortOrder: Number(req.body?.sortOrder) || 0, isDefault: req.body?.isDefault ? 1 : 0 });
+  // ถ้าตั้งเป็นค่าเริ่มต้นตั้งแต่สร้าง ให้จัดการ "ค่าเริ่มต้นได้ทีละตัว" ของกลุ่มเลือกอย่างเดียวให้ด้วย
+  if (req.body?.isDefault) await db.setOptionItemDefault(id, shop.id, true);
   res.json({ ok: true, message: 'เพิ่มตัวเลือกแล้ว', id });
 });
 
@@ -450,7 +452,11 @@ router.put('/api/shop/option-items/:id', requireShop, async (req, res) => {
   if (req.body?.priceDelta !== undefined) fields.priceDelta = Number(req.body.priceDelta) || 0;
   if (req.body?.sortOrder !== undefined) fields.sortOrder = Number(req.body.sortOrder) || 0;
   await db.updateOptionItem(id, shop.id, fields);
-  res.json({ ok: true, message: 'บันทึกตัวเลือกแล้ว' });
+  // มาร์ค/ยกเลิก "ค่าเริ่มต้น" — ตัวเลือกที่มาร์คไว้จะถูกติ๊กให้อัตโนมัติเมื่อลูกค้าเลือกเมนูที่ใช้กลุ่มนี้
+  if (req.body?.isDefault !== undefined) {
+    await db.setOptionItemDefault(id, shop.id, !!req.body.isDefault);
+  }
+  res.json({ ok: true, message: req.body?.isDefault === undefined ? 'บันทึกตัวเลือกแล้ว' : (req.body.isDefault ? 'ตั้งเป็นค่าเริ่มต้นแล้ว' : 'ยกเลิกค่าเริ่มต้นแล้ว') });
 });
 
 router.delete('/api/shop/option-items/:id', requireShop, async (req, res) => {

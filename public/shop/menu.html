@@ -107,7 +107,8 @@
     <!-- กลุ่มตัวเลือก -->
     <div class="shop-card">
       <h2>กลุ่มตัวเลือกในเมนู <span class="count" id="grpCount"></span></h2>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">เช่น “ระดับความเผ็ด” (เลือก 1 อย่าง) หรือ “รูปแบบการทาน” (ทานที่ร้าน / ห่อกลับบ้าน) — สร้างกลุ่ม+ตัวเลือก แล้วไปติ๊กผูกกับเมนูด้านบน</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">เช่น “ระดับความเผ็ด” (เลือก 1 อย่าง) หรือ “รูปแบบการทาน” (ทานที่ร้าน / ห่อกลับบ้าน) — สร้างกลุ่ม+ตัวเลือก แล้วไปติ๊กผูกกับเมนูด้านบน<br>
+        <b>กด⭐เพื่อมาร์คค่าเริ่มต้น</b> — ตัวเลือกที่มาร์คไว้จะถูกเลือกให้อัตโนมัติเมื่อลูกค้าเลือกเมนูที่ใช้กลุ่มนี้ (กลุ่มที่เลือกได้อย่างเดียวมีค่าเริ่มต้นได้ทีละตัว)</p>
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
         <input class="mini-input" id="newGrpName" placeholder="ชื่อกลุ่ม เช่น ระดับความเผ็ด" style="flex:1;min-width:160px;">
         <label style="font-size:13px;display:flex;gap:5px;align-items:center;"><input type="checkbox" id="newGrpRequired"> บังคับเลือก</label>
@@ -342,7 +343,12 @@
             <button class="mini-btn danger" data-delgrp="${g.id}" type="button">ลบกลุ่ม</button>
           </div>
           <div class="chips">
-            ${items.map((i) => `<span class="opt-chip">${esc(i.name)}${Number(i.price_delta) ? ' +' + Number(i.price_delta) + '฿' : ''} <button data-delitem="${i.id}" title="ลบ">&times;</button></span>`).join('') || '<span style="color:var(--muted);font-size:12.5px;">ยังไม่มีตัวเลือก</span>'}
+            ${items.map((i) => {
+              const isDef = Number(i.is_default) === 1;
+              return `<span class="opt-chip${isDef ? ' is-default' : ''}" title="${isDef ? 'ค่าเริ่มต้น (กดดาวเพื่อยกเลิก)' : 'กดดาวเพื่อตั้งเป็นค่าเริ่มต้น'}">
+                <button class="star" data-defitem="${i.id}" data-defval="${isDef ? '0' : '1'}" type="button" aria-label="ตั้งเป็นค่าเริ่มต้น">${isDef ? '★' : '☆'}</button>
+                ${esc(i.name)}${Number(i.price_delta) ? ' +' + Number(i.price_delta) + '฿' : ''} <button data-delitem="${i.id}" title="ลบ">&times;</button></span>`;
+            }).join('') || '<span style="color:var(--muted);font-size:12.5px;">ยังไม่มีตัวเลือก</span>'}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
             <input class="mini-input" data-itemname="${g.id}" placeholder="ชื่อตัวเลือก เช่น เผ็ดมาก" style="flex:1;min-width:130px;">
@@ -360,6 +366,15 @@
       box.querySelectorAll('[data-delitem]').forEach((b) => b.addEventListener('click', async () => {
         try { await api('/api/shop/option-items/' + b.dataset.delitem, { method: 'DELETE' }); await refresh(); }
         catch (e) { alert(e.message); }
+      }));
+      // มาร์ค/ยกเลิกค่าเริ่มต้น (ดาว)
+      box.querySelectorAll('[data-defitem]').forEach((b) => b.addEventListener('click', async () => {
+        const on = b.dataset.defval === '1';
+        try {
+          const r = await api('/api/shop/option-items/' + b.dataset.defitem, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isDefault: on }) });
+          toast(r.message || 'บันทึกแล้ว');
+          await refresh();
+        } catch (e) { alert(e.message); }
       }));
       box.querySelectorAll('[data-additem]').forEach((b) => b.addEventListener('click', async () => {
         const gid = b.dataset.additem;

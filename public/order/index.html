@@ -301,9 +301,22 @@
               </label>`).join('')}
             </div>
           </div>`).join('');
-        // เติมตัวเลือกเดิมที่เคยเลือกไว้
-        if (cur && Array.isArray(cur.optionItemIds)) {
-          cur.optionItemIds.forEach((id) => { const el = box.querySelector('input[value="' + id + '"]'); if (el) el.checked = true; });
+        // เติมตัวเลือกเดิมที่เคยเลือกไว้; ถ้าเป็นรายการใหม่ ให้ติ๊ก "ค่าเริ่มต้น" ที่ร้านมาร์คไว้ให้
+        const alreadyPicked = cur && cur.optionsPicked;
+        if (alreadyPicked || (cur && Array.isArray(cur.optionItemIds) && cur.optionItemIds.length)) {
+          (cur.optionItemIds || []).forEach((id) => { const el = box.querySelector('input[value="' + id + '"]'); if (el) el.checked = true; });
+        } else {
+          groups.forEach(({ group, items }) => {
+            items.filter((i) => Number(i.is_default) === 1).forEach((i) => {
+              const el = box.querySelector('input[value="' + i.id + '"]');
+              if (el) el.checked = true;
+            });
+            // กันเหนียว: กลุ่มเลือกได้อย่างเดียวต้องมีติ๊กได้ทีละตัว
+            if (!group.multi) {
+              const checked = box.querySelectorAll('input[data-group="' + group.id + '"]:checked');
+              if (checked.length > 1) checked.forEach((el, idx) => { if (idx > 0) el.checked = false; });
+            }
+          });
         }
       }
       itemModal.classList.add('show');
@@ -336,6 +349,7 @@
         unitPrice: f2(Number(editing.price) + extra),
         quantity: qty, optionItemIds: chosenIds, optionsText: chosen.join(', '),
         imageUrl: editing.image_url || '',
+        optionsPicked: true, // ผู้ใช้ยืนยันตัวเลือกเองแล้ว — เปิดซ้ำไม่ต้องติ๊กค่าเริ่มต้นทับ
       };
       const id = editing.id;
       const name = editing.name;
