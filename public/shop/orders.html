@@ -42,7 +42,7 @@
     <div class="shop-card">
       <h2>โต๊ะ &amp; QR <span class="count" id="tableCount"></span></h2>
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-        <input class="mini-input" id="newTableCode" placeholder="เลขโต๊ะ เช่น 1, A2, โต๊ะริมหน้าต่าง" style="flex:1;min-width:180px;" maxlength="30">
+        <input class="mini-input" id="newTableCode" placeholder="เลขโต๊ะ เช่น 1, A2, โต๊ะริมหน้าต่าง" style="flex:1;min-width:180px;" maxlength="30" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
         <button class="mini-btn primary" id="addTableBtn" type="button">เพิ่มโต๊ะ + สร้าง QR</button>
       </div>
       <div id="tableList"></div>
@@ -146,6 +146,24 @@
     let tablesCache = [];
     let openOrdersCache = []; // บิลที่เปิดอยู่ (พร้อมรายการ) — ใช้โชว์ในบล็อกโต๊ะด้วย
     let shopData = null;
+
+    // กันช่องกรอกได้โฟกัสเองตอนเปิดหน้า — บางเบราว์เซอร์/ออโต้ฟิลล์บนมือถือจะโฟกัสช่องข้อความตัวแรกให้
+    // ทำให้แป้นพิมพ์เด้งขึ้นมาเองทั้งที่ผู้ใช้ยังไม่ได้แตะ ถ้าผู้ใช้ยังไม่ได้แตะอะไร ให้ถอนโฟกัสออก
+    let userTouched = false;
+    ['pointerdown', 'touchstart', 'keydown', 'mousedown'].forEach((ev) =>
+      window.addEventListener(ev, () => { userTouched = true; }, { passive: true }));
+    function dropAutoFocus() {
+      const el = document.getElementById('newTableCode');
+      if (!el || userTouched) return;
+      if (document.activeElement === el) el.blur();
+    }
+    // ตรวจซ้ำช่วงแรกหลังเปิดหน้า เพราะออโต้ฟิลล์บางตัวโฟกัสช้ากว่าที่โหลดเสร็จ
+    // (พอผู้ใช้แตะเอง userTouched จะเป็นจริง แล้วตัวกันนี้หยุดทำงานทันที)
+    window.addEventListener('load', () => {
+      dropAutoFocus();
+      const watch = setInterval(dropAutoFocus, 300);
+      setTimeout(() => clearInterval(watch), 6000);
+    });
 
     async function loadTables() {
       const data = await api('/api/shop/tables');
