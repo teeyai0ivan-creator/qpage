@@ -8,52 +8,78 @@
   <style>
     * { box-sizing: border-box; }
     body {
-      margin: 0; padding: 24px 16px 48px;
+      margin: 0; padding: 20px 12px 40px;
       font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, Arial, sans-serif;
-      color: #111; background: #f1f2f6; line-height: 1.55;
+      color: #111; background: #eff0f5; line-height: 1.5; font-size: 12px;
     }
-    .actions { max-width: 720px; margin: 0 auto 14px; display: flex; gap: 8px; justify-content: flex-end; }
+    /* แถบปุ่ม (ไม่พิมพ์) */
+    .actions { max-width: 720px; margin: 0 auto 12px; display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+    .actions .paper-pick { margin-right: auto; font-size: 13px; color: #475467; display: flex; align-items: center; gap: 6px; }
+    .actions select { font-family: inherit; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1px solid #c9cdd6; background: #fff; color: #111; }
     .actions button {
-      font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 16px;
+      font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 15px;
       border-radius: 9px; border: 1px solid #c9cdd6; background: #fff; color: #111; cursor: pointer;
     }
     .actions button.primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
 
+    /* ---------- ใบเสร็จ (ค่าเริ่มต้น = ม้วน 80mm) ---------- */
     .receipt {
-      max-width: 720px; margin: 0 auto; background: #fff; border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(16,24,40,.10); padding: 34px 38px 28px;
+      max-width: 80mm; margin: 0 auto; background: #fff;
+      box-shadow: 0 8px 24px rgba(16,24,40,.10); padding: 14px 12px 12px;
     }
-    .r-shop-logo { text-align: center; margin-bottom: 10px; }
-    .r-shop-logo img { max-height: 96px; max-width: 60%; height: auto; object-fit: contain; }
-    .r-shop { text-align: center; font-size: 19px; font-weight: 800; }
-    .r-shop-sub { text-align: center; font-size: 13px; color: #667085; margin-top: 3px; }
+    .r-shop-logo { text-align: center; margin-bottom: 6px; }
+    .r-shop-logo img { max-height: 74px; max-width: 62%; height: auto; object-fit: contain; }
+    .r-shop { text-align: center; font-size: 15px; font-weight: 800; line-height: 1.35; }
+    .r-shop-sub { text-align: center; font-size: 11px; color: #667085; margin-top: 2px; }
     .r-title {
-      text-align: center; font-size: 16px; font-weight: 700; letter-spacing: .5px;
-      margin: 18px 0 16px; padding-top: 16px; border-top: 1px dashed #d0d5dd;
+      text-align: center; font-size: 13px; font-weight: 700; letter-spacing: .4px;
+      margin: 10px 0 9px; padding-top: 9px; border-top: 1px dashed #d0d5dd;
     }
-    .r-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: 14px; margin-bottom: 18px; }
-    .r-meta > div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dotted #e4e7ec; padding-bottom: 5px; }
+    .r-meta { display: grid; grid-template-columns: 1fr; gap: 2px; font-size: 11.5px; margin-bottom: 10px; }
+    .r-meta > div { display: flex; justify-content: space-between; gap: 10px; }
     .r-meta span { color: #667085; }
-    .r-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .r-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
     .r-table th {
-      text-align: left; font-size: 12.5px; color: #667085; font-weight: 700;
-      padding: 8px 6px; border-bottom: 1.5px solid #111;
+      text-align: left; font-size: 10.5px; color: #667085; font-weight: 700;
+      padding: 4px 2px; border-bottom: 1px solid #111;
     }
-    .r-table td { padding: 9px 6px; border-bottom: 1px solid #eceef3; vertical-align: top; }
+    .r-table td { padding: 4px 2px; border-bottom: 1px dotted #e4e7ec; vertical-align: top; }
     .r-table .num { text-align: right; white-space: nowrap; }
     .r-table .r-item-name { font-weight: 700; }
-    .r-table .r-item-opt { font-size: 12.5px; color: #667085; margin-top: 2px; }
-    .r-total-label { text-align: right; font-weight: 700; padding-top: 14px !important; border: none !important; }
-    .r-total { font-size: 19px; font-weight: 800; padding-top: 14px !important; border: none !important; }
-    .r-note { font-size: 12.5px; color: #b45309; margin: 12px 0 0; }
-    .r-thanks { text-align: center; font-size: 14.5px; font-weight: 700; margin: 22px 0 4px; }
-    /* โลโก้ระบบ (QPage) อยู่ท้ายบิล ย่อขนาดลง */
-    .r-brand { text-align: center; margin-top: 14px; }
-    .r-brand img { width: 110px; max-width: 45%; height: auto; opacity: .92; }
-    .r-foot { text-align: center; font-size: 11.5px; color: #98a2b3; margin: 4px 0 0; }
-    .r-loading { text-align: center; color: #667085; padding: 40px 0; }
+    .r-table .r-item-opt { font-size: 10.5px; color: #667085; margin-top: 1px; }
+    .r-total-label { text-align: right; font-weight: 700; padding-top: 7px !important; border: none !important; }
+    .r-total { font-size: 15px; font-weight: 800; padding-top: 7px !important; border: none !important; }
+    .r-split { display: flex; justify-content: space-between; font-size: 11.5px; padding: 2px 2px 0; }
+    .r-note { font-size: 10.5px; color: #b45309; margin: 8px 0 0; }
+    .r-thanks { text-align: center; font-size: 12.5px; font-weight: 700; margin: 12px 0 5px; }
+    /* บรรทัดเครดิต + โลโก้ QPage ย่อเล็ก อยู่บรรทัดเดียวกัน */
+    .r-foot {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      font-size: 10px; color: #98a2b3; margin: 0;
+    }
+    .r-foot img { height: 11px; width: auto; opacity: .85; }
+    .r-loading { text-align: center; color: #667085; padding: 30px 0; }
 
-    @page { margin: 12mm; }
+    /* ---------- กระดาษม้วน 58mm (แคบสุด) ---------- */
+    body.paper-58mm { font-size: 11px; }
+    body.paper-58mm .receipt { max-width: 58mm; padding: 12px 8px 10px; }
+    body.paper-58mm .r-table { font-size: 10.5px; }
+    body.paper-58mm .r-shop { font-size: 14px; }
+    body.paper-58mm .r-total { font-size: 14px; }
+    body.paper-58mm .r-foot img { height: 10px; }
+    /* ---------- กระดาษ A4 ---------- */
+    body.paper-a4 { font-size: 14px; }
+    body.paper-a4 .receipt { max-width: 720px; padding: 34px 38px 26px; border-radius: 14px; }
+    body.paper-a4 .r-table { font-size: 14px; }
+    body.paper-a4 .r-meta { grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: 14px; }
+    body.paper-a4 .r-title { font-size: 16px; margin: 18px 0 16px; padding-top: 16px; }
+    body.paper-a4 .r-shop { font-size: 19px; }
+    body.paper-a4 .r-shop-logo img { max-height: 96px; }
+    body.paper-a4 .r-total { font-size: 19px; }
+    body.paper-a4 .r-thanks { font-size: 14.5px; }
+    body.paper-a4 .r-foot { font-size: 11.5px; }
+    body.paper-a4 .r-foot img { height: 13px; }
+
     @media print {
       body { background: #fff; padding: 0; }
       .actions { display: none !important; }
@@ -62,8 +88,15 @@
     }
   </style>
 </head>
-<body>
+<body class="paper-80mm">
   <div class="actions">
+    <label class="paper-pick">ขนาดกระดาษ
+      <select id="paperSel">
+        <option value="58mm">ม้วน 58mm</option>
+        <option value="80mm" selected>ม้วน 80mm (ค่าเริ่มต้น)</option>
+        <option value="a4">A4</option>
+      </select>
+    </label>
     <button class="primary" id="printBtn" type="button">🖨 พิมพ์ใบเสร็จ</button>
     <button id="closeBtn" type="button">ปิดหน้านี้</button>
   </div>
@@ -97,11 +130,11 @@
       const cancelledCount = items.length - shown.length;
       const rows = shown.map((it, idx) => {
         let opts = []; try { opts = it.options_json ? JSON.parse(it.options_json) : []; } catch (e) {}
+        const sub = (opts.length ? esc(opts.join(', ')) + ' · ' : '') + money(it.unit_price) + '/หน่วย';
         return `<tr>
           <td class="num">${idx + 1}</td>
-          <td><div class="r-item-name">${esc(it.menu_name)}</div>${opts.length ? '<div class="r-item-opt">' + esc(opts.join(', ')) + '</div>' : ''}</td>
+          <td><div class="r-item-name">${esc(it.menu_name)}</div><div class="r-item-opt">${sub}</div></td>
           <td class="num">${it.quantity}</td>
-          <td class="num">${money(it.unit_price)}</td>
           <td class="num">${money(it.line_total)}</td>
         </tr>`;
       }).join('');
@@ -119,19 +152,36 @@
           <div><span>รายการ</span><strong>${shown.length} รายการ · ${qtyTotal} ชิ้น</strong></div>
         </div>
         <table class="r-table">
-          <thead><tr><th>#</th><th>รายการ</th><th class="num">จำนวน</th><th class="num">ราคา/หน่วย</th><th class="num">รวม</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#667085;">ไม่มีรายการ</td></tr>'}</tbody>
-          <tfoot><tr><td colspan="4" class="r-total-label">ยอดรวมทั้งสิ้น</td><td class="num r-total">${money(order.total)}</td></tr></tfoot>
+          <thead><tr><th>#</th><th>รายการ</th><th class="num">จำนวน</th><th class="num">รวม</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:#667085;">ไม่มีรายการ</td></tr>'}</tbody>
+          <tfoot><tr><td colspan="3" class="r-total-label">ยอดรวมทั้งสิ้น</td><td class="num r-total">${money(order.total)}</td></tr></tfoot>
         </table>
         ${cancelledCount ? '<p class="r-note">หมายเหตุ: มี ' + cancelledCount + ' รายการที่ถูกยกเลิก (ไม่คิดเงิน)</p>' : ''}
         <p class="r-thanks">ขอบคุณที่ใช้บริการ</p>
-        <div class="r-brand"><img src="/img/logo-wordmark.svg" alt="QPage"></div>
-        <p class="r-foot">พิมพ์โดยระบบ QPage · qpage.website</p>`;
+        <p class="r-foot">พิมพ์โดยระบบ QPage · qpage.website <img src="/img/logo-wordmark.svg" alt="QPage"></p>`;
     }
 
     function renderError(message) {
       document.getElementById('receipt').innerHTML = '<p class="r-loading">' + esc(message) + '</p>';
     }
+
+    // ---------- เลือกขนาดกระดาษ (ม้วน 58/80mm หรือ A4) — จำค่าไว้ในเครื่อง ----------
+    const PAPER_KEY = 'qpage_receipt_paper';
+    function applyPaper(mm) {
+      const size = mm === 'a4' ? 'A4' : mm + ' auto';
+      const margin = mm === 'a4' ? '12mm' : '3mm';
+      let st = document.getElementById('paperStyle');
+      if (!st) { st = document.createElement('style'); st.id = 'paperStyle'; document.head.appendChild(st); }
+      st.textContent = '@page { size: ' + size + '; margin: ' + margin + '; }';
+      document.body.className = 'paper-' + mm;
+    }
+    const paperSel = document.getElementById('paperSel');
+    try { const saved = localStorage.getItem(PAPER_KEY); if (saved) paperSel.value = saved; } catch (e) { /* ข้าม */ }
+    applyPaper(paperSel.value);
+    paperSel.addEventListener('change', () => {
+      try { localStorage.setItem(PAPER_KEY, paperSel.value); } catch (e) { /* ข้าม */ }
+      applyPaper(paperSel.value);
+    });
 
     document.getElementById('printBtn').addEventListener('click', () => window.print());
     document.getElementById('closeBtn').addEventListener('click', () => { window.close(); });
