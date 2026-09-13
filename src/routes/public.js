@@ -66,6 +66,7 @@ router.get('/api/public/order/:token', async (req, res) => {
     order_id: open ? open.id : null,
     bill_no: open ? (open.bill_no || null) : null,
     total: open ? Number(open.total) : 0,
+    opened_at: open ? open.opened_at : null,   // ใช้บอกว่า "บิลนี้เพิ่งเปิด" (หลังร้านเช็คบิล) หรือเปิดมานานแล้ว
     items: open ? await db.listOrderItems(open.id) : [],
   };
 
@@ -91,6 +92,7 @@ router.get('/api/public/order/:token/bill', async (req, res) => {
     order_id: open ? open.id : null,
     bill_no: open ? (open.bill_no || null) : null,
     total: open ? Number(open.total) : 0,
+    opened_at: open ? open.opened_at : null,
   });
 });
 

@@ -363,6 +363,8 @@
     // หรือเป็นการเปิด/สแกนรอบใหม่: ถ้าบิลที่จำไว้ถูกเช็คบิลไปแล้ว จะไม่พาเข้าหน้าสั่ง ให้ไปหน้าดูร้านก่อน
     const LAST_BILL_KEY = 'qpage_last_bill';
     const RESUME = new URLSearchParams(location.search).get('resume') === '1';
+    // ช่วงเวลาหลังร้านเช็คบิล ที่ยังไม่ให้อุปกรณ์เดิมเข้าหน้าสั่ง (กันกดสั่งซ้ำทันทีหลังจ่ายเงิน)
+    const STALE_WINDOW_MS = 5 * 60 * 1000;
     function readLastBill() {
       try {
         const j = JSON.parse(localStorage.getItem(LAST_BILL_KEY) || 'null');
@@ -377,8 +379,7 @@
       if (leaving) return;   // กันเรียกซ้ำ
       leaving = true;
       const code = S && S.shop && S.shop.public_code ? S.shop.public_code : '';
-      // ส่ง token โต๊ะไปด้วย เพื่อให้หน้าดูร้านมีปุ่ม "เริ่มสั่งอาหารที่โต๊ะนี้" (เริ่มบิลใหม่)
-      if (code) location.replace('/s/' + encodeURIComponent(code) + '?bill_closed=1&t=' + encodeURIComponent(token));
+      if (code) location.replace('/s/' + encodeURIComponent(code) + '?bill_closed=1');
       else location.reload();
     }
 
@@ -483,9 +484,14 @@
         // จำบิลที่หน้านี้กำลังสั่งอยู่ (ถ้าร้านเช็คบิล บิลจะเปลี่ยนเลข → พาออกไปหน้าดูร้าน)
         billId0 = S.bill ? S.bill.order_id : null;
         const last = readLastBill();
-        // รีเฟรช/เปิดลิงก์เดิมของอุปกรณ์นี้ หลังบิลถูกเช็คบิลไปแล้ว → ไม่เข้าหน้าสั่ง ให้ไปหน้าดูเมนูก่อน
-        // (จะเริ่มสั่งบิลใหม่ต้องกดปุ่มยืนยันในหน้าดูร้าน = เท่ากับสแกน QR ใหม่)
-        if (!RESUME && last && billId0 && Number(last.billId) !== Number(billId0)) { leaveToShop(); return; }
+        // รีเฟรช/เปิดลิงก์เดิมของอุปกรณ์นี้ หลังบิลถูกเช็คบิลไปแล้ว และบิลใหม่เพิ่งเปิด (ภายใน 5 นาที)
+        // → ไม่เข้าหน้าสั่ง ให้ไปหน้าดูเมนูก่อน กันลูกค้าคนเดิมกดสั่งซ้ำทันทีหลังจ่ายเงิน
+        // ผ่านช่วงนี้ไปแล้ว (หรือเป็นอุปกรณ์ใหม่) ถือเป็นการเริ่มรอบใหม่ สั่งได้ตามปกติ
+        if (!RESUME && last && billId0 && Number(last.billId) !== Number(billId0)) {
+          const openedAt = S.bill && S.bill.opened_at ? new Date(S.bill.opened_at).getTime() : 0;
+          const justReopened = openedAt && (Date.now() - openedAt) < STALE_WINDOW_MS;
+          if (justReopened) { leaveToShop(); return; }
+        }
         writeLastBill(billId0);
         render();
         startBillWatch();

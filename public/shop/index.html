@@ -78,14 +78,11 @@
         if (shop.maps_url) contact.push(`<a href="${esc(shop.maps_url)}" target="_blank" rel="noopener">📍 ดูแผนที่</a>`);
 
         // ถ้าถูกพามาที่นี่เพราะ "บิลถูกเช็คบิลแล้ว" → อธิบายว่าหน้านี้ดูได้อย่างเดียว สั่งไม่ได้
-        const qs = new URLSearchParams(location.search);
-        const billClosed = qs.get('bill_closed') === '1';
-        const tableToken = qs.get('t') || '';
+        const billClosed = new URLSearchParams(location.search).get('bill_closed') === '1';
         const closedNotice = billClosed
           ? `<div class="pub-closed-notice">
               <strong>🧾 บิลก่อนหน้าของคุณถูกเช็คบิลแล้ว</strong>
-              <span>หน้านี้เป็นหน้าดูร้าน (ดูเมนูได้อย่างเดียว สั่งอาหารไม่ได้) — หากต้องการสั่งอาหารที่โต๊ะนี้ กดปุ่มด้านล่างเพื่อเริ่มบิลใหม่ หรือสแกน QR Code ที่โต๊ะอีกครั้ง</span>
-              ${tableToken ? `<a class="mini-btn primary" style="align-self:flex-start;margin-top:10px;" href="/order/${esc(tableToken)}?resume=1">เริ่มสั่งอาหารที่โต๊ะนี้ (บิลใหม่)</a>` : ''}
+              <span>หน้านี้เป็นหน้าดูร้าน (ดูเมนูได้อย่างเดียว สั่งอาหารไม่ได้) — หากต้องการสั่งอาหารที่โต๊ะนี้ กรุณาสแกน QR Code ที่โต๊ะอีกครั้ง</span>
             </div>`
           : '';
 
