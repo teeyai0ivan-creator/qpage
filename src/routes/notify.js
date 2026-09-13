@@ -1,8 +1,8 @@
 /**
- * notify.js — หน้าตั้งค่าการแจ้งเตือน + API กลุ่มแจ้งเตือน (LINE / Telegram)
+ * notify.js — หน้าตั้งค่าการแจ้งเตือน + API กลุ่มแจ้งเตือน (Telegram)
  *
- * 1 ร้านมีได้หลาย "กลุ่มแจ้งเตือน" แต่ละกลุ่มเลือกช่องทาง ปลายทาง และเหตุการณ์ที่รับเอง
- * (เหตุการณ์ที่มีให้เลือกอยู่ใน src/lib/notify.js — EVENTS)
+ * 1 ร้านมีได้หลาย "กลุ่มแจ้งเตือน" แต่ละกลุ่มตั้งปลายทาง (Bot token + Chat ID) และ
+ * เลือกเหตุการณ์ที่รับเอง (เหตุการณ์ที่มีให้เลือกอยู่ใน src/lib/notify.js — EVENTS)
  */
 'use strict';
 
@@ -40,7 +40,7 @@ async function myShop(req, res) {
   return shop;
 }
 
-/** แปลงค่าจากฟอร์มเป็น field ที่จะบันทึก + ตรวจความครบถ้วนตามช่องทาง */
+/** แปลงค่าจากฟอร์มเป็น field ที่จะบันทึก */
 function readGroupFields(body, res, { partial = false } = {}) {
   const fields = {};
 
@@ -49,12 +49,8 @@ function readGroupFields(body, res, { partial = false } = {}) {
     if (!name) { res.status(400).json({ ok: false, field: 'name', message: 'กรุณาตั้งชื่อกลุ่มแจ้งเตือน (เช่น กลุ่มครัว, กลุ่มผู้จัดการ)' }); return null; }
     fields.name = name;
   }
-  if (body?.channel !== undefined || !partial) fields.channel = notify.normalizeChannel(body?.channel);
-
   if (body?.active !== undefined) fields.active = body.active ? 1 : 0;
 
-  if (body?.lineToken !== undefined) fields.lineToken = clip(body.lineToken, 255);
-  if (body?.lineTarget !== undefined) fields.lineTarget = clip(body.lineTarget, 120);
   if (body?.tgToken !== undefined) fields.tgToken = clip(body.tgToken, 255);
   if (body?.tgChat !== undefined) fields.tgChat = clip(body.tgChat, 120);
   if (body?.tgThread !== undefined) fields.tgThread = clip(body.tgThread, 40);
@@ -73,20 +69,14 @@ function readGroupFields(body, res, { partial = false } = {}) {
 /** ดึงค่า config ของกลุ่มออกมาเป็น camelCase — รับได้ทั้งแถวจาก DB และค่าจากฟอร์ม */
 function cfgOf(g) {
   return {
-    lineToken: g.lineToken !== undefined ? g.lineToken : (g.line_token || ''),
-    lineTarget: g.lineTarget !== undefined ? g.lineTarget : (g.line_target || ''),
     tgToken: g.tgToken !== undefined ? g.tgToken : (g.tg_token || ''),
     tgChat: g.tgChat !== undefined ? g.tgChat : (g.tg_chat || ''),
   };
 }
 
-/** ตรวจว่ากรอกข้อมูลปลายทางของช่องทางนั้นครบหรือยัง (เฉพาะตอนเปิดใช้งาน) */
-function channelConfigError(channel, c) {
-  if (channel === 'telegram') {
-    if (!c.tgToken || !c.tgChat) return 'กรุณากรอก Bot token และ Chat ID ของ Telegram';
-  } else if (!c.lineToken || !c.lineTarget) {
-    return 'กรุณากรอก Channel access token และปลายทาง (userId/groupId) ของ LINE';
-  }
+/** ต้องมี Bot token + Chat ID ก่อนจึงจะเปิดใช้งานได้ */
+function configError(c) {
+  if (!c.tgToken || !c.tgChat) return 'กรุณากรอก Bot token และ Chat ID ของ Telegram';
   return null;
 }
 
@@ -126,11 +116,11 @@ router.post('/api/shop/notify-groups', requireShop, wrap(async (req, res) => {
   if (!fields) return;
   const active = fields.active === undefined ? 1 : fields.active;
 
-  const cfgErr = active ? channelConfigError(fields.channel, cfgOf(fields)) : null;
+  const cfgErr = active ? configError(cfgOf(fields)) : null;
   if (cfgErr) return res.status(400).json({ ok: false, message: cfgErr });
 
   const id = await db.createNotifyGroup({ shopId: shop.id, active, ...fields });
-  console.log(`🔔 เพิ่มกลุ่มแจ้งเตือน "${fields.name}" (${fields.channel}) — ${shop.name}`);
+  console.log(`🔔 เพิ่มกลุ่มแจ้งเตือน "${fields.name}" (Telegram) — ${shop.name}`);
   res.json({ ok: true, message: `เพิ่มกลุ่มแจ้งเตือน "${fields.name}" แล้ว`, id });
 }));
 
@@ -146,9 +136,8 @@ router.put('/api/shop/notify-groups/:id', requireShop, wrap(async (req, res) => 
 
   // ตรวจความครบถ้วนจากค่าที่จะกลายเป็นหลังบันทึก (ค่าที่ส่งมาใหม่ทับของเดิม)
   const merged = { ...current, ...fields };
-  const active = merged.active ? 1 : 0;
-  if (active) {
-    const cfgErr = channelConfigError(notify.normalizeChannel(merged.channel), cfgOf(merged));
+  if (merged.active) {
+    const cfgErr = configError(cfgOf(merged));
     if (cfgErr) return res.status(400).json({ ok: false, message: cfgErr });
   }
 
@@ -178,31 +167,26 @@ router.post('/api/shop/notify-test', requireShop, wrap(async (req, res) => {
     if (!source) return res.status(404).json({ ok: false, message: 'ไม่พบกลุ่มแจ้งเตือน' });
   }
 
-  const channel = notify.normalizeChannel(req.body?.channel !== undefined ? req.body.channel : source?.channel);
-  const pick = (key, column) => (req.body?.[key] !== undefined ? clip(req.body[key], 255) : (source ? source[column] : ''));
   const cfg = {
-    line_token: pick('lineToken', 'line_token'),
-    line_target: pick('lineTarget', 'line_target'),
-    tg_token: pick('tgToken', 'tg_token'),
-    tg_chat: pick('tgChat', 'tg_chat'),
-    tg_thread: pick('tgThread', 'tg_thread'),
+    tgToken: req.body?.tgToken !== undefined ? clip(req.body.tgToken, 255) : (source?.tg_token || ''),
+    tgChat: req.body?.tgChat !== undefined ? clip(req.body.tgChat, 120) : (source?.tg_chat || ''),
+    tgThread: req.body?.tgThread !== undefined ? clip(req.body.tgThread, 40) : (source?.tg_thread || ''),
   };
 
-  const cfgErr = channelConfigError(channel, cfgOf(cfg));
+  const cfgErr = configError(cfg);
   if (cfgErr) return res.status(400).json({ ok: false, message: cfgErr });
 
   const text = notify.buildTestText({
     shopName: shop.name,
     groupName: req.body?.name !== undefined ? clip(req.body.name, 120) : (source?.name || ''),
-    channel,
   });
-  const result = await notify.sendText(channel, cfg, text);
+  const result = await notify.sendMessage(cfg, text);
   if (source) {
     try { await db.setNotifyGroupResult(source.id, result.ok, result.ok ? 'ส่งสำเร็จ' : result.error); } catch { /* ข้าม */ }
   }
   if (!result.ok) return res.status(400).json({ ok: false, message: `ส่งทดสอบไม่สำเร็จ: ${result.error}` });
-  console.log(`🔔 ทดสอบแจ้งเตือน ${channel} สำเร็จ — ${shop.name}`);
-  res.json({ ok: true, message: `ส่งข้อความทดสอบไปทาง ${channel === 'telegram' ? 'Telegram' : 'LINE'} แล้ว — ตรวจสอบในแอปได้เลย` });
+  console.log(`🔔 ทดสอบแจ้งเตือน Telegram สำเร็จ — ${shop.name}`);
+  res.json({ ok: true, message: 'ส่งข้อความทดสอบไปทาง Telegram แล้ว — ตรวจสอบในแอปได้เลย' });
 }));
 
 module.exports = router;

@@ -340,8 +340,9 @@ async function initSchema() {
   await ensureColumn('order_items', 'cancel_reason', 'cancel_reason VARCHAR(255) NULL');
   await ensureColumn('order_items', 'options_ids_json', 'options_ids_json TEXT NULL');
 
-  // ── กลุ่มแจ้งเตือน (LINE / Telegram) ของแต่ละร้าน ─────────────────────
-  // 1 ร้านมีได้หลายกลุ่ม แต่ละกลุ่มเลือกช่องทาง + ปลายทาง + เหตุการณ์ที่ต้องการรับเอง
+  // ── กลุ่มแจ้งเตือน (Telegram) ของแต่ละร้าน ─────────────────────────────
+  // 1 ร้านมีได้หลายกลุ่ม แต่ละกลุ่มตั้งปลายทาง + เหตุการณ์ที่ต้องการรับเอง
+  // (คอลัมน์ channel/line_token/line_target เป็นของเดิมสมัยรองรับ LINE — เก็บไว้ไม่ให้ข้อมูลเก่าหาย แต่ไม่ใช้แล้ว)
   await pool.execute(`
     CREATE TABLE IF NOT EXISTS notify_groups (
       id          BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -1379,14 +1380,16 @@ async function findNotifyGroupById(id, shopId) {
   return rows[0] || null;
 }
 
+// ระบบนี้แจ้งเตือนทาง Telegram เท่านั้น — คอลัมน์ channel/line_* ยังอยู่ในตารางเดิม
+// (ไม่ drop เพื่อไม่ให้ข้อมูลเก่าหาย) แต่ไม่ถูกใช้แล้ว จึงบันทึก channel เป็น 'telegram' เสมอ
 async function createNotifyGroup(g) {
   const [result] = await pool.execute(
     `INSERT INTO notify_groups
-       (shop_id, name, channel, active, line_token, line_target, tg_token, tg_chat, tg_thread, events_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (shop_id, name, channel, active, tg_token, tg_chat, tg_thread, events_json)
+     VALUES (?, ?, 'telegram', ?, ?, ?, ?, ?)`,
     [
-      g.shopId, g.name, g.channel, g.active ? 1 : 0,
-      g.lineToken || '', g.lineTarget || '', g.tgToken || '', g.tgChat || '', g.tgThread || '',
+      g.shopId, g.name, g.active ? 1 : 0,
+      g.tgToken || '', g.tgChat || '', g.tgThread || '',
       g.eventsJson || null,
     ]
   );
@@ -1397,8 +1400,7 @@ async function updateNotifyGroup(id, shopId, fields) {
   const sets = [];
   const params = [];
   const map = {
-    name: 'name', channel: 'channel', active: 'active',
-    lineToken: 'line_token', lineTarget: 'line_target',
+    name: 'name', active: 'active',
     tgToken: 'tg_token', tgChat: 'tg_chat', tgThread: 'tg_thread',
     eventsJson: 'events_json',
   };

@@ -1,11 +1,14 @@
 /**
- * notify.js — แจ้งเตือนเจ้าของร้านผ่าน LINE (Messaging API) หรือ Telegram (Bot API)
+ * notify.js — แจ้งเตือนเจ้าของร้านผ่าน Telegram (Bot API)
  *
  * ปลายทาง/โทเคนเป็นของร้านเอง เก็บในตาราง notify_groups (1 ร้านมีได้หลายกลุ่ม)
  * แต่ละกลุ่มเลือกเองว่าจะรับเหตุการณ์อะไรบ้าง — ดูรายการที่ EVENTS ด้านล่าง
  *
  * การส่งเป็นแบบ "พยายามให้ดีที่สุด" (best-effort): ล้มเหลวแล้วต้องไม่ทำให้การสั่งอาหาร/เช็คบิลพัง
  * notifyShop() จึงกลืน error ทั้งหมดและคืนสรุปผลแทนการ throw
+ *
+ * หมายเหตุ: รองรับเฉพาะ Telegram — LINE ไม่มีช่องทางส่งเข้าบัญชี LINE ส่วนตัวโดยตรงแล้ว
+ * (LINE Notify ปิดบริการ 31 มี.ค. 2025) และการส่งผ่าน LINE ต้องมี Official Account ซึ่งเลิกใช้ในระบบนี้
  */
 'use strict';
 
@@ -23,13 +26,9 @@ const EVENTS = [
 const EVENT_KEYS = EVENTS.map((e) => e.key);
 
 // เปลี่ยน base URL ได้ผ่าน env (ใช้ตอนทดสอบกับ mock server — แนวเดียวกับ SLIP_API_BASE)
-const LINE_BASE = (process.env.LINE_API_BASE || 'https://api.line.me').replace(/\/+$/, '');
 const TELEGRAM_BASE = (process.env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\/+$/, '');
 const TIMEOUT_MS = 8000;
-const MAX_LINE_CHARS = 4900;
 const MAX_TG_CHARS = 4000;
-
-const normalizeChannel = (v) => (v === 'telegram' ? 'telegram' : 'line');
 
 /** กรองให้เหลือเฉพาะคีย์เหตุการณ์ที่รู้จัก และไม่ซ้ำ */
 function normalizeEvents(raw) {
@@ -47,25 +46,29 @@ function parseEvents(json) {
 
 const eventsToJson = (raw) => JSON.stringify(normalizeEvents(raw));
 
+/** กลุ่มนี้พร้อมส่งหรือยัง (ต้องมี Bot token + Chat ID) */
+function isConfigured(g) {
+  return Boolean(g && g.tg_token && g.tg_chat);
+}
+
 // ---------------------------------------------------------------------------
 // ตัวช่วยยิง HTTP
 // ---------------------------------------------------------------------------
-async function postJson(url, headers, payload) {
+async function postJson(url, payload) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       signal: ctrl.signal,
     });
     const text = await res.text();
     let data = null;
-    try { data = JSON.parse(text); } catch { /* ผู้ให้บริการอาจไม่ตอบ JSON */ }
+    try { data = JSON.parse(text); } catch { /* Telegram อาจไม่ตอบ JSON เมื่อโดนบล็อค */ }
     if (!res.ok) {
-      const detail = (data && (data.message || (data.error && data.error.description) || data.description))
-        || text.slice(0, 200) || `HTTP ${res.status}`;
+      const detail = (data && (data.description || data.message)) || text.slice(0, 200) || `HTTP ${res.status}`;
       return { ok: false, error: String(detail).slice(0, 250) };
     }
     return { ok: true, data };
@@ -80,25 +83,15 @@ async function postJson(url, headers, payload) {
 }
 
 // ---------------------------------------------------------------------------
-// ส่งออกแต่ละช่องทาง
+// ส่งข้อความออก Telegram
 // ---------------------------------------------------------------------------
-async function sendLine({ token, target, text }) {
-  if (!token || !target) return { ok: false, error: 'ยังไม่ได้กรอก Channel access token หรือปลายทาง (userId/groupId)' };
-  const r = await postJson(
-    `${LINE_BASE}/v2/bot/message/push`,
-    { Authorization: 'Bearer ' + token },
-    { to: target, messages: [{ type: 'text', text: String(text).slice(0, MAX_LINE_CHARS) }] }
-  );
-  return r.ok ? { ok: true } : { ok: false, error: r.error };
-}
-
 async function sendTelegram({ token, chatId, threadId, text }) {
   if (!token || !chatId) return { ok: false, error: 'ยังไม่ได้กรอก Bot token หรือ Chat ID' };
   const payload = { chat_id: chatId, text: String(text).slice(0, MAX_TG_CHARS), disable_web_page_preview: true };
   const thread = String(threadId || '').trim();
   if (thread) payload.message_thread_id = Number(thread) || thread;
 
-  const r = await postJson(`${TELEGRAM_BASE}/bot${token}/sendMessage`, {}, payload);
+  const r = await postJson(`${TELEGRAM_BASE}/bot${token}/sendMessage`, payload);
   if (!r.ok) return { ok: false, error: r.error };
   if (r.data && r.data.ok === false) {
     return { ok: false, error: String(r.data.description || 'Telegram ปฏิเสธข้อความ').slice(0, 250) };
@@ -106,15 +99,14 @@ async function sendTelegram({ token, chatId, threadId, text }) {
   return { ok: true };
 }
 
-/**
- * ส่งข้อความตามช่องทางของ "กลุ่ม" หนึ่ง ๆ (ใช้ทั้งตอนทดสอบและตอนยิงจริง)
- * @param {'line'|'telegram'} channel
- * @param {{line_token?:string,line_target?:string,tg_token?:string,tg_chat?:string,tg_thread?:string}} group
- */
-async function sendText(channel, group, text) {
-  return normalizeChannel(channel) === 'telegram'
-    ? sendTelegram({ token: group.tg_token, chatId: group.tg_chat, threadId: group.tg_thread, text })
-    : sendLine({ token: group.line_token, target: group.line_target, text });
+/** ส่งข้อความตามการตั้งค่าของ "กลุ่ม" หนึ่ง ๆ (ใช้ทั้งตอนทดสอบและตอนยิงจริง) */
+async function sendMessage(group, text) {
+  return sendTelegram({
+    token: group.tg_token || group.tgToken,
+    chatId: group.tg_chat || group.tgChat,
+    threadId: group.tg_thread || group.tgThread,
+    text,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -180,12 +172,11 @@ function buildCheckoutText({ shopName, tableCode, billNo, total, itemCount, bySt
   ].filter(Boolean).join('\n');
 }
 
-function buildTestText({ shopName, groupName, channel }) {
+function buildTestText({ shopName, groupName }) {
   return [
     `✅ ทดสอบการแจ้งเตือนสำเร็จ — ${shopName}`,
     '',
     `กลุ่ม: ${groupName || '(ไม่มีชื่อ)'}`,
-    `ช่องทาง: ${channel === 'telegram' ? 'Telegram' : 'LINE'}`,
     '',
     'ถ้าเห็นข้อความนี้ แปลว่าตั้งค่าถูกต้องแล้ว 🎉',
   ].join('\n');
@@ -195,19 +186,20 @@ function buildTestText({ shopName, groupName, channel }) {
 // ยิงแจ้งเตือนจริง
 // ---------------------------------------------------------------------------
 /**
- * ส่งข้อความไปยังทุกกลุ่มที่เปิดใช้ และสมัครรับเหตุการณ์นั้น
+ * ส่งข้อความไปยังทุกกลุ่มที่เปิดใช้ ตั้งค่าแล้ว และสมัครรับเหตุการณ์นั้น
  * ไม่ throw — คืน { ok, sent, total } เพื่อให้ผู้เรียกตัดสินใจได้
  */
 async function notifyShop(shopId, event, text) {
   try {
     const groups = await db.listActiveNotifyGroups(shopId);
-    const targets = groups.filter((g) => parseEvents(g.events_json).includes(event));
+    // กลุ่มที่ยังไม่ได้กรอกโทเคน/Chat ID ถือว่ายังตั้งค่าไม่เสร็จ — ข้ามไปเงียบ ๆ ไม่นับเป็นความล้มเหลว
+    const targets = groups.filter((g) => isConfigured(g) && parseEvents(g.events_json).includes(event));
     if (!targets.length) return { ok: true, sent: 0, total: 0 };
 
     const results = await Promise.all(targets.map(async (g) => {
-      const r = await sendText(g.channel, g, text);
+      const r = await sendMessage(g, text);
       try { await db.setNotifyGroupResult(g.id, r.ok, r.ok ? 'ส่งสำเร็จ' : r.error); } catch { /* บันทึกผลไม่ได้ก็ไม่เป็นไร */ }
-      if (r.ok) console.log(`🔔 แจ้งเตือน "${event}" → ${g.name} (${g.channel})`);
+      if (r.ok) console.log(`🔔 แจ้งเตือน "${event}" → ${g.name} (Telegram)`);
       else console.warn(`⚠️ แจ้งเตือน "${event}" → ${g.name} ล้มเหลว: ${r.error}`);
       return r.ok;
     }));
@@ -223,13 +215,12 @@ async function notifyShop(shopId, event, text) {
 module.exports = {
   EVENTS,
   EVENT_KEYS,
-  normalizeChannel,
   normalizeEvents,
   parseEvents,
   eventsToJson,
-  sendLine,
+  isConfigured,
   sendTelegram,
-  sendText,
+  sendMessage,
   notifyShop,
   buildTestText,
   buildOrderNewText,

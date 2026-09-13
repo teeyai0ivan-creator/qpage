@@ -23,9 +23,7 @@
     .ng-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.7; word-break: break-all; }
     .ng-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
-    .ch-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; color: #fff; }
-    .ch-line { background: #06C755; }
-    .ch-telegram { background: #229ED9; }
+    .ch-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; color: #fff; background: #229ED9; }
     .ch-badge svg { width: 12px; height: 12px; }
 
     .ev-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
@@ -53,9 +51,7 @@
     .ev-opt .t { font-size: 13.5px; font-weight: 700; }
     .ev-opt .d { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.6; }
 
-    .ch-fields { display: none; }
-    .ch-fields.show { display: block; }
-    .modal.wide { max-width: 560px; }
+    .modal.wide { max-width: 540px; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
     @media (max-width: 620px) { .grid-2 { grid-template-columns: 1fr; } }
   </style>
@@ -85,32 +81,19 @@
   <div class="shop-wrap">
     <div class="shop-head">
       <h1>ตั้งค่าการแจ้งเตือน</h1>
-      <p>ตั้งกลุ่มแจ้งเตือนผ่าน <b>LINE</b> หรือ <b>Telegram</b> ได้มากกว่า 1 กลุ่ม — แต่ละกลุ่มเลือกเองว่าจะรับแจ้งเตือนเรื่องอะไร เช่น มีออเดอร์ใหม่ / เช็คบิล / ยกเลิกรายการ</p>
+      <p>ตั้งกลุ่มแจ้งเตือนผ่าน <b>Telegram</b> ได้มากกว่า 1 กลุ่ม — แต่ละกลุ่มเลือกเองว่าจะรับแจ้งเตือนเรื่องอะไร เช่น มีออเดอร์ใหม่ / เช็คบิล / ยกเลิกรายการ</p>
     </div>
 
     <details class="ng-intro">
-      <summary>📖 วิธีขอโทเคนและปลายทาง (LINE / Telegram)</summary>
-      <h4 style="font-size:13.5px;margin:10px 0 0;">LINE (Messaging API)</h4>
-      <p style="font-size:12.5px;color:var(--muted);margin:6px 0 8px;">ℹ️ LINE ไม่มีช่องทางให้ระบบส่งข้อความเข้าบัญชี LINE ส่วนตัวโดยตรงแล้ว (<b>LINE Notify ปิดบริการ 31 มี.ค. 2025</b>) — วิธีที่ยังใช้ได้คือสร้าง OA แล้ว <b>แอด OA เป็นเพื่อน</b> ซึ่งคุณจะรับข้อความในแอป LINE ส่วนตัวตามปกติ เพียงแต่ผู้ส่งแสดงเป็น <b>บัญชีร้าน (OA)</b> ไม่ใช่เพื่อน ถ้าไม่อยากสร้าง OA ให้ใช้ <b>Telegram</b> แทนได้</p>
+      <summary>📖 วิธีขอ Bot token และ Chat ID (Telegram)</summary>
       <ol>
-        <li>สร้าง <b>LINE Official Account (LINE OA)</b> ที่ <code>manager.line.biz</code> (ล็อกอินด้วยบัญชี LINE) แล้วตั้งชื่อ/รูปเป็นชื่อร้าน</li>
-        <li>ในหน้าจัดการ OA → <b>ตั้งค่า (Settings) → Messaging API</b> → กดเริ่มใช้งาน Messaging API → เลือก/สร้าง Provider แล้วยืนยัน <i>(ตอนนี้สร้างช่องทาง Messaging API จาก developers console ตรง ๆ ไม่ได้แล้ว ต้องเริ่มจาก OA Manager)</i></li>
-        <li>เข้า <code>developers.line.biz</code> → เลือก Provider → เลือกช่องทาง → แท็บ <b>Messaging API</b> แล้ว
-          <br>• คัดลอก <b>Channel access token (long-lived)</b> มาวางในช่องโทเคน (ถ้ายังไม่มีให้กดออกโทเคน — โทเคนไม่มีวันหมดอายุ แต่ออกใหม่แล้วตัวเก่าจะใช้ไม่ได้ทันที) <b>โทเคนไม่ได้อยู่ในหน้า OA Manager</b> (หน้าที่แสดง Channel ID / Channel secret) ต้องเข้า Developers Console เท่านั้น — เช็กว่าถูกช่องด้วยการเทียบ Channel ID ให้ตรงกัน
-          <br>• เปิด <b>Allow bot to join group chats</b> (ค่าเริ่มต้นปิดอยู่ ถ้าไม่เปิดจะเชิญบอทเข้ากลุ่มไม่ได้)
-          <br>• ตั้ง <b>Auto-reply messages</b> และ <b>Greeting messages</b> เป็น <b>Disabled</b> (ไม่งั้นบอทจะตอบอัตโนมัติรบกวนในกลุ่ม)</li>
-        <li>หา <b>ปลายทาง</b> ของกลุ่ม: เชิญบอทเข้ากลุ่ม → ตั้ง Webhook URL ชั่วคราวที่ <code>webhook.site</code> (ฟรี ไม่ต้องสมัคร) → ส่งข้อความใด ๆ ในกลุ่ม → เปิดดู JSON ที่ webhook.site จะเห็น <code>source.groupId</code> ขึ้นต้นด้วย <code>C</code> (แชทส่วนตัวได้ <code>userId</code> ขึ้นต้น <code>U</code>, ห้องหลายคนได้ <code>roomId</code> ขึ้นต้น <code>R</code>) → คัดลอกมาวาง แล้วปิด Webhook ได้</li>
+        <li>เปิดแอป Telegram → ค้นหา <code>@BotFather</code> → กด Start → พิมพ์ <code>/newbot</code> → ตั้งชื่อบอท → จะได้ <b>Bot token</b> (หน้าตาแบบ <code>123456789:AA…</code>) คัดลอกมาวางในช่องโทเคน</li>
+        <li>สร้างกลุ่มที่ต้องการรับแจ้งเตือน → <b>เพิ่มบอทเข้ากลุ่ม</b> (ค้นชื่อบอทที่ตั้งไว้) — ถ้าจะส่งในหัวข้อ (Topic) ต้องตั้งบอทเป็น <b>แอดมิน</b> ด้วย</li>
+        <li>เอา <b>Chat ID</b> ของกลุ่ม: แชทกับ <code>@userinfobot</code> แล้วส่งต่อข้อความจากกลุ่มไปให้ หรือกด "เพิ่มเข้ากลุ่ม" — ค่าของกลุ่มจะเป็น <b>ค่าติดลบ</b> เช่น <code>-1001234567890</code></li>
+        <li>ถ้าส่งในหัวข้อ ให้ใส่ <b>Topic ID</b> ด้วย (ดูได้จากลิงก์หัวข้อ <code>t.me/c/…/<b>42</b></code>) ไม่ใส่ก็ได้ = ส่งเข้าหลักของกลุ่ม</li>
       </ol>
-      <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">💡 <b>อยากให้เด้งเข้าหา “ตัวเอง” หรือหัวหน้างานคนเดียว (ไม่เข้ากลุ่ม)?</b> ให้แอด OA เป็นเพื่อน → พิมพ์ข้อความหาบอทในแชทส่วนตัว → เอาค่า <code>userId</code> (ขึ้นต้น <code>U</code>) จาก webhook.site มาวางในช่องปลายทาง ข้อความจะเข้าห้องแชท 1:1 กับ <b>บัญชี OA ของร้าน</b> (ชื่อ–โลโก้ร้าน) ไม่ใช่จากบัญชี LINE ส่วนตัวของคุณ — และต้องไม่ได้บล็อค OA ไว้ ไม่งั้นข้อความจะไม่ถึง</p>
-      <p style="font-size:12.5px;color:var(--warn,#b45309);margin:0 0 12px;"><b>⚠️ โควตาข้อความ:</b> แผนฟรีของ LINE ให้ประมาณ 200 ข้อความ/เดือน และข้อความแจ้งเตือนของเราเป็น <b>push message</b> ซึ่ง <b>นับโควตา</b> (ข้อความตอบกลับแบบ reply ไม่นับ) — ส่งหาคนเดียวก็เริ่ม 1 ข้อความต่อครั้ง ถ้ามีออเดอร์เยอะควรใช้ Telegram (ฟรี ไม่จำกัด) หรืออัปเกรดแผน</p>
-      <h4 style="font-size:13.5px;margin:10px 0 0;">Telegram (Bot API)</h4>
-      <ol>
-        <li>คุยกับ <code>@BotFather</code> → ส่ง <code>/newbot</code> → ได้ <b>Bot token</b> มาวางในช่องโทเคน</li>
-        <li>สร้างกลุ่ม แล้วเพิ่มบอทเข้ากลุ่ม (ต้องตั้งบอทเป็นแอดมินถ้าจะส่งในหัวข้อ)</li>
-        <li>เอา <b>Chat ID</b> ของกลุ่ม (ค่าติดลบ เช่น <code>-1001234567890</code>) จาก <code>@userinfobot</code> หรือดูจาก Webhook</li>
-        <li>ถ้าส่งในหัวข้อ (Topic) ของกลุ่ม ให้ใส่ <b>Topic ID</b> ด้วย ไม่ใส่ก็ได้</li>
-      </ol>
-      <p style="font-size:12.5px;color:var(--muted);margin:0;">ไม่แน่ใจว่าตั้งถูกไหม? กดปุ่ม <b>ทดสอบส่ง</b> ได้เลย — ถ้าผิดพลาด ระบบจะบอกสาเหตุที่ผู้ให้บริการตอบกลับมาให้ครับ</p>
+      <p style="font-size:12.5px;color:var(--muted);margin:0;">ไม่แน่ใจว่าตั้งถูกไหม? กดปุ่ม <b>ทดสอบส่ง</b> ได้เลย — ถ้าผิดพลาด ระบบจะบอกสาเหตุที่ Telegram ตอบกลับมาให้ครับ</p>
+      <p style="font-size:12.5px;color:var(--muted);margin:8px 0 0;">ℹ️ ระบบนี้แจ้งเตือนทาง Telegram เท่านั้น เพราะ LINE ไม่มีช่องทางส่งเข้าบัญชี LINE ส่วนตัวโดยตรงแล้ว (LINE Notify ปิดบริการ 31 มี.ค. 2025) — Telegram ใช้ฟรีและไม่จำกัดจำนวนข้อความ</p>
     </details>
 
     <div class="ng-toolbar">
@@ -125,55 +108,26 @@
   <div class="modal-overlay" id="groupModal">
     <div class="modal wide">
       <h3 id="modalTitle">เพิ่มกลุ่มแจ้งเตือน</h3>
-      <p class="sub">เลือกช่องทาง กรอกปลายทาง และติ๊กเหตุการณ์ที่ต้องการให้แจ้งเตือน</p>
+      <p class="sub">กรอกปลายทาง Telegram และติ๊กเหตุการณ์ที่ต้องการให้แจ้งเตือน</p>
 
       <div class="field">
         <label for="fName">ชื่อกลุ่ม</label>
         <input class="mini-input" id="fName" style="width:100%;" maxlength="120" placeholder="เช่น กลุ่มครัว, กลุ่มผู้จัดการ, ห้องแคชเชียร์">
       </div>
 
+      <div class="field">
+        <label for="fTgToken">Bot token</label>
+        <input class="mini-input" id="fTgToken" style="width:100%;" maxlength="255" autocomplete="off" placeholder="เช่น 123456789:AA…">
+      </div>
+
       <div class="grid-2">
         <div class="field">
-          <label for="fChannel">ช่องทาง</label>
-          <select class="mini-input" id="fChannel" style="width:100%;">
-            <option value="line">LINE</option>
-            <option value="telegram">Telegram</option>
-          </select>
+          <label for="fTgChat">Chat ID</label>
+          <input class="mini-input" id="fTgChat" style="width:100%;" maxlength="120" autocomplete="off" placeholder="เช่น -1001234567890">
         </div>
         <div class="field">
-          <label>สถานะ</label>
-          <label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;">
-            <span class="switch"><input type="checkbox" id="fActive" checked><span class="track"></span></span>
-            <span id="fActiveLabel">เปิดใช้งาน</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="ch-fields show" id="lineFields">
-        <div class="field">
-          <label for="fLineToken">Channel access token (long-lived)</label>
-          <input class="mini-input" id="fLineToken" style="width:100%;" maxlength="255" autocomplete="off" placeholder="วางโทเคนจากหน้า Messaging API">
-        </div>
-        <div class="field">
-          <label for="fLineTarget">ปลายทาง (userId / groupId / roomId)</label>
-          <input class="mini-input" id="fLineTarget" style="width:100%;" maxlength="120" autocomplete="off" placeholder="เช่น C1a2b3c4d5…">
-        </div>
-      </div>
-
-      <div class="ch-fields" id="tgFields">
-        <div class="field">
-          <label for="fTgToken">Bot token</label>
-          <input class="mini-input" id="fTgToken" style="width:100%;" maxlength="255" autocomplete="off" placeholder="เช่น 123456789:AA…">
-        </div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="fTgChat">Chat ID</label>
-            <input class="mini-input" id="fTgChat" style="width:100%;" maxlength="120" autocomplete="off" placeholder="เช่น -1001234567890">
-          </div>
-          <div class="field">
-            <label for="fTgThread">Topic ID (ไม่บังคับ)</label>
-            <input class="mini-input" id="fTgThread" style="width:100%;" maxlength="40" autocomplete="off" placeholder="ใส่เมื่อส่งในหัวข้อ">
-          </div>
+          <label for="fTgThread">Topic ID (ไม่บังคับ)</label>
+          <input class="mini-input" id="fTgThread" style="width:100%;" maxlength="40" autocomplete="off" placeholder="ใส่เมื่อส่งในหัวข้อ">
         </div>
       </div>
 
@@ -181,6 +135,14 @@
         <label>เหตุการณ์ที่ให้แจ้งเตือน</label>
         <div class="ev-pick" id="eventPicker"></div>
         <div class="field-error" id="errEvents" style="display:none;"></div>
+      </div>
+
+      <div class="field" style="margin-bottom:6px;">
+        <label>สถานะ</label>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;cursor:pointer;">
+          <span class="switch"><input type="checkbox" id="fActive" checked><span class="track"></span></span>
+          <span id="fActiveLabel">เปิดใช้งาน</span>
+        </label>
       </div>
 
       <div class="error-msg" id="modalError" style="display:none;"></div>
@@ -211,15 +173,11 @@
     }
     const postJson = (path, body, method) => api(path, { method: method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
+    const TG_ICON = '<svg viewBox="0 0 24 24" fill="none"><path d="M21 4L3 11l5 2 2 6 3-4 5 4 3-15z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+
     let EVENTS = [];
     let groups = [];
     let editingId = null;
-
-    const CH_ICON = {
-      line: '<svg viewBox="0 0 24 24" fill="none"><path d="M21 10.5c0-4.1-4-7.5-9-7.5S3 6.4 3 10.5c0 3.7 3.2 6.8 7.5 7.4.3.1.7.2.8.5.1.2.1.6 0 .8l-.1.8c0 .2-.2.9.8.5s5.2-3 7.1-5.2c1.3-1.4 1.9-2.8 1.9-4.3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
-      telegram: '<svg viewBox="0 0 24 24" fill="none"><path d="M21 4L3 11l5 2 2 6 3-4 5 4 3-15z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
-    };
-    const chName = (c) => (c === 'telegram' ? 'Telegram' : 'LINE');
 
     // ---------- เรนเดอร์รายการกลุ่ม ----------
     function renderGroups() {
@@ -231,19 +189,16 @@
       }
       box.innerHTML = groups.map((g) => {
         const subs = g.events || [];
-        const target = g.channel === 'telegram'
-          ? `Chat ID: ${esc(mask(g.tg_chat))}${g.tg_thread ? ' · Topic ' + esc(g.tg_thread) : ''}`
-          : `ปลายทาง: ${esc(mask(g.line_target))}`;
-        const tokenShown = g.channel === 'telegram' ? mask(g.tg_token) : mask(g.line_token);
+        const ready = Boolean(g.tg_token && g.tg_chat);
         return `<div class="ng-card ${g.active ? '' : 'off'}" data-id="${g.id}">
           <div class="ng-head">
             <div style="flex:1;min-width:200px;">
               <div class="ng-name">
                 ${esc(g.name)}
-                <span class="ch-badge ${g.channel === 'telegram' ? 'ch-telegram' : 'ch-line'}">${CH_ICON[g.channel] || ''}${chName(g.channel)}</span>
+                <span class="ch-badge">${TG_ICON}Telegram</span>
                 ${g.active ? '' : '<span class="ev-chip off">ปิดใช้งาน</span>'}
               </div>
-              <div class="ng-sub">โทเคน: ${esc(tokenShown || '—')} · ${target}</div>
+              <div class="ng-sub">โทเคน: ${esc(mask(g.tg_token) || '—')} · Chat ID: ${esc(mask(g.tg_chat) || '—')}${g.tg_thread ? ' · Topic ' + esc(g.tg_thread) : ''}${ready ? '' : ' · <b style="color:var(--danger)">ยังตั้งค่าไม่ครบ</b>'}</div>
             </div>
             <label class="switch" title="${g.active ? 'ปิดใช้งานกลุ่มนี้' : 'เปิดใช้งานกลุ่มนี้'}">
               <input type="checkbox" data-toggle="${g.id}" ${g.active ? 'checked' : ''}>
@@ -276,12 +231,6 @@
       return Array.from(document.querySelectorAll('#eventPicker input:checked')).map((i) => i.value);
     }
 
-    function syncChannelFields() {
-      const ch = document.getElementById('fChannel').value;
-      document.getElementById('lineFields').classList.toggle('show', ch === 'line');
-      document.getElementById('tgFields').classList.toggle('show', ch === 'telegram');
-    }
-
     function showModalError(msg) {
       const box = document.getElementById('modalError');
       box.textContent = msg || '';
@@ -292,34 +241,26 @@
       editingId = group ? group.id : null;
       document.getElementById('modalTitle').textContent = group ? 'แก้ไขกลุ่มแจ้งเตือน' : 'เพิ่มกลุ่มแจ้งเตือน';
       document.getElementById('fName').value = group ? group.name : '';
-      document.getElementById('fChannel').value = group ? group.channel : 'line';
-      document.getElementById('fActive').checked = group ? !!group.active : true;
-      document.getElementById('fLineToken').value = group ? (group.line_token || '') : '';
-      document.getElementById('fLineTarget').value = group ? (group.line_target || '') : '';
       document.getElementById('fTgToken').value = group ? (group.tg_token || '') : '';
       document.getElementById('fTgChat').value = group ? (group.tg_chat || '') : '';
       document.getElementById('fTgThread').value = group ? (group.tg_thread || '') : '';
+      document.getElementById('fActive').checked = group ? !!group.active : true;
+      document.getElementById('fActiveLabel').textContent = document.getElementById('fActive').checked ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
       renderEventPicker(group && group.events ? group.events : []);
       showModalError('');
-      document.getElementById('fActiveLabel').textContent = document.getElementById('fActive').checked ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
-      syncChannelFields();
       document.getElementById('groupModal').classList.add('show');
     }
 
     function closeModal() { document.getElementById('groupModal').classList.remove('show'); }
 
     function formPayload() {
-      const ch = document.getElementById('fChannel').value;
       return {
         id: editingId,
         name: document.getElementById('fName').value.trim(),
-        channel: ch,
-        active: document.getElementById('fActive').checked,
-        lineToken: document.getElementById('fLineToken').value.trim(),
-        lineTarget: document.getElementById('fLineTarget').value.trim(),
         tgToken: document.getElementById('fTgToken').value.trim(),
         tgChat: document.getElementById('fTgChat').value.trim(),
         tgThread: document.getElementById('fTgThread').value.trim(),
+        active: document.getElementById('fActive').checked,
         events: pickedEvents(),
       };
     }
@@ -335,7 +276,6 @@
     // ---------- เหตุการณ์บนหน้า ----------
     document.getElementById('addBtn').addEventListener('click', () => openModal(null));
     document.getElementById('cancelBtn').addEventListener('click', closeModal);
-    document.getElementById('fChannel').addEventListener('change', syncChannelFields);
     document.getElementById('fActive').addEventListener('change', (e) => {
       document.getElementById('fActiveLabel').textContent = e.target.checked ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
     });
@@ -346,6 +286,7 @@
       showModalError('');
       if (!p.name) { showModalError('กรุณาตั้งชื่อกลุ่มแจ้งเตือน'); return; }
       if (!p.events.length) { showModalError('เลือกอย่างน้อย 1 เหตุการณ์ที่ต้องการให้แจ้งเตือน'); return; }
+      if (p.active && (!p.tgToken || !p.tgChat)) { showModalError('กรุณากรอก Bot token และ Chat ID ก่อนเปิดใช้งาน'); return; }
       const btn = document.getElementById('saveBtn');
       btn.disabled = true; btn.classList.add('loading');
       try {
@@ -405,7 +346,7 @@
         if (!g) return;
         t.disabled = true; t.classList.add('loading');
         try {
-          const r = await postJson('/api/shop/notify-test', { id: g.id, channel: g.channel });
+          const r = await postJson('/api/shop/notify-test', { id: g.id });
           toast(r.message || 'ส่งข้อความทดสอบแล้ว');
         } catch (err) { toast(err.message); }
         finally { t.disabled = false; t.classList.remove('loading'); await load(); }
@@ -416,8 +357,6 @@
     document.getElementById('groupList').addEventListener('change', async (e) => {
       const id = e.target.getAttribute('data-toggle');
       if (!id) return;
-      const g = groups.find((x) => String(x.id) === id);
-      if (!g) return;
       try {
         const r = await postJson('/api/shop/notify-groups/' + id, { active: e.target.checked }, 'PUT');
         toast(r.message || 'บันทึกแล้ว');
