@@ -136,19 +136,46 @@
     // จำนวนจานของบิลที่เปิดอยู่ — เทียบเป็นตัวเลขเสมอ (ค่า 0 ต้องถือว่า "ว่าง")
     const billPlates = (o) => (o ? Number(o.item_count) || 0 : 0);
 
-    // เปิดหน้าต่างพิมพ์ป้าย: QR + เลขโต๊ะ + เลขที่บิลปัจจุบัน
+    // เปิดหน้าต่างพิมพ์ป้าย: โลโก้ร้าน + เลขโต๊ะ + เลขที่บิลปัจจุบัน + QR
+    // พิมพ์บนกระดาษม้วน โดยใช้ขนาดเดียวกับใบเสร็จ (เครื่องพิมพ์เครื่องเดียวกัน) — ค่าเริ่มต้นม้วน 80mm
+    function labelPaper() {
+      try { return localStorage.getItem('qpage_receipt_paper') || '80mm'; } catch (e) { return '80mm'; }
+    }
     function printLabel(t) {
       const billNo = t.open_order ? t.open_order.bill_no : null;
       const url = location.origin + qrUrl(t.id);
+      const shop = (shopData && shopData.shop) || {};
+      const logo = shop.logo_url ? (/^https?:/i.test(shop.logo_url) ? shop.logo_url : location.origin + shop.logo_url) : '';
+      const paper = labelPaper();
+      const mm = paper === 'a4' ? 'a4' : (paper === '58mm' ? '58mm' : '80mm');
+      const pageSize = mm === 'a4' ? 'A4' : mm + ' auto';
+      const qrMm = mm === '58mm' ? 44 : (mm === 'a4' ? 90 : 62);
+      const logoMm = mm === '58mm' ? 14 : (mm === 'a4' ? 30 : 18);
+      const wrapMm = mm === 'a4' ? '180mm' : mm;
       const w = window.open('', '_blank');
       if (!w) return alert('เบราว์เซอร์บล็อกป๊อปอัป กรุณาอนุญาตแล้วลองใหม่');
-      w.document.write('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>ป้ายโต๊ะ ' + esc(t.code) + '</title></head>' +
-        '<body style="font-family:sans-serif;text-align:center;padding:24px;margin:0;">' +
-        '<div style="font-size:22px;font-weight:800;">โต๊ะ ' + esc(t.code) + '</div>' +
-        '<div style="font-size:16px;margin:6px 0 12px;">บิล ' + billNoFmt(billNo) + '</div>' +
-        '<img src="' + url + '" style="width:280px;height:280px;" onload="setTimeout(function(){window.print();},300)">' +
-        '<div style="font-size:13px;color:#666;margin-top:10px;">สแกนเพื่อสั่งอาหาร</div>' +
-        '</body></html>');
+      w.document.write('<!DOCTYPE html><html lang="th"><head><meta charset="utf-8">' +
+        '<title>ป้ายโต๊ะ ' + esc(t.code) + '</title>' +
+        '<style>' +
+        '@page { size: ' + pageSize + '; margin: 3mm; }' +
+        'body { font-family:-apple-system,"Segoe UI","Sarabun",sans-serif; text-align:center; margin:0; padding:2mm 0; color:#111; }' +
+        '.wrap { max-width:' + wrapMm + '; margin:0 auto; }' +
+        '.logo { margin:0 auto 4mm; }' +
+        '.logo img { max-height:' + logoMm + 'mm; max-width:80%; }' +
+        '.shop { font-size:' + (mm === '58mm' ? 12 : 14) + 'px; font-weight:600; color:#333; margin-bottom:3mm; }' +
+        '.table { font-size:' + (mm === '58mm' ? 26 : 32) + 'px; font-weight:800; letter-spacing:.5px; }' +
+        '.bill { font-size:' + (mm === '58mm' ? 12 : 14) + 'px; margin:1mm 0 3mm; }' +
+        '.qr { width:' + qrMm + 'mm; height:' + qrMm + 'mm; display:block; margin:0 auto; }' +
+        '.hint { font-size:' + (mm === '58mm' ? 11 : 12.5) + 'px; color:#555; margin-top:3mm; }' +
+        '</style></head><body>' +
+        '<div class="wrap">' +
+        (logo ? '<div class="logo"><img src="' + esc(logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+        (shop.name ? '<div class="shop">' + esc(shop.name) + '</div>' : '') +
+        '<div class="table">โต๊ะ ' + esc(t.code) + '</div>' +
+        '<div class="bill">บิล ' + billNoFmt(billNo) + '</div>' +
+        '<img class="qr" src="' + url + '" alt="QR" onload="setTimeout(function(){window.print();},300)">' +
+        '<div class="hint">สแกนเพื่อสั่งอาหาร</div>' +
+        '</div></body></html>');
       w.document.close();
     }
 
