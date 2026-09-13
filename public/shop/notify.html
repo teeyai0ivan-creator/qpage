@@ -96,7 +96,7 @@
         <li>สร้าง <b>LINE Official Account (LINE OA)</b> ที่ <code>manager.line.biz</code> (ล็อกอินด้วยบัญชี LINE) แล้วตั้งชื่อ/รูปเป็นชื่อร้าน</li>
         <li>ในหน้าจัดการ OA → <b>ตั้งค่า (Settings) → Messaging API</b> → กดเริ่มใช้งาน Messaging API → เลือก/สร้าง Provider แล้วยืนยัน <i>(ตอนนี้สร้างช่องทาง Messaging API จาก developers console ตรง ๆ ไม่ได้แล้ว ต้องเริ่มจาก OA Manager)</i></li>
         <li>เข้า <code>developers.line.biz</code> → เลือก Provider → เลือกช่องทาง → แท็บ <b>Messaging API</b> แล้ว
-          <br>• คัดลอก <b>Channel access token (long-lived)</b> มาวางในช่องโทเคน (ถ้ายังไม่มีให้กดออกโทเคน — โทเคนไม่มีวันหมดอายุ แต่ออกใหม่แล้วตัวเก่าจะใช้ไม่ได้ทันที)
+          <br>• คัดลอก <b>Channel access token (long-lived)</b> มาวางในช่องโทเคน (ถ้ายังไม่มีให้กดออกโทเคน — โทเคนไม่มีวันหมดอายุ แต่ออกใหม่แล้วตัวเก่าจะใช้ไม่ได้ทันที) <b>โทเคนไม่ได้อยู่ในหน้า OA Manager</b> (หน้าที่แสดง Channel ID / Channel secret) ต้องเข้า Developers Console เท่านั้น — เช็กว่าถูกช่องด้วยการเทียบ Channel ID ให้ตรงกัน
           <br>• เปิด <b>Allow bot to join group chats</b> (ค่าเริ่มต้นปิดอยู่ ถ้าไม่เปิดจะเชิญบอทเข้ากลุ่มไม่ได้)
           <br>• ตั้ง <b>Auto-reply messages</b> และ <b>Greeting messages</b> เป็น <b>Disabled</b> (ไม่งั้นบอทจะตอบอัตโนมัติรบกวนในกลุ่ม)</li>
         <li>หา <b>ปลายทาง</b> ของกลุ่ม: เชิญบอทเข้ากลุ่ม → ตั้ง Webhook URL ชั่วคราวที่ <code>webhook.site</code> (ฟรี ไม่ต้องสมัคร) → ส่งข้อความใด ๆ ในกลุ่ม → เปิดดู JSON ที่ webhook.site จะเห็น <code>source.groupId</code> ขึ้นต้นด้วย <code>C</code> (แชทส่วนตัวได้ <code>userId</code> ขึ้นต้น <code>U</code>, ห้องหลายคนได้ <code>roomId</code> ขึ้นต้น <code>R</code>) → คัดลอกมาวาง แล้วปิด Webhook ได้</li>
