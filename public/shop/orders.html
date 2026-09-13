@@ -77,6 +77,21 @@
     </div>
   </div>
 
+  <!-- Modal ดูรายละเอียดรายการปัจจุบัน (บิลที่เปิดอยู่ของโต๊ะ) -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal">
+      <h3 id="detailTitle">รายละเอียดรายการปัจจุบัน</h3>
+      <p class="sub">รายการในบิลที่ยังไม่เช็คบิล พร้อมสถานะและเวลาที่สั่ง</p>
+      <div id="detailBody" style="max-height:55vh;overflow:auto;margin:8px 0;"></div>
+      <div class="bill-head" style="border-top:1px solid var(--border);padding-top:10px;">
+        <span style="color:var(--muted);font-size:13px;">ยอดรวมบิลนี้</span><span class="bill-total" id="detailTotal">฿0</span>
+      </div>
+      <div class="modal-actions">
+        <button class="mini-btn" id="detailClose" type="button">ปิด</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -116,6 +131,7 @@
     }
 
     let tablesCache = [];
+    let openOrdersCache = []; // บิลที่เปิดอยู่ (พร้อมรายการ) — ใช้โชว์ในบล็อกโต๊ะด้วย
     let shopData = null;
 
     async function loadTables() {
@@ -124,7 +140,12 @@
       document.getElementById('tableCount').textContent = tablesCache.length ? '(' + tablesCache.length + ')' : '';
       const box = document.getElementById('tableList');
       if (!tablesCache.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีโต๊ะ — เพิ่มโต๊ะแรกด้านบนได้เลย</div>'; return; }
-      box.innerHTML = tablesCache.map((t) => `
+      box.innerHTML = tablesCache.map((t) => {
+        // บิลที่เปิดอยู่ของโต๊ะนี้ (ถ้ามี) — ใช้แสดงปุ่มเช็คบิล/ดูรายละเอียดในบล็อกโต๊ะเลย
+        const o = openOrdersCache.find((x) => x.table_id === t.id);
+        const hasItems = Boolean(o && o.items && o.items.length);
+        const uncleared = hasItems ? o.items.filter((i) => i.status === 'pending' || i.status === 'cooking').length : 0;
+        return `
         <div class="table-card">
           <img class="table-qr" src="${qrUrl(t.id)}" alt="QR โต๊ะ ${esc(t.code)}">
           <div class="table-info">
@@ -132,15 +153,25 @@
             <div class="table-sub">${t.open_order
               ? 'บิล ' + billNoFmt(t.open_order.bill_no) + (t.open_order.item_count ? ' · ' + t.open_order.item_count + ' รายการ · ' + money(t.open_order.total) : ' · ยังไม่มีรายการ')
               : 'ยังไม่เปิดบิล'}</div>
+            ${hasItems ? `<div class="table-actions">
+              <button class="mini-btn" data-detail="${t.id}" type="button">ดูรายละเอียดรายการปัจจุบัน</button>
+              <button class="mini-btn primary" data-checkout="${t.id}" ${uncleared ? 'disabled title="ยังมีรายการรอทำ/กำลังทำ (ครัวหรือแคชเชียร์)"' : ''} type="button">เช็คบิล (ปิดบิล + เปิดบิลใหม่)</button>
+            </div>` : ''}
             <div class="table-actions">
               <a class="mini-btn" href="${qrUrl(t.id)}" download="table-${esc(t.code)}-qr.png">ดาวน์โหลด QR</a>
               <button class="mini-btn" data-print="${t.id}" type="button">พิมพ์ป้าย (มีเลขบิล)</button>
               <button class="mini-btn" data-ren="${t.id}" data-code="${esc(t.code)}" type="button">เปลี่ยนเลข</button>
               <button class="mini-btn danger" data-del="${t.id}" ${t.open_order && t.open_order.item_count ? 'disabled title="ต้องเช็คบิลก่อนจึงจะลบได้"' : ''} type="button">ลบ</button>
             </div>
+            ${uncleared ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีรายการรอทำ/กำลังทำ ' + uncleared + ' รายการ — เช็คบิลไม่ได้</div>' : ''}
             ${t.open_order && t.open_order.item_count ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีบิลที่ยังไม่เช็คบิล — ลบไม่ได้จนกว่าจะกดเช็คบิล</div>' : ''}
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
+
+      // ปุ่มในบล็อกโต๊ะ: ดูรายละเอียดรายการปัจจุบัน / เช็คบิล
+      box.querySelectorAll('[data-detail]').forEach((b) => b.addEventListener('click', () => openBillDetail(Number(b.dataset.detail))));
+      box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => doCheckout(Number(b.dataset.checkout), b)));
 
       box.querySelectorAll('[data-ren]').forEach((b) => b.addEventListener('click', async () => {
         const code = prompt('เลขโต๊ะใหม่', b.dataset.code);
@@ -161,9 +192,56 @@
 
     const ST = { pending: ['รอทำ', 'st-pending'], cooking: ['กำลังทำ', 'st-cooking'], done: ['เสร็จแล้ว', 'st-done'], cancelled: ['ยกเลิก', 'st-cancelled'] };
 
+    // แถวรายการในบิล (ใช้ทั้งการ์ดบิลและหน้าต่างดูรายละเอียด)
+    function itemRowHtml(it, withActions) {
+      let opts = []; try { opts = it.options_json ? JSON.parse(it.options_json) : []; } catch (e) {}
+      const st = it.status || 'pending';
+      const [label, cls] = ST[st] || [st, ''];
+      const cancelled = st === 'cancelled';
+      const right = cancelled
+        ? '—'
+        : money(it.line_total) + (withActions ? '<button class="mini-btn danger" data-delitem="' + it.id + '" type="button">ลบ</button>' : '');
+      return `<div class="bill-item"${cancelled ? ' style="opacity:.6;"' : ''}>
+        <span>${it.quantity} × ${cancelled ? '<span style="text-decoration:line-through;">' + esc(it.menu_name) + '</span>' : esc(it.menu_name)}${opts.length ? ' <small>(' + esc(opts.join(', ')) + ')</small>' : ''} <span class="st-badge ${cls}">${label}</span> <span class="k-timer" data-created="${esc(it.created_at)}" data-status="${esc(st)}" data-done="${esc(it.done_at || '')}">—</span>${cancelled && it.cancel_reason ? ' <small>(' + esc(it.cancel_reason) + ')</small>' : ''}</span>
+        <span style="display:flex;gap:8px;align-items:center;white-space:nowrap;">${right}</span>
+      </div>`;
+    }
+
+    // เช็คบิล (ปิดบิล + เปิดบิลใหม่) — ใช้ร่วมกันทั้งการ์ดบิลและบล็อกโต๊ะ
+    async function doCheckout(tableId, btn) {
+      if (!confirm('ยืนยันเช็คบิลโต๊ะนี้? (ปิดบิลเดิมแล้วเปิดบิลใหม่ให้โต๊ะเดิมทันที)')) return;
+      if (btn) btn.disabled = true;
+      try {
+        const r = await api('/api/shop/tables/' + tableId + '/checkout', { method: 'POST' });
+        toast(r.message || 'เช็คบิลแล้ว');
+        await loadAll();
+      } catch (e) { alert(e.message); if (btn) btn.disabled = false; }
+    }
+
+    // หน้าต่าง "รายละเอียดรายการปัจจุบัน" ของโต๊ะ
+    function openBillDetail(tableId) {
+      const o = openOrdersCache.find((x) => x.table_id === tableId);
+      const t = tablesCache.find((x) => x.id === tableId);
+      const titleEl = document.getElementById('detailTitle');
+      const bodyEl = document.getElementById('detailBody');
+      const totalEl = document.getElementById('detailTotal');
+      if (!o || !o.items.length) {
+        titleEl.textContent = 'โต๊ะ ' + (t ? t.code : '') + ' — ยังไม่มีรายการ';
+        bodyEl.innerHTML = '<div class="cat-empty">ยังไม่มีรายการในบิลนี้</div>';
+        totalEl.textContent = money(0);
+      } else {
+        titleEl.textContent = 'บิล ' + billNoFmt(o.bill_no) + ' · โต๊ะ ' + o.table_code + ' · ' + o.items.length + ' รายการ';
+        bodyEl.innerHTML = '<div class="bill-items">' + o.items.map((it) => itemRowHtml(it, false)).join('') + '</div>';
+        totalEl.textContent = money(o.total);
+      }
+      tickTimers();
+      document.getElementById('detailModal').classList.add('show');
+    }
+
     async function loadBills() {
       const data = await api('/api/shop/orders/open');
       const orders = (data.orders || []).filter((o) => o.item_count > 0);
+      openOrdersCache = orders;
       document.getElementById('billCount').textContent = orders.length ? '(' + orders.length + ')' : '';
       const box = document.getElementById('billList');
       if (!orders.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีบิลที่เปิดอยู่</div>'; return; }
@@ -176,34 +254,19 @@
             <div class="bill-total">${money(o.total)}</div>
           </div>
           <div class="bill-items">
-            ${o.items.map((it) => {
-              let opts = []; try { opts = it.options_json ? JSON.parse(it.options_json) : []; } catch (e) {}
-              const st = it.status || 'pending';
-              const [label, cls] = ST[st] || [st, ''];
-              const cancelled = st === 'cancelled';
-              return `<div class="bill-item"${cancelled ? ' style="opacity:.6;"' : ''}>
-                <span>${it.quantity} × ${cancelled ? '<span style="text-decoration:line-through;">' + esc(it.menu_name) + '</span>' : esc(it.menu_name)}${opts.length ? ' <small>(' + esc(opts.join(', ')) + ')</small>' : ''} <span class="st-badge ${cls}">${label}</span> <span class="k-timer" data-created="${esc(it.created_at)}" data-status="${esc(st)}" data-done="${esc(it.done_at || '')}">—</span>${cancelled && it.cancel_reason ? ' <small>(' + esc(it.cancel_reason) + ')</small>' : ''}</span>
-                <span style="display:flex;gap:8px;align-items:center;white-space:nowrap;">${cancelled ? '—' : money(it.line_total)}<button class="mini-btn danger" data-delitem="${it.id}" type="button">ลบ</button></span>
-              </div>`;
-            }).join('')}
+            ${o.items.map((it) => itemRowHtml(it, true)).join('')}
           </div>
           <div class="bill-actions">
             <button class="mini-btn" data-add="${o.table_id}" type="button">＋ เพิ่มอาหาร</button>
-            <button class="mini-btn primary" data-checkout="${o.table_id}" ${uncleared ? 'disabled title="ครัวยังไม่เคลียร์"' : ''} type="button">เช็คบิล (ปิดบิล + เปิดบิลใหม่)</button>
+            <button class="mini-btn" data-detail="${o.table_id}" type="button">ดูรายละเอียดรายการปัจจุบัน</button>
+            <button class="mini-btn primary" data-checkout="${o.table_id}" ${uncleared ? 'disabled title="ยังมีรายการรอทำ/กำลังทำ"' : ''} type="button">เช็คบิล (ปิดบิล + เปิดบิลใหม่)</button>
           </div>
-          ${uncleared ? '<div class="table-sub" style="color:var(--warning);">⚠ ครัวยังไม่เคลียร์ ' + uncleared + ' รายการ (รอทำ/กำลังทำ) — เช็คบิลไม่ได้</div>' : ''}
+          ${uncleared ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีรายการรอทำ/กำลังทำ ' + uncleared + ' รายการ (ครัวหรือแคชเชียร์) — เช็คบิลไม่ได้</div>' : ''}
         </div>`;
       }).join('');
 
-      box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ยืนยันเช็คบิลโต๊ะนี้?')) return;
-        b.disabled = true;
-        try {
-          const r = await api('/api/shop/tables/' + b.dataset.checkout + '/checkout', { method: 'POST' });
-          toast(r.message || 'เช็คบิลแล้ว');
-          await loadAll();
-        } catch (e) { alert(e.message); b.disabled = false; }
-      }));
+      box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => doCheckout(Number(b.dataset.checkout), b)));
+      box.querySelectorAll('[data-detail]').forEach((b) => b.addEventListener('click', () => openBillDetail(Number(b.dataset.detail))));
       box.querySelectorAll('[data-delitem]').forEach((b) => b.addEventListener('click', async () => {
         if (!confirm('ลบรายการนี้ออกจากบิล?')) return;
         b.disabled = true;
@@ -252,7 +315,8 @@
       }
     }
 
-    async function loadAll() { if (await loadShop()) { await Promise.all([loadTables(), loadBills()]); } }
+    // โหลดบิลก่อน แล้วค่อยวาดรายการโต๊ะ (บล็อกโต๊ะใช้ข้อมูลบิลที่เปิดอยู่ด้วย)
+    async function loadAll() { if (await loadShop()) { await loadBills(); await loadTables(); } }
 
     document.getElementById('addTableBtn').addEventListener('click', async () => {
       const el = document.getElementById('newTableCode');
@@ -308,6 +372,12 @@
     function closeAdd() { addModal.classList.remove('show'); addTableId = null; }
     document.getElementById('addClose').addEventListener('click', closeAdd);
     addModal.addEventListener('click', (e) => { if (e.target === addModal) closeAdd(); });
+
+    // หน้าต่างดูรายละเอียดรายการปัจจุบัน
+    const detailModal = document.getElementById('detailModal');
+    function closeDetail() { detailModal.classList.remove('show'); }
+    document.getElementById('detailClose').addEventListener('click', closeDetail);
+    detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeDetail(); });
     document.getElementById('addMenu').addEventListener('change', (e) => renderAddGroups(Number(e.target.value)));
     document.getElementById('addQtyMinus').addEventListener('click', () => { addQty = Math.max(1, addQty - 1); document.getElementById('addQtyValue').textContent = addQty; });
     document.getElementById('addQtyPlus').addEventListener('click', () => { addQty = Math.min(99, addQty + 1); document.getElementById('addQtyValue').textContent = addQty; });
