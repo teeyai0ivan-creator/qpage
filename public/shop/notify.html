@@ -92,15 +92,19 @@
       <summary>📖 วิธีขอโทเคนและปลายทาง (LINE / Telegram)</summary>
       <h4 style="font-size:13.5px;margin:10px 0 0;">LINE (Messaging API)</h4>
       <ol>
-        <li>เข้า <code>developers.line.biz</code> → สร้าง Provider และ Channel ประเภท <b>Messaging API</b></li>
-        <li>คัดลอก <b>Channel access token (long-lived)</b> จากแท็บ Messaging API มาวางในช่องโทเคน</li>
-        <li>เพิ่มเพื่อน/เชิญบอทเข้ากลุ่มที่ต้องการรับแจ้งเตือน</li>
-        <li>เอา <b>ปลายทาง</b> จาก Webhook ที่บอทได้รับ — userId ขึ้นต้นด้วย <code>U</code>, groupId ขึ้นต้นด้วย <code>C</code>, roomId ขึ้นต้นด้วย <code>R</code></li>
+        <li>สร้าง <b>LINE Official Account (LINE OA)</b> ที่ <code>manager.line.biz</code> (ล็อกอินด้วยบัญชี LINE) แล้วตั้งชื่อ/รูปเป็นชื่อร้าน</li>
+        <li>ในหน้าจัดการ OA → <b>ตั้งค่า (Settings) → Messaging API</b> → กดเริ่มใช้งาน Messaging API → เลือก/สร้าง Provider แล้วยืนยัน <i>(ตอนนี้สร้างช่องทาง Messaging API จาก developers console ตรง ๆ ไม่ได้แล้ว ต้องเริ่มจาก OA Manager)</i></li>
+        <li>เข้า <code>developers.line.biz</code> → เลือก Provider → เลือกช่องทาง → แท็บ <b>Messaging API</b> แล้ว
+          <br>• คัดลอก <b>Channel access token (long-lived)</b> มาวางในช่องโทเคน (ถ้ายังไม่มีให้กดออกโทเคน — โทเคนไม่มีวันหมดอายุ แต่ออกใหม่แล้วตัวเก่าจะใช้ไม่ได้ทันที)
+          <br>• เปิด <b>Allow bot to join group chats</b> (ค่าเริ่มต้นปิดอยู่ ถ้าไม่เปิดจะเชิญบอทเข้ากลุ่มไม่ได้)
+          <br>• ตั้ง <b>Auto-reply messages</b> และ <b>Greeting messages</b> เป็น <b>Disabled</b> (ไม่งั้นบอทจะตอบอัตโนมัติรบกวนในกลุ่ม)</li>
+        <li>หา <b>ปลายทาง</b> ของกลุ่ม: เชิญบอทเข้ากลุ่ม → ตั้ง Webhook URL ชั่วคราวที่ <code>webhook.site</code> (ฟรี ไม่ต้องสมัคร) → ส่งข้อความใด ๆ ในกลุ่ม → เปิดดู JSON ที่ webhook.site จะเห็น <code>source.groupId</code> ขึ้นต้นด้วย <code>C</code> (แชทส่วนตัวได้ <code>userId</code> ขึ้นต้น <code>U</code>, ห้องหลายคนได้ <code>roomId</code> ขึ้นต้น <code>R</code>) → คัดลอกมาวาง แล้วปิด Webhook ได้</li>
       </ol>
+      <p style="font-size:12.5px;color:var(--warn,#b45309);margin:0 0 12px;"><b>⚠️ โควตาข้อความ:</b> แผนฟรีของ LINE ให้ประมาณ 200 ข้อความ/เดือน และข้อความแจ้งเตือนของเราเป็น <b>push message</b> ซึ่ง <b>นับโควตา</b> (ข้อความตอบกลับแบบ reply ไม่นับ) — ถ้ามีออเดอร์เยอะควรใช้ Telegram (ฟรี ไม่จำกัด) หรืออัปเกรดแผน</p>
       <h4 style="font-size:13.5px;margin:10px 0 0;">Telegram (Bot API)</h4>
       <ol>
         <li>คุยกับ <code>@BotFather</code> → ส่ง <code>/newbot</code> → ได้ <b>Bot token</b> มาวางในช่องโทเคน</li>
-        <li>สร้างกลุ่ม แล้วเพิ่มบอทเข้ากลุ่ม (ต้องเป็นแอดมินถ้าจะส่งในหัวข้อ)</li>
+        <li>สร้างกลุ่ม แล้วเพิ่มบอทเข้ากลุ่ม (ต้องตั้งบอทเป็นแอดมินถ้าจะส่งในหัวข้อ)</li>
         <li>เอา <b>Chat ID</b> ของกลุ่ม (ค่าติดลบ เช่น <code>-1001234567890</code>) จาก <code>@userinfobot</code> หรือดูจาก Webhook</li>
         <li>ถ้าส่งในหัวข้อ (Topic) ของกลุ่ม ให้ใส่ <b>Topic ID</b> ด้วย ไม่ใส่ก็ได้</li>
       </ol>
