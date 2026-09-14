@@ -14,7 +14,7 @@
   <nav class="site-nav">
     <a class="brand" href="/shop">
       <div class="brand-logo"><img src="/img/logo.svg" alt="QPage"></div>
-      <span class="brand-name" id="shopName">ครัว</span>
+      <span class="brand-name" id="shopName">ร้านของฉัน</span>
     </a>
     <div style="display:flex;align-items:center;gap:8px;">
       <button class="theme-toggle" type="button" aria-label="สลับธีม" style="position:static;">
@@ -285,8 +285,7 @@
     // ปรับข้อความทั้งหน้าให้ตรงกับจุดที่เปิด (ครัว หรือ แคชเชียร์)
     function applyStationLabels() {
       document.title = L.title + ' | ระบบสมาชิก';
-      const nameEl = document.getElementById('shopName');
-      if (nameEl) nameEl.textContent = L.title;
+      // ไม่แตะชื่อร้านมุมซ้ายบน — ให้แสดงชื่อร้านเหมือนหน้าอื่น (ชื่อจุดแสดงผลอยู่ที่หัวข้อหน้า #pageTitle)
       const t = document.getElementById('pageTitle');
       if (t) t.textContent = L.title;
       const d = document.getElementById('pageDesc');
