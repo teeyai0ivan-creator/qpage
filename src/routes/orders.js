@@ -306,32 +306,42 @@ router.delete('/api/shop/tables/:id', requireShop, async (req, res) => {
   const table = await db.findTableById(id, shop.id);
   if (!table) return res.status(404).json({ ok: false, message: 'ไม่พบโต๊ะ' });
 
-  // ห้ามลบถ้าบิลปัจจุบันยังไม่ถูกเช็คบิล (มีรายการค้างอยู่)
+  // ห้ามปิดใช้งานถ้าบิลปัจจุบันยังไม่ถูกเช็คบิล (มีรายการค้างอยู่)
   const open = await db.findOpenOrder(shop.id, id);
   if (open) {
     const items = await db.listOrderItems(open.id);
     if (items.length) {
       return res.status(409).json({
         ok: false,
-        message: `ลบไม่ได้ เพราะโต๊ะ "${table.code}" ยังมีบิลที่ยังไม่เช็คบิล — กรุณากดเช็คบิลก่อน`,
+        message: `ปิดใช้งานไม่ได้ เพราะโต๊ะ "${table.code}" ยังมีบิลที่ยังไม่เช็คบิล — กรุณากดเช็คบิลก่อน`,
       });
     }
   }
 
   // ยกเลิกโทเคน QR ของโต๊ะนี้ถาวร — สแกน QR เก่าแล้วจะใช้ไม่ได้อีกและจะไม่ถูกนำกลับมาใช้ใหม่
   await db.retireTableToken(table.token, shop.id);
-  await db.deleteTable(id, shop.id);
-  // บิลที่ยังเปิดอยู่แต่ยังไม่มีรายการ (ตั๋วเปล่า) เช็คบิลไม่ได้อีกเพราะไม่มีโต๊ะแล้ว — ลบทิ้งไม่ให้ค้าง
+  // ปิดใช้งาน (ไม่ลบแถวทิ้ง) — โต๊ะและรูป QR ยังดูย้อนหลังได้ใน "ประวัติ QR" เพื่อเป็นหลักฐาน
+  await db.retireTable(id, shop.id);
+  // บิลที่ยังเปิดอยู่แต่ยังไม่มีรายการ (ตั๋วเปล่า) เช็คบิลไม่ได้อีกเพราะโต๊ะถูกปิด — ลบทิ้งไม่ให้ค้าง
   if (open) await db.deleteOrder(open.id, shop.id);
-  console.log(`🧾 ลบ QR โต๊ะ "${table.code}" (${shop.name}) — ยกเลิกโทเคนถาวรแล้ว`);
-  res.json({ ok: true, message: `ลบ QR ของโต๊ะ "${table.code}" แล้ว (QR เดิมใช้ไม่ได้อีก)` });
+  console.log(`🧾 ปิดใช้งาน QR โต๊ะ "${table.code}" (${shop.name}) — ยกเลิกโทเคนถาวรแล้ว`);
+  res.json({ ok: true, message: `ปิดใช้งาน QR ของโต๊ะ "${table.code}" แล้ว (QR เดิมใช้ไม่ได้อีก · ดูย้อนหลังได้ใน "ประวัติ QR")` });
+});
+
+// ประวัติ QR โต๊ะที่ถูกปิดใช้งานแล้ว (เก็บไว้เป็นหลักฐาน)
+router.get('/api/shop/tables/retired', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const tables = await db.listRetiredTables(shop.id);
+  res.json({ ok: true, tables });
 });
 
 // รูป QR ของโต๊ะ (PNG) — ชี้ไป /order/<token>
+// ใช้ได้ทั้งโต๊ะที่ยังใช้งานและที่ปิดใช้งานแล้ว (เพื่อดู/ดาวน์โหลด QR เดิมเป็นหลักฐาน)
 router.get('/api/shop/tables/:id/qr', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
-  const table = await db.findTableById(Number(req.params.id), shop.id);
+  const table = await db.findTableByIdAny(Number(req.params.id), shop.id);
   if (!table) return res.status(404).json({ ok: false, message: 'ไม่พบโต๊ะ' });
 
   const url = `${safeOrigin(req)}/order/${table.token}`.slice(0, MAX_QR_URL);
@@ -388,18 +398,18 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
     };
     closedItems = items;
   }
-  // ถ้าเปิด "ลบ QR อัตโนมัติเมื่อเช็คบิล" → ลบโต๊ะและยกเลิกโทเคน QR ถาวร (ไม่เปิดบิลใหม่)
+  // ถ้าเปิด "ปิดใช้งาน QR อัตโนมัติเมื่อเช็คบิล" → ปิดใช้งานโต๊ะ (เก็บไว้ในประวัติ) + ยกเลิกโทเคนถาวร ไม่เปิดบิลใหม่
   // ถ้าปิด → เปิดบิลใหม่ว่างให้โต๊ะเดิมทันที
   const autoDeleteQr = Number(shop.delete_qr_on_checkout) === 1;
   let qrDeleted = false;
   if (autoDeleteQr) {
     await db.retireTableToken(table.token, shop.id);
-    await db.deleteTable(table.id, shop.id);
+    await db.retireTable(table.id, shop.id);
     qrDeleted = true;
   } else {
     await db.createOrder({ shopId: shop.id, tableId: table.id });
   }
-  console.log(`🧾 เช็คบิลโต๊ะ ${table.code} (${shop.name})${closed ? ' ยอด ' + closed.total : ' (ไม่มีรายการ)'}${qrDeleted ? ' · ลบ QR ทันที' : ''}`);
+  console.log(`🧾 เช็คบิลโต๊ะ ${table.code} (${shop.name})${closed ? ' ยอด ' + closed.total : ' (ไม่มีรายการ)'}${qrDeleted ? ' · ปิดใช้งาน QR ทันที (เก็บไว้ในประวัติ)' : ''}`);
 
   if (closed) {
     void notify.notifyShop(shop.id, 'checkout', notify.buildCheckoutText({
@@ -413,7 +423,7 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
   res.json({
     ok: true,
     message: qrDeleted
-      ? `เช็คบิลโต๊ะ "${table.code}" แล้ว และลบ QR ของโต๊ะนี้ทันที — ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป`
+      ? `เช็คบิลโต๊ะ "${table.code}" แล้ว และปิดใช้งาน QR ของโต๊ะนี้ทันที — ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป (QR เดิมยังดูย้อนหลังได้ที่ "ประวัติ QR")`
       : `เช็คบิลโต๊ะ "${table.code}" แล้ว`,
     closed,
     qr_deleted: qrDeleted,

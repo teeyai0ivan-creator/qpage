@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ประวัติออเดอร์ | ระบบสมาชิก</title>
+  <title>ประวัติ | ระบบสมาชิก</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="/css/shop.css">
@@ -19,6 +19,13 @@
     .hist-sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
     .hist-items { padding: 0 14px 14px; border-top: 1px solid var(--border); margin-top: 2px; padding-top: 12px; }
     .hist-actions { padding: 0 14px 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+    /* แท็บ: ประวัติบิล / QR โต๊ะที่ปิดใช้งานแล้ว */
+    .hist-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .hist-tab { font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+    .hist-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .qr-card { display: flex; gap: 14px; align-items: flex-start; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+    .qr-card img { width: 104px; height: 104px; background: #fff; border-radius: 8px; border: 1px solid var(--border); }
+    .qr-off { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(180,83,9,.14); color: var(--warning); vertical-align: middle; }
   </style>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
@@ -127,23 +134,38 @@
 
       <div class="shop-wrap">
     <div class="shop-head">
-      <h1>ประวัติออเดอร์</h1>
-      <p>ดูย้อนหลังว่าบิลที่ปิดไปแล้วแต่ละโต๊ะมีอะไรบ้าง — กดที่บิลเพื่อดูรายละเอียดเป็นชุด ๆ</p>
+      <h1>ประวัติ</h1>
+      <p>ดูย้อนหลังทั้งบิลที่ปิดไปแล้ว และ QR โต๊ะที่ปิดใช้งานแล้ว — เก็บไว้เป็นหลักฐาน</p>
     </div>
 
-    <div class="hist-filter">
-      <label for="fTable">โต๊ะ</label>
-      <select class="mini-input" id="fTable"><option value="">ทุกโต๊ะ</option></select>
-      <label for="fLimit">จำนวนบิลล่าสุด</label>
-      <select class="mini-input" id="fLimit">
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="200">200</option>
-      </select>
-      <button class="mini-btn" id="exportBtn" type="button">ออกรายการล่าสุด (CSV)</button>
+    <div class="hist-tabs">
+      <button class="hist-tab active" id="tabBills" type="button">ประวัติบิล <span id="cntBills"></span></button>
+      <button class="hist-tab" id="tabQr" type="button">QR โต๊ะที่ปิดใช้งาน <span id="cntQr"></span></button>
     </div>
 
-    <div id="histList"></div>
+    <div id="paneBills">
+      <div class="hist-filter">
+        <label for="fTable">โต๊ะ</label>
+        <select class="mini-input" id="fTable"><option value="">ทุกโต๊ะ</option></select>
+        <label for="fLimit">จำนวนบิลล่าสุด</label>
+        <select class="mini-input" id="fLimit">
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+        <button class="mini-btn" id="exportBtn" type="button">ออกรายการล่าสุด (CSV)</button>
+      </div>
+
+      <div id="histList"></div>
+    </div>
+
+    <div id="paneQr" hidden>
+      <div class="hist-filter">
+        <button class="mini-btn" id="exportQrBtn" type="button">ออกรายการ (CSV)</button>
+        <span class="hist-sub" style="margin:0;">QR ที่ปิดใช้งานแล้วสแกนไม่ได้อีก แต่ยังดู/ดาวน์โหลดไว้เป็นหลักฐานได้</span>
+      </div>
+      <div id="qrList"></div>
+    </div>
   </div>
     </div>
 
@@ -165,15 +187,60 @@
     function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }
     const dt = (iso) => { if (!iso) return '—'; const d = new Date(iso); if (isNaN(d)) return iso; const p = (n) => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
 
+    let retired = [];
+
     async function loadTables() {
       try {
-        const data = await api('/api/shop/tables');
+        const [act, ret] = await Promise.all([api('/api/shop/tables'), api('/api/shop/tables/retired')]);
+        retired = ret.tables || [];
         const sel = document.getElementById('fTable');
         const cur = sel.value;
-        sel.innerHTML = '<option value="">ทุกโต๊ะ</option>' + (data.tables || []).map((t) => `<option value="${t.id}">โต๊ะ ${esc(t.code)}</option>`).join('');
+        const opts = (act.tables || []).map((t) => `<option value="${t.id}">โต๊ะ ${esc(t.code)}</option>`)
+          .concat(retired.map((t) => `<option value="${t.id}">โต๊ะ ${esc(t.code)} (ปิดใช้งาน)</option>`));
+        sel.innerHTML = '<option value="">ทุกโต๊ะ</option>' + opts.join('');
         if (cur) sel.value = cur;
+        document.getElementById('cntQr').textContent = retired.length ? '(' + retired.length + ')' : '';
+        renderRetired();
       } catch (e) { /* ignore */ }
     }
+
+    // ---------- ประวัติ QR โต๊ะที่ปิดใช้งานแล้ว (หลักฐาน) ----------
+    function renderRetired() {
+      const box = document.getElementById('qrList');
+      if (!retired.length) {
+        box.innerHTML = '<div class="cat-empty">ยังไม่มี QR ที่ปิดใช้งาน — ถ้าเปิดสวิตช์ "ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล" ไว้ โต๊ะที่เช็คบิลแล้วจะมาแสดงที่นี่</div>';
+        return;
+      }
+      box.innerHTML = retired.map((t) => `
+        <div class="qr-card" data-id="${t.id}">
+          <img src="/api/shop/tables/${t.id}/qr?origin=${encodeURIComponent(location.origin)}" alt="QR โต๊ะ ${esc(t.code)}">
+          <div style="flex:1;min-width:0;">
+            <div class="table-code">โต๊ะ ${esc(t.code)} <span class="qr-off">ปิดใช้งานแล้ว</span></div>
+            <div class="hist-sub">${t.zone_name ? 'โซน ' + esc(t.zone_name) + ' · ' : ''}สร้าง QR ${dt(t.created_at)} · ปิดใช้งาน ${dt(t.retired_at)}</div>
+            <div class="hist-sub">บิลที่ปิดแล้ว ${t.bill_count} ใบ · ยอดรวม ${money(t.total_sales)}</div>
+            <div class="hist-actions" style="padding:10px 0 0;">
+              <a class="mini-btn" href="/api/shop/tables/${t.id}/qr?origin=${encodeURIComponent(location.origin)}" download="table-${esc(t.code)}-qr.png">ดาวน์โหลด QR</a>
+              <button class="mini-btn" data-bills="${t.id}" type="button">ดูบิลของโต๊ะนี้</button>
+            </div>
+          </div>
+        </div>`).join('');
+      box.querySelectorAll('[data-bills]').forEach((b) => b.addEventListener('click', () => {
+        showTab('bills');
+        const sel = document.getElementById('fTable');
+        sel.value = b.dataset.bills;
+        loadHistory().catch((e) => alert(e.message));
+      }));
+    }
+
+    function showTab(which) {
+      const isQr = which === 'qr';
+      document.getElementById('tabBills').classList.toggle('active', !isQr);
+      document.getElementById('tabQr').classList.toggle('active', isQr);
+      document.getElementById('paneBills').hidden = isQr;
+      document.getElementById('paneQr').hidden = !isQr;
+    }
+    document.getElementById('tabBills').addEventListener('click', () => showTab('bills'));
+    document.getElementById('tabQr').addEventListener('click', () => showTab('qr'));
 
     async function loadHistory() {
       const tableId = document.getElementById('fTable').value;
@@ -183,6 +250,7 @@
       if (limit) qs.set('limit', limit);
       const data = await api('/api/shop/orders/history' + (qs.toString() ? '?' + qs.toString() : ''));
       lastOrders = data.orders || [];
+      document.getElementById('cntBills').textContent = lastOrders.length ? '(' + lastOrders.length + ')' : '';
       const box = document.getElementById('histList');
       if (!lastOrders.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีประวัติ (ยังไม่มีการเช็คบิล)</div>'; return; }
       box.innerHTML = lastOrders.map((o) => `
@@ -225,6 +293,19 @@
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'order-history.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('exportQrBtn').addEventListener('click', () => {
+      if (!retired.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
+      const rows = [['โต๊ะ', 'โซน', 'สร้าง QR', 'ปิดใช้งานเมื่อ', 'บิลที่ปิดแล้ว', 'ยอดรวม']];
+      retired.forEach((t) => rows.push([t.code, t.zone_name || '', t.created_at || '', t.retired_at || '', t.bill_count, Number(t.total_sales)]));
+      const csv = '\ufeff' + rows.map((r) => r.map((c) => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'qr-history.csv';
       a.click();
       URL.revokeObjectURL(a.href);
     });

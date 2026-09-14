@@ -106,9 +106,9 @@
             <button class="mini-btn primary" id="tdPrint" type="button">พิมพ์ QR</button>
             <a class="mini-btn" id="tdDownload" href="#" download>ดาวน์โหลด QR</a>
             <button class="mini-btn" id="tdRename" type="button">เปลี่ยนชื่อ</button>
-            <button class="mini-btn danger" id="tdDelete" type="button">ลบ QR</button>
+            <button class="mini-btn danger" id="tdDelete" type="button">ปิดใช้งาน QR</button>
           </div>
-          <p style="font-size:12px;color:var(--muted);text-align:center;margin:0;">QR นี้ใช้ได้เฉพาะโต๊ะนี้ · ถ้าลบแล้วจะถูกยกเลิกถาวร ใช้ซ้ำไม่ได้</p>
+          <p style="font-size:12px;color:var(--muted);text-align:center;margin:0;">QR นี้ใช้ได้เฉพาะโต๊ะนี้ · ปิดใช้งานแล้วสแกนไม่ได้อีก และใช้ซ้ำไม่ได้ — แต่ยังดูย้อนหลังได้ในหน้า “ประวัติ”</p>
         </div>
 
         <!-- บิลปัจจุบัน -->
@@ -220,8 +220,8 @@
     });
     document.getElementById('tdDelete').addEventListener('click', async () => {
       if (!table) return;
-      if (!confirm(`ลบ QR ของโต๊ะ "${table.code}" ?\n\nQR นี้จะถูกยกเลิกถาวร ใช้ไม่ได้อีก และโต๊ะจะหายจากหน้าสั่งอาหาร`)) return;
-      try { await api('/api/shop/tables/' + table.id, { method: 'DELETE' }); toast('ลบ QR แล้ว'); leaveToOrders(); }
+      if (!confirm(`ปิดใช้งาน QR ของโต๊ะ "${table.code}" ?\n\nQR นี้จะสแกนไม่ได้อีกและใช้ซ้ำไม่ได้ · โต๊ะจะหายจากหน้าสั่งอาหาร แต่ยังดูย้อนหลังได้ในหน้า "ประวัติ" (แท็บ QR โต๊ะ)`)) return;
+      try { await api('/api/shop/tables/' + table.id, { method: 'DELETE' }); toast('ปิดใช้งาน QR แล้ว'); leaveToOrders(); }
       catch (e) { alert(e.message); }
     });
     document.getElementById('tdRefresh').addEventListener('click', async () => { try { await load(); toast('อัปเดตแล้ว'); } catch (e) { alert(e.message); } });

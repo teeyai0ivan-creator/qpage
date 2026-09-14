@@ -298,9 +298,11 @@ async function initSchema() {
       shop_id    BIGINT NOT NULL,
       code       VARCHAR(30) NOT NULL,
       token      CHAR(16) NOT NULL UNIQUE,
+      retire_seq INT NOT NULL DEFAULT 0,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_tables_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
-      UNIQUE KEY uq_shop_table_code (shop_id, code)
+      KEY idx_tables_shop (shop_id),
+      UNIQUE KEY uq_shop_table_code (shop_id, code, retire_seq)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
   await pool.execute(`
@@ -393,7 +395,15 @@ async function initSchema() {
   `);
 
   // ตัวเลือกลบ QR ของโต๊ะทันทีเมื่อเช็คบิล (ปิดไว้เป็นค่าเริ่มต้น)
+  // หมายเหตุ: ตัวเลือกนี้ "ปิดใช้งาน" QR ไม่ได้ลบทิ้ง — โต๊ะยังถูกเก็บไว้ในประวัติ (tables.retired_at)
   await ensureColumn('shops', 'delete_qr_on_checkout', 'delete_qr_on_checkout TINYINT(1) NOT NULL DEFAULT 0');
+  // วันที่ปิดใช้งาน QR ของโต๊ะ (NULL = ยังใช้งานอยู่) — เก็บแถวไว้เป็นประวัติ/หลักฐาน ไม่ลบทิ้ง
+  await ensureColumn('tables', 'retired_at', 'retired_at DATETIME NULL');
+  // ตัวนับรุ่นของชื่อโต๊ะ: 0 = ยังใช้งานอยู่ · ตอนปิดใช้งานจะตั้งเป็น id ของแถว
+  // เพื่อให้ชื่อเดิมถูกนำมาออก QR ใหม่ได้ แม้แถวเก่าจะยังอยู่เป็นประวัติ (UNIQUE เป็น shop_id+code+retire_seq)
+  await ensureColumn('tables', 'retire_seq', 'retire_seq INT NOT NULL DEFAULT 0');
+  await pool.execute('UPDATE `tables` SET retire_seq = id WHERE retired_at IS NOT NULL AND retire_seq = 0');
+  await widenTableCodeUniqueKey();
 
   // โต๊ะที่มีอยู่ก่อนมีระบบรายชื่อ → เติมชื่อลงแคตตาล็อกให้ (ทำซ้ำได้ ไม่พัง)
   await pool.execute('INSERT IGNORE INTO table_names (shop_id, name) SELECT shop_id, code FROM `tables`');
@@ -436,6 +446,25 @@ async function ensureColumn(table, column, ddl) {
   if (Number(rows[0].c) === 0) {
     await pool.execute(`ALTER TABLE \`${table}\` ADD COLUMN ${ddl}`);
   }
+}
+
+// เปลี่ยน UNIQUE ของชื่อโต๊ะจาก (shop_id, code) เป็น (shop_id, code, retire_seq)
+// เพื่อให้ปิดใช้งาน QR แล้วออก QR ชื่อเดิมใหม่ได้ (แถวเก่ายังอยู่เป็นประวัติ)
+async function widenTableCodeUniqueKey() {
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS c FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tables' AND INDEX_NAME = 'uq_shop_table_code'`
+  );
+  const cols = Number(rows[0].c) || 0;
+  if (cols === 3) return; // อัปเดตแล้ว
+  // FK (shop_id) อาจใช้ index นี้อยู่ → ต้องมี index ของตัวเองก่อน ไม่งั้น MySQL ไม่ให้ drop
+  const [fkIdx] = await pool.execute(
+    `SELECT COUNT(*) AS c FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tables' AND INDEX_NAME = 'idx_tables_shop'`
+  );
+  if (Number(fkIdx[0].c) === 0) await pool.execute('ALTER TABLE `tables` ADD KEY idx_tables_shop (shop_id)');
+  if (cols > 0) await pool.execute('ALTER TABLE `tables` DROP INDEX uq_shop_table_code');
+  await pool.execute('ALTER TABLE `tables` ADD UNIQUE KEY uq_shop_table_code (shop_id, code, retire_seq)');
 }
 
 // เติมชื่อโต๊ะย้อนหลังให้บิลเก่าที่ยังไม่มี snapshot (ทำครั้งเดียวต่อบิล)
@@ -1425,18 +1454,35 @@ async function setPackagePaymentStatus(id, status, { confirmedBy = null, note = 
 // ---------------------------------------------------------------------------
 // Tables (โต๊ะ) + Orders (บิล/ออเดอร์) — ระบบสั่งอาหาร
 // ---------------------------------------------------------------------------
+// เฉพาะโต๊ะที่ใช้งานอยู่ (ยังไม่ถูกปิดใช้งาน) — โต๊ะที่ปิดแล้วยังอยู่ในฐานข้อมูลเพื่อเป็นประวัติ/หลักฐาน
 async function listTables(shopId) {
-  const [rows] = await pool.execute('SELECT * FROM `tables` WHERE shop_id = ? ORDER BY code ASC', [shopId]);
+  const [rows] = await pool.execute(
+    'SELECT * FROM `tables` WHERE shop_id = ? AND retired_at IS NULL ORDER BY code ASC',
+    [shopId]
+  );
   return rows;
 }
 
+/** โต๊ะที่ยังใช้งานอยู่ (ใช้กับทุกคำสั่งของร้าน: เปลี่ยนชื่อ/รับออเดอร์/เช็คบิล) */
 async function findTableById(id, shopId) {
+  const [rows] = await pool.execute(
+    'SELECT * FROM `tables` WHERE id = ? AND shop_id = ? AND retired_at IS NULL',
+    [id, shopId]
+  );
+  return rows[0] || null;
+}
+
+/** โต๊ะทุกสถานะ รวมที่ปิดใช้งานแล้ว (ใช้ดูประวัติ/ดึงรูป QR ย้อนหลัง) */
+async function findTableByIdAny(id, shopId) {
   const [rows] = await pool.execute('SELECT * FROM `tables` WHERE id = ? AND shop_id = ?', [id, shopId]);
   return rows[0] || null;
 }
 
 async function findTableByCode(shopId, code) {
-  const [rows] = await pool.execute('SELECT * FROM `tables` WHERE shop_id = ? AND code = ?', [shopId, code]);
+  const [rows] = await pool.execute(
+    'SELECT * FROM `tables` WHERE shop_id = ? AND code = ? AND retired_at IS NULL',
+    [shopId, code]
+  );
   return rows[0] || null;
 }
 
@@ -1445,7 +1491,8 @@ async function findTableByToken(token) {
   return rows[0] || null;
 }
 
-/** โต๊ะที่สั่งอาหารได้ (เจ้าของร้านยังเป็น shop และของขวัญไม่หมดอายุ) + ข้อมูลร้าน */
+/** โต๊ะที่สั่งอาหารได้ (เจ้าของร้านยังเป็น shop และของขวัญไม่หมดอายุ) + ข้อมูลร้าน
+ *  โต๊ะที่ถูกปิดใช้งานแล้วจะสั่งไม่ได้ (แม้แถวยังอยู่เพื่อเก็บประวัติ) */
 async function findOrderableTableByToken(token) {
   const [rows] = await pool.execute(
     `SELECT t.id, t.shop_id, t.code, t.token,
@@ -1453,7 +1500,7 @@ async function findOrderableTableByToken(token) {
        FROM \`tables\` t
        JOIN shops s ON s.id = t.shop_id
        JOIN users u ON u.id = s.user_id
-      WHERE t.token = ? AND s.status = 'active' AND u.role = 'shop'
+      WHERE t.token = ? AND t.retired_at IS NULL AND s.status = 'active' AND u.role = 'shop'
         AND (u.gift_expires_at IS NULL OR u.gift_expires_at > UTC_TIMESTAMP())
       LIMIT 1`,
     [token]
@@ -1479,6 +1526,36 @@ async function deleteTable(id, shopId) {
   await pool.execute('DELETE FROM `tables` WHERE id = ? AND shop_id = ?', [id, shopId]);
 }
 
+/** ปิดใช้งาน QR ของโต๊ะ (soft): ไม่ลบแถวทิ้ง เพื่อเก็บไว้เป็นประวัติ/หลักฐาน
+ *  โต๊ะที่ปิดแล้วจะไม่ขึ้นในรายการโต๊ะ และสแกน QR เดิมก็สั่งอาหารไม่ได้อีก */
+async function retireTable(id, shopId) {
+  await pool.execute(
+    'UPDATE `tables` SET retired_at = UTC_TIMESTAMP(), retire_seq = id WHERE id = ? AND shop_id = ? AND retired_at IS NULL',
+    [id, shopId]
+  );
+}
+
+/** โต๊ะ/QR ที่ถูกปิดใช้งานแล้ว (ประวัติ) พร้อมยอดขายที่เคยเกิดขึ้นบนโต๊ะนั้น */
+async function listRetiredTables(shopId) {
+  const [rows] = await pool.execute(
+    `SELECT t.id, t.code, t.token, t.created_at, t.retired_at,
+            COALESCE(z.name, '') AS zone_name,
+            (SELECT COUNT(*) FROM orders o WHERE o.table_id = t.id AND o.status = 'closed') AS bill_count,
+            (SELECT COALESCE(SUM(o.total),0) FROM orders o WHERE o.table_id = t.id AND o.status = 'closed') AS total_sales
+       FROM \`tables\` t
+       LEFT JOIN table_names n ON n.shop_id = t.shop_id AND n.name = t.code
+       LEFT JOIN zones z ON z.id = n.zone_id
+      WHERE t.shop_id = ? AND t.retired_at IS NOT NULL
+      ORDER BY t.retired_at DESC, t.id DESC`,
+    [shopId]
+  );
+  return rows.map((r) => ({
+    ...r,
+    bill_count: Number(r.bill_count) || 0,
+    total_sales: Number(r.total_sales) || 0,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // รายชื่อโต๊ะ (แคตตาล็อกชื่อโต๊ะ) + โทเคน QR ที่ถูกยกเลิก
 // ---------------------------------------------------------------------------
@@ -1497,7 +1574,7 @@ async function listTableNamesWithQr(shopId) {
             COALESCE(z.sort_order, 9999) AS zone_sort, t.id AS table_id
        FROM table_names n
        LEFT JOIN zones z ON z.id = n.zone_id
-       LEFT JOIN \`tables\` t ON t.shop_id = n.shop_id AND t.code = n.name
+       LEFT JOIN \`tables\` t ON t.shop_id = n.shop_id AND t.code = n.name AND t.retired_at IS NULL
       WHERE n.shop_id = ?
       ORDER BY COALESCE(z.sort_order, 9999) ASC, n.sort_order ASC, n.id ASC`,
     [shopId]
@@ -1943,12 +2020,15 @@ module.exports = {
   expireStalePayments,
   listTables,
   findTableById,
+  findTableByIdAny,
   findTableByCode,
   findTableByToken,
   findOrderableTableByToken,
   createTable,
   updateTableCode,
   deleteTable,
+  retireTable,
+  listRetiredTables,
   listTableNames,
   listTableNamesWithQr,
   setTableNameZone,
