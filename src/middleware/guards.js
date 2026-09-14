@@ -2,25 +2,26 @@
  * guards.js — middleware ป้องกันหน้าเว็บ (ไม่ใช่ API)
  *  - adminGuard:   /admin/* ต้องเป็นแอดมิน
  *  - accountGuard: /dashboard, /settings ต้องล็อกอิน + ยืนยันเบอร์แล้ว
+ *  - ownerGuard:   หน้าหลังบ้านบางหน้า สงวนไว้ให้เจ้าของระบบ
+ *
+ * ผู้ที่ไม่มีสิทธิ์จะถูก "พากลับ" ไปหน้าที่เหมาะกับตัวเอง ไม่แสดงหน้า 403 ให้เห็น
  */
 'use strict';
 
 const { getCurrentUser } = require('./auth');
 const { isAdminRole, isOwner } = require('../lib/roles');
 
+// ปลายทางของคนที่ไม่มีสิทธิ์เข้าหน้าหลังบ้าน = หน้าโปรไฟล์ของตัวเอง
+const PROFILE_URL = '/settings/profile';
+
 async function adminGuard(req, res, next) {
   const user = await getCurrentUser(req);
   if (!user) {
-    return res.redirect('/login.html?next=/admin/');
+    return res.redirect('/login.html?next=' + encodeURIComponent(req.originalUrl || '/admin/'));
   }
+  // ผู้ใช้ทั่วไป/เจ้าของร้านที่เผลอเปิดหน้าหลังบ้าน → พาไปหน้าโปรไฟล์ของตัวเอง
   if (!isAdminRole(user.role)) {
-    return res.status(403).send(
-      '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>403</title></head>' +
-      '<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f4f5fb;color:#333">' +
-      '<div style="text-align:center"><h1 style="font-size:56px;margin:0">🔒 403</h1>' +
-      '<p style="color:#667085">คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (ต้องเป็นแอดมิน)</p>' +
-      '<a href="/" style="color:#6366f1">← กลับหน้าแรก</a></div></body></html>'
-    );
+    return res.redirect(PROFILE_URL);
   }
   next();
 }
@@ -32,13 +33,9 @@ async function ownerGuard(req, res, next) {
     return res.redirect('/login.html?next=' + encodeURIComponent(req.originalUrl || '/admin/packages.html'));
   }
   if (!isOwner(user.role)) {
-    return res.status(403).send(
-      '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>403</title></head>' +
-      '<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f4f5fb;color:#333">' +
-      '<div style="text-align:center"><h1 style="font-size:56px;margin:0">🔒 403</h1>' +
-      '<p style="color:#667085">หน้านี้สำหรับเจ้าของระบบเท่านั้น</p>' +
-      '<a href="/admin/" style="color:#6366f1">← กลับหน้าหลังบ้าน</a></div></body></html>'
-    );
+    // แอดมินทั่วไป: หน้านี้สงวนไว้ให้เจ้าของระบบ → กลับหน้าหลังบ้านของตัวเอง
+    // ผู้ใช้ทั่วไป/เจ้าของร้าน → หน้าโปรไฟล์ของตัวเอง
+    return res.redirect(isAdminRole(user.role) ? '/admin/' : PROFILE_URL);
   }
   next();
 }
