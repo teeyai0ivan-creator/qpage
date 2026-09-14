@@ -80,11 +80,25 @@ async function freshTableToken() {
 router.get('/api/shop/table-names', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
-  const names = await db.listTableNamesWithQr(shop.id);
+  const [names, zones] = await Promise.all([db.listTableNamesWithQr(shop.id), db.listZones(shop.id)]);
   res.json({
     ok: true,
-    names: names.map((n) => ({ id: n.id, name: n.name, has_qr: Boolean(n.table_id), table_id: n.table_id || null })),
+    zones: zones.map((z) => ({ id: z.id, name: z.name, table_count: z.table_count })),
+    names: names.map((n) => ({
+      id: n.id, name: n.name, has_qr: Boolean(n.table_id), table_id: n.table_id || null,
+      zone_id: n.zone_id || null, zone_name: n.zone_name || null,
+    })),
   });
+});
+
+// จัดลำดับการแสดงของชื่อโต๊ะ (ต้องประกาศก่อน /:id เพื่อไม่ให้ทับกัน)
+router.post('/api/shop/table-names/reorder', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const order = Array.isArray(req.body?.order) ? req.body.order : [];
+  if (!order.length) return res.status(400).json({ ok: false, message: 'ไม่มีลำดับที่ส่งมา' });
+  await db.reorderTableNames(shop.id, order);
+  res.json({ ok: true, message: 'บันทึกลำดับโต๊ะแล้ว' });
 });
 
 router.post('/api/shop/table-names', requireShop, async (req, res) => {
@@ -96,7 +110,28 @@ router.post('/api/shop/table-names', requireShop, async (req, res) => {
     return res.status(409).json({ ok: false, field: 'name', message: `มีชื่อ "${name}" อยู่ในรายชื่อแล้ว` });
   }
   await db.ensureTableName({ shopId: shop.id, name });
+  // กำหนดโซนให้ตั้งแต่ตอนเพิ่มได้เลย (ถ้าเลือกไว้)
+  const zoneId = Number(req.body?.zoneId) || 0;
+  if (zoneId && await db.findZoneById(zoneId, shop.id)) {
+    const added = await db.findTableNameByName(shop.id, name);
+    if (added) await db.setTableNameZone(added.id, shop.id, zoneId);
+  }
   res.json({ ok: true, message: `เพิ่ม "${name}" เข้ารายชื่อโต๊ะแล้ว` });
+});
+
+// ย้ายชื่อโต๊ะเข้าโซน (zoneId = 0/null คือไม่ระบุโซน)
+router.put('/api/shop/table-names/:id', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const id = Number(req.params.id);
+  const name = await db.findTableNameById(id, shop.id);
+  if (!name) return res.status(404).json({ ok: false, message: 'ไม่พบชื่อโต๊ะนี้' });
+  if (req.body?.zoneId !== undefined) {
+    const zoneId = Number(req.body.zoneId) || 0;
+    if (zoneId && !await db.findZoneById(zoneId, shop.id)) return res.status(404).json({ ok: false, message: 'ไม่พบโซนที่เลือก' });
+    await db.setTableNameZone(id, shop.id, zoneId || null);
+  }
+  res.json({ ok: true, message: 'บันทึกแล้ว' });
 });
 
 router.delete('/api/shop/table-names/:id', requireShop, async (req, res) => {
@@ -111,6 +146,60 @@ router.delete('/api/shop/table-names/:id', requireShop, async (req, res) => {
   }
   await db.deleteTableName(id, shop.id);
   res.json({ ok: true, message: `ลบ "${name.name}" ออกจากรายชื่อแล้ว` });
+});
+
+// ---------------------------------------------------------------------------
+// โซน (จัดกลุ่มโต๊ะ) — สร้าง/เปลี่ยนชื่อ/ลบ/จัดลำดับ
+// ---------------------------------------------------------------------------
+router.get('/api/shop/zones', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  res.json({ ok: true, zones: await db.listZones(shop.id) });
+});
+
+router.post('/api/shop/zones', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const name = clip(req.body?.name, 60);
+  if (!name) return res.status(400).json({ ok: false, field: 'name', message: 'กรุณากรอกชื่อโซน (เช่น ในร้าน, ริมระเบียง, ชั้น 2)' });
+  if (await db.findZoneByName(shop.id, name)) {
+    return res.status(409).json({ ok: false, field: 'name', message: `มีโซน "${name}" อยู่แล้ว` });
+  }
+  const id = await db.createZone({ shopId: shop.id, name });
+  res.json({ ok: true, message: `เพิ่มโซน "${name}" แล้ว`, id });
+});
+
+router.put('/api/shop/zones/:id', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const id = Number(req.params.id);
+  const zone = await db.findZoneById(id, shop.id);
+  if (!zone) return res.status(404).json({ ok: false, message: 'ไม่พบโซนนี้' });
+  const name = clip(req.body?.name, 60);
+  if (!name) return res.status(400).json({ ok: false, field: 'name', message: 'กรุณากรอกชื่อโซน' });
+  const dup = await db.findZoneByName(shop.id, name);
+  if (dup && dup.id !== id) return res.status(409).json({ ok: false, field: 'name', message: `มีโซน "${name}" อยู่แล้ว` });
+  await db.renameZone(id, shop.id, name);
+  res.json({ ok: true, message: 'เปลี่ยนชื่อโซนแล้ว' });
+});
+
+router.delete('/api/shop/zones/:id', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const id = Number(req.params.id);
+  const zone = await db.findZoneById(id, shop.id);
+  if (!zone) return res.status(404).json({ ok: false, message: 'ไม่พบโซนนี้' });
+  await db.deleteZone(id, shop.id);
+  res.json({ ok: true, message: `ลบโซน "${zone.name}" แล้ว (โต๊ะในโซนนี้กลายเป็นไม่ระบุโซน)` });
+});
+
+router.post('/api/shop/zones/reorder', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const order = Array.isArray(req.body?.order) ? req.body.order : [];
+  if (!order.length) return res.status(400).json({ ok: false, message: 'ไม่มีลำดับที่ส่งมา' });
+  await db.reorderZones(shop.id, order);
+  res.json({ ok: true, message: 'บันทึกลำดับโซนแล้ว' });
 });
 
 router.get('/api/shop/tables', requireShop, async (req, res) => {
@@ -164,6 +253,12 @@ router.post('/api/shop/tables', requireShop, async (req, res) => {
     return res.status(409).json({ ok: false, field: 'code', message: `โต๊ะ "${code}" มี QR ที่ใช้งานอยู่แล้ว` });
   }
   await db.ensureTableName({ shopId: shop.id, name: code }); // พิมพ์ชื่อใหม่ → เข้ารายชื่อให้ด้วย
+  // ถ้าเลือกโซนไว้ตอนสร้าง ก็จัดชื่อเข้าโซนนั้นให้เลย
+  const newZoneId = Number(req.body?.zoneId) || 0;
+  if (newZoneId && await db.findZoneById(newZoneId, shop.id)) {
+    const added = await db.findTableNameByName(shop.id, code);
+    if (added) await db.setTableNameZone(added.id, shop.id, newZoneId);
+  }
   const id = await db.createTable({ shopId: shop.id, code, token: await freshTableToken() });
   // เปิดบิลตั้งต้นให้โต๊ะทันที (มีเลขที่บิล) — ลูกค้าสแกนแล้วเห็นเลขบิลได้เลย
   await db.createOrder({ shopId: shop.id, tableId: id });

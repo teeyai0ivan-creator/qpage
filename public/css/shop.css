@@ -66,6 +66,26 @@
 .name-item.pick { cursor: pointer; }
 .name-item.pick:hover { background: var(--surface-hover); border-color: var(--border-strong); }
 
+/* ปุ่มเลือกรายชื่อโต๊ะ เป็นช่องสี่เหลี่ยมจัตุรัส เรียงเป็นตาราง */
+.tile-wrap { display: flex; flex-direction: column; gap: 14px; max-height: 56vh; overflow-y: auto; }
+.zone-group { display: flex; flex-direction: column; gap: 8px; }
+.zone-label { font-size: 12.5px; font-weight: 800; color: var(--muted); letter-spacing: .2px; }
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+.tile { aspect-ratio: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 6px; text-align: center; border-radius: var(--radius); border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text); font-family: var(--font); font-size: 14px; font-weight: 800;
+  cursor: pointer; transition: transform .12s ease, background .12s ease, border-color .12s ease; word-break: break-word; }
+.tile:hover { background: var(--surface-hover); transform: translateY(-2px); }
+.tile small { font-size: 10.5px; font-weight: 700; color: var(--muted); }
+.tile.busy { cursor: default; opacity: .55; background: var(--surface-2); border-style: dashed; }
+.tile.busy:hover { transform: none; background: var(--surface-2); }
+.tile.busy small { color: var(--success); }
+
+/* แถวจัดการโซน */
+.zone-head { font-size: 13px; font-weight: 800; margin-bottom: 8px; }
+.ord-btn { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }
+.name-item select.zone-sel { font-family: var(--font); font-size: 12px; padding: 5px 7px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); max-width: 130px; }
+
 /* ปุ่ม "ดูเมนูทั้งหมด" — ปุ่มไล่สีพร้อมไอคอน (ไม่ใช้อิโมจิ) วางคู่กับหัวข้อหน้า */
 .btn-menus {
   display: inline-flex; align-items: center; gap: 8px;

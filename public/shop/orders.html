@@ -151,14 +151,16 @@
   </div>
     </div>
 
-  <!-- Modal สร้าง QR โต๊ะใหม่ (เลือกรายชื่อโต๊ะ) -->
+  <!-- Modal สร้าง QR โต๊ะใหม่ (เลือกรายชื่อโต๊ะเป็นช่องสี่เหลี่ยม) -->
   <div class="modal-overlay" id="newQrModal">
-    <div class="modal">
+    <div class="modal wide">
       <h3>สร้าง QR โต๊ะใหม่</h3>
-      <p class="sub">เลือกรายชื่อโต๊ะที่ต้องการออก QR — หรือพิมพ์ชื่อใหม่เพื่อเพิ่มเข้ารายชื่อแล้วสร้างเลย</p>
-      <div id="nameList" class="name-list"></div>
+      <p class="sub">กดช่องของโต๊ะที่ต้องการออก QR — ช่องที่ขึ้น “มี QR อยู่” คือโต๊ะนั้นมี QR ใช้งานอยู่แล้ว<br>
+        ลำดับและตำแหน่งของช่องจัดได้ที่ปุ่ม “รายชื่อโต๊ะ”</p>
+      <div id="nameList" class="tile-wrap"></div>
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
         <input class="mini-input" id="newQrName" placeholder="พิมพ์ชื่อโต๊ะใหม่ เช่น A5" style="flex:1;min-width:150px;" maxlength="30" autocomplete="off">
+        <select class="mini-input" id="newQrZone"><option value="">ไม่ระบุโซน</option></select>
         <button class="mini-btn primary" id="newQrCreate" type="button">สร้าง QR</button>
       </div>
       <div class="error-msg" id="newQrErr" style="display:none;"></div>
@@ -169,17 +171,29 @@
     </div>
   </div>
 
-  <!-- Modal รายชื่อโต๊ะ -->
+  <!-- Modal รายชื่อโต๊ะ + โซน (จัดโซนและจัดลำดับได้) -->
   <div class="modal-overlay" id="namesModal">
-    <div class="modal">
-      <h3>รายชื่อโต๊ะ</h3>
-      <p class="sub">เก็บรายชื่อโต๊ะของร้านไว้ล่วงหน้า เพื่อกดสร้าง QR ได้เร็ว ๆ (ลบชื่อได้เมื่อไม่มี QR ของชื่อนั้นใช้งานอยู่)</p>
+    <div class="modal wide">
+      <h3>รายชื่อโต๊ะ &amp; โซน</h3>
+      <p class="sub">สร้างโซนเพื่อจัดกลุ่มโต๊ะ (เช่น ในร้าน / ริมระเบียง / ชั้น 2) แล้วจัดลำดับการแสดงของโซนและของโต๊ะด้วยปุ่มลูกศร — ลำดับนี้ใช้กับหน้าจอ “สร้าง QR โต๊ะใหม่”</p>
+
+      <div class="zone-head">โซน</div>
+      <div id="zoneList" class="name-list"></div>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        <input class="mini-input" id="newZoneInput" placeholder="เพิ่มโซน เช่น ในร้าน, ริมระเบียง" style="flex:1;min-width:150px;" maxlength="60" autocomplete="off">
+        <button class="mini-btn" id="addZoneBtn" type="button">เพิ่มโซน</button>
+      </div>
+      <div class="error-msg" id="zoneErr" style="display:none;"></div>
+
+      <div class="zone-head" style="margin-top:18px;">โต๊ะ</div>
       <div id="namesManageList" class="name-list"></div>
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
-        <input class="mini-input" id="newNameInput" placeholder="เพิ่มชื่อโต๊ะ เช่น 1, A2, โต๊ะริมหน้าต่าง" style="flex:1;min-width:150px;" maxlength="30" autocomplete="off">
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        <input class="mini-input" id="newNameInput" placeholder="เพิ่มชื่อโต๊ะ เช่น 1, A2" style="flex:1;min-width:130px;" maxlength="30" autocomplete="off">
+        <select class="mini-input" id="newNameZone"><option value="">ไม่ระบุโซน</option></select>
         <button class="mini-btn primary" id="addNameBtn" type="button">เพิ่มชื่อ</button>
       </div>
       <div class="error-msg" id="namesErr" style="display:none;"></div>
+
       <div class="modal-actions">
         <button class="mini-btn" id="namesClose" type="button">ปิด</button>
       </div>
@@ -501,7 +515,8 @@
     async function loadAll() { if (await loadShop()) { await loadBills(); await loadTables(); } }
 
     // ---------- รายชื่อโต๊ะ + สร้าง QR ใหม่ + สวิตช์ลบ QR อัตโนมัติ ----------
-    let tableNames = [];   // [{ id, name, has_qr }]
+    let tableNames = [];   // [{ id, name, has_qr, zone_id, zone_name }]
+    let zones = [];        // [{ id, name, table_count }]
     let autoDeleteQr = false;
 
     function setAutoHint() {
@@ -525,38 +540,150 @@
     async function loadTableNames() {
       const data = await api('/api/shop/table-names');
       tableNames = data.names || [];
+      zones = data.zones || [];
       return tableNames;
     }
 
-    // ป๊อปอัพ "สร้าง QR โต๊ะใหม่" — เลือกจากรายชื่อ (ชื่อที่มี QR อยู่แล้วกดไม่ได้)
+    // เติมตัวเลือกโซนใน dropdown ทุกตัว
+    function zoneOptionsHtml(selected) {
+      return '<option value="">ไม่ระบุโซน</option>' + zones.map((z) =>
+        `<option value="${z.id}"${String(selected || '') === String(z.id) ? ' selected' : ''}>${esc(z.name)}</option>`).join('');
+    }
+    function syncZoneSelects() {
+      ['newQrZone', 'newNameZone'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = zoneOptionsHtml('');
+      });
+    }
+
+    // ป๊อปอัพ "สร้าง QR โต๊ะใหม่" — ช่องสี่เหลี่ยมจัตุรัส จัดกลุ่มตามโซน เรียงตามลำดับที่ตั้งไว้
     function renderNewQrList() {
       const box = document.getElementById('nameList');
       if (!tableNames.length) {
         box.innerHTML = '<div class="cat-empty">ยังไม่มีรายชื่อโต๊ะ — พิมพ์ชื่อใหม่ด้านล่างเพื่อเพิ่มและสร้าง QR ได้เลย</div>';
         return;
       }
-      box.innerHTML = tableNames.map((n) => `<div class="name-item ${n.has_qr ? '' : 'pick'}" ${n.has_qr ? '' : `data-pick="${n.id}"`}>
-        <span class="nm">${esc(n.name)}</span>
-        <span class="tag ${n.has_qr ? 'on' : ''}">${n.has_qr ? 'มี QR อยู่' : 'ว่าง — กดเพื่อสร้าง QR'}</span>
-      </div>`).join('');
+      // จัดกลุ่มตามโซน (เรียงตามลำดับที่ตั้งไว้), ชื่อที่ไม่มีโซนไปท้ายสุด
+      const groups = [];
+      const byZone = new Map();
+      tableNames.forEach((n) => {
+        const key = n.zone_id ? String(n.zone_id) : '';
+        if (!byZone.has(key)) {
+          const zone = zones.find((z) => String(z.id) === key);
+          const g = { key, label: zone ? zone.name : 'ไม่ระบุโซน', items: [] };
+          byZone.set(key, g);
+          groups.push(g);
+        }
+        byZone.get(key).items.push(n);
+      });
+      box.innerHTML = groups.map((g) => `
+        <div class="zone-group">
+          <div class="zone-label">${esc(g.label)} <span style="font-weight:600;">(${g.items.length})</span></div>
+          <div class="tile-grid">
+            ${g.items.map((n) => `<button type="button" class="tile${n.has_qr ? ' busy' : ''}" ${n.has_qr ? 'disabled' : `data-pick="${n.id}"`}>
+              <span>${esc(n.name)}</span>
+              <small>${n.has_qr ? 'มี QR อยู่' : 'กดเพื่อสร้าง QR'}</small>
+            </button>`).join('')}
+          </div>
+        </div>`).join('');
       box.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => createQr({ nameId: Number(el.dataset.pick) })));
+    }
+
+    // จัดลำดับในรายการด้วยปุ่มลูกศร (สลับกับตัวข้างเคียงแล้วบันทึกลำดับใหม่ทั้งชุด)
+    async function moveName(id, dir) {
+      const i = tableNames.findIndex((n) => Number(n.id) === Number(id));
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= tableNames.length) return;
+      const arr = tableNames.slice();
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      try {
+        await api('/api/shop/table-names/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: arr.map((n) => n.id) }) });
+        await loadTableNames();
+        renderNamesManage(); renderNewQrList();
+      } catch (e) { alert(e.message); }
+    }
+
+    async function moveZone(id, dir) {
+      const i = zones.findIndex((z) => Number(z.id) === Number(id));
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= zones.length) return;
+      const arr = zones.slice();
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      try {
+        await api('/api/shop/zones/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: arr.map((z) => z.id) }) });
+        await loadTableNames();
+        renderZones(); renderNamesManage(); renderNewQrList();
+      } catch (e) { alert(e.message); }
+    }
+
+    function renderZones() {
+      const box = document.getElementById('zoneList');
+      if (!zones.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีโซน — เพิ่มโซนด้านล่างเพื่อจัดกลุ่มโต๊ะ</div>'; return; }
+      box.innerHTML = zones.map((z, idx) => `<div class="name-item">
+        <button class="mini-btn ord-btn" data-zup="${z.id}" ${idx === 0 ? 'disabled' : ''} type="button" title="เลื่อนขึ้น">↑</button>
+        <button class="mini-btn ord-btn" data-zdown="${z.id}" ${idx === zones.length - 1 ? 'disabled' : ''} type="button" title="เลื่อนลง">↓</button>
+        <span class="nm">${esc(z.name)}</span>
+        <span class="tag">${z.table_count} โต๊ะ</span>
+        <button class="mini-btn" data-zren="${z.id}" data-name="${esc(z.name)}" type="button">เปลี่ยนชื่อ</button>
+        <button class="mini-btn danger" data-zdel="${z.id}" data-name="${esc(z.name)}" type="button">ลบ</button>
+      </div>`).join('');
+      box.querySelectorAll('[data-zup]').forEach((b) => b.addEventListener('click', () => moveZone(b.dataset.zup, -1)));
+      box.querySelectorAll('[data-zdown]').forEach((b) => b.addEventListener('click', () => moveZone(b.dataset.zdown, 1)));
+      box.querySelectorAll('[data-zren]').forEach((b) => b.addEventListener('click', async () => {
+        const name = prompt('ชื่อโซนใหม่', b.dataset.name);
+        if (!name || !name.trim()) return;
+        try {
+          const r = await api('/api/shop/zones/' + b.dataset.zren, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }) });
+          toast(r.message || 'บันทึกแล้ว');
+          await refreshNames(); renderZones();
+        } catch (e) { showErr('zoneErr', e.message); }
+      }));
+      box.querySelectorAll('[data-zdel]').forEach((b) => b.addEventListener('click', async () => {
+        if (!confirm(`ลบโซน "${b.dataset.name}" ? (โต๊ะในโซนนี้จะกลายเป็นไม่ระบุโซน)`)) return;
+        try {
+          const r = await api('/api/shop/zones/' + b.dataset.zdel, { method: 'DELETE' });
+          toast(r.message || 'ลบแล้ว');
+          await refreshNames(); renderZones();
+        } catch (e) { showErr('zoneErr', e.message); }
+      }));
     }
 
     function renderNamesManage() {
       const box = document.getElementById('namesManageList');
       if (!tableNames.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีรายชื่อโต๊ะ</div>'; return; }
-      box.innerHTML = tableNames.map((n) => `<div class="name-item">
+      box.innerHTML = tableNames.map((n, idx) => `<div class="name-item">
+        <button class="mini-btn ord-btn" data-nup="${n.id}" ${idx === 0 ? 'disabled' : ''} type="button" title="เลื่อนขึ้น">↑</button>
+        <button class="mini-btn ord-btn" data-ndown="${n.id}" ${idx === tableNames.length - 1 ? 'disabled' : ''} type="button" title="เลื่อนลง">↓</button>
         <span class="nm">${esc(n.name)}</span>
         ${n.has_qr ? '<span class="tag on">มี QR อยู่</span>' : ''}
+        <select class="zone-sel" data-nzone="${n.id}">${zoneOptionsHtml(n.zone_id)}</select>
         <button class="mini-btn danger" data-delname="${n.id}" ${n.has_qr ? 'disabled title="ยังมี QR ของชื่อนี้ใช้งานอยู่"' : ''} type="button">ลบ</button>
       </div>`).join('');
+      box.querySelectorAll('[data-nup]').forEach((b) => b.addEventListener('click', () => moveName(b.dataset.nup, -1)));
+      box.querySelectorAll('[data-ndown]').forEach((b) => b.addEventListener('click', () => moveName(b.dataset.ndown, 1)));
+      box.querySelectorAll('[data-nzone]').forEach((sel) => sel.addEventListener('change', async () => {
+        try {
+          await api('/api/shop/table-names/' + sel.dataset.nzone, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ zoneId: Number(sel.value) || 0 }) });
+          toast('ย้ายโซนแล้ว');
+          await refreshNames(); renderNamesManage(); renderNewQrList();
+        } catch (e) { showErr('namesErr', e.message); }
+      }));
       box.querySelectorAll('[data-delname]').forEach((b) => b.addEventListener('click', async () => {
         try {
           const r = await api('/api/shop/table-names/' + b.dataset.delname, { method: 'DELETE' });
           toast(r.message || 'ลบแล้ว');
-          await loadTableNames(); renderNamesManage(); renderNewQrList();
+          await refreshNames(); renderNamesManage(); renderNewQrList();
         } catch (e) { alert(e.message); }
       }));
+    }
+
+    // โหลดใหม่ + วาดทุกส่วนที่เกี่ยวกับรายชื่อ/โซน
+    async function refreshNames() {
+      await loadTableNames();
+      syncZoneSelects();
+      renderZones();
+      renderNamesManage();
+      renderNewQrList();
     }
 
     function showErr(id, msg) {
@@ -572,16 +699,13 @@
         toast(r.message || 'สร้าง QR แล้ว');
         document.getElementById('newQrName').value = '';
         await loadAll();
-        await loadTableNames();
-        renderNewQrList();
-        renderNamesManage();
+        await refreshNames();
       } catch (e) { showErr('newQrErr', e.message); }
     }
 
     document.getElementById('newQrBtn').addEventListener('click', async () => {
       try {
-        await loadTableNames();
-        renderNewQrList();
+        await refreshNames();
         showErr('newQrErr', '');
         document.getElementById('newQrName').value = '';
         document.getElementById('newQrModal').classList.add('show');
@@ -589,20 +713,32 @@
     });
     document.getElementById('newQrCreate').addEventListener('click', () => {
       const name = document.getElementById('newQrName').value.trim();
-      if (!name) { showErr('newQrErr', 'กรุณาเลือกจากรายชื่อด้านบน หรือพิมพ์ชื่อโต๊ะใหม่'); return; }
-      createQr({ code: name });
+      if (!name) { showErr('newQrErr', 'กรุณากดเลือกช่องโต๊ะด้านบน หรือพิมพ์ชื่อโต๊ะใหม่'); return; }
+      createQr({ code: name, zoneId: Number(document.getElementById('newQrZone').value) || 0 });
     });
     document.getElementById('newQrClose').addEventListener('click', () => document.getElementById('newQrModal').classList.remove('show'));
     document.getElementById('newQrModal').addEventListener('click', (e) => { if (e.target.id === 'newQrModal') e.currentTarget.classList.remove('show'); });
 
     document.getElementById('tableNamesBtn').addEventListener('click', async () => {
       try {
-        await loadTableNames();
-        renderNamesManage();
-        showErr('namesErr', '');
+        await refreshNames();
+        showErr('namesErr', ''); showErr('zoneErr', '');
         document.getElementById('newNameInput').value = '';
+        document.getElementById('newZoneInput').value = '';
         document.getElementById('namesModal').classList.add('show');
       } catch (e) { alert(e.message); }
+    });
+    document.getElementById('addZoneBtn').addEventListener('click', async () => {
+      const el = document.getElementById('newZoneInput');
+      const name = el.value.trim();
+      if (!name) { showErr('zoneErr', 'กรุณากรอกชื่อโซน'); return; }
+      showErr('zoneErr', '');
+      try {
+        const r = await api('/api/shop/zones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+        toast(r.message || 'เพิ่มโซนแล้ว');
+        el.value = '';
+        await refreshNames();
+      } catch (e) { showErr('zoneErr', e.message); }
     });
     document.getElementById('addNameBtn').addEventListener('click', async () => {
       const el = document.getElementById('newNameInput');
@@ -610,10 +746,11 @@
       if (!name) { showErr('namesErr', 'กรุณากรอกชื่อโต๊ะ'); return; }
       showErr('namesErr', '');
       try {
-        const r = await api('/api/shop/table-names', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+        const zoneId = Number(document.getElementById('newNameZone').value) || 0;
+        const r = await api('/api/shop/table-names', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, zoneId }) });
         toast(r.message || 'เพิ่มชื่อแล้ว');
         el.value = '';
-        await loadTableNames(); renderNamesManage(); renderNewQrList();
+        await refreshNames();
       } catch (e) { showErr('namesErr', e.message); }
     });
     document.getElementById('namesClose').addEventListener('click', () => document.getElementById('namesModal').classList.remove('show'));

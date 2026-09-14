@@ -354,6 +354,22 @@ async function initSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  // โต๊ะแต่ละชื่อถูกจัดเข้าโซนใด (ว่างได้ = ยังไม่จัดเข้าโซน)
+  await ensureColumn('table_names', 'zone_id', 'zone_id BIGINT NULL');
+
+  // ── โซนของร้าน (จัดกลุ่มโต๊ะ เช่น "ในร้าน", "ริมระเบียง", "ชั้น 2") ──────
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS zones (
+      id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+      shop_id    BIGINT NOT NULL,
+      name       VARCHAR(60) NOT NULL,
+      sort_order INT NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_zones_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
+      UNIQUE KEY uq_shop_zone (shop_id, name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   // ── โทเคน QR ที่ถูกลบไปแล้ว ────────────────────────────────────────────
   // เก็บไว้เป็นหลักฐาน/กันการใช้ซ้ำ: โทเคนที่เคยลบจะไม่ถูกออกให้โต๊ะใดอีกในอนาคต
   await pool.execute(`
@@ -1432,18 +1448,80 @@ async function listTableNames(shopId) {
   return rows;
 }
 
-/** ชื่อโต๊ะทั้งหมด พร้อมบอกว่าตอนนี้มี QR (โต๊ะ) ที่ใช้งานอยู่แล้วหรือยัง */
+/** ชื่อโต๊ะทั้งหมด พร้อมโซนและบอกว่าตอนนี้มี QR (โต๊ะ) ที่ใช้งานอยู่แล้วหรือยัง */
 async function listTableNamesWithQr(shopId) {
   const [rows] = await pool.execute(
-    `SELECT n.id, n.name, n.sort_order, t.id AS table_id
+    `SELECT n.id, n.name, n.sort_order, n.zone_id, z.name AS zone_name,
+            COALESCE(z.sort_order, 9999) AS zone_sort, t.id AS table_id
        FROM table_names n
+       LEFT JOIN zones z ON z.id = n.zone_id
        LEFT JOIN \`tables\` t ON t.shop_id = n.shop_id AND t.code = n.name
       WHERE n.shop_id = ?
-      ORDER BY n.sort_order ASC, n.id ASC`,
+      ORDER BY COALESCE(z.sort_order, 9999) ASC, n.sort_order ASC, n.id ASC`,
     [shopId]
   );
   return rows;
 }
+
+/** กำหนดโซนให้ชื่อโต๊ะ (null = ไม่ระบุโซน) */
+async function setTableNameZone(id, shopId, zoneId) {
+  await pool.execute('UPDATE table_names SET zone_id = ? WHERE id = ? AND shop_id = ?', [zoneId || null, id, shopId]);
+}
+
+/** ตั้งลำดับการแสดงของชื่อโต๊ะตามรายการ id ที่ส่งมา (ลำดับที่ 1,2,3, ...) */
+async function reorderTableNames(shopId, ids) {
+  for (let i = 0; i < ids.length; i++) {
+    await pool.execute('UPDATE table_names SET sort_order = ? WHERE id = ? AND shop_id = ?', [i + 1, Number(ids[i]) || 0, shopId]);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// โซน (จัดกลุ่มโต๊ะ)
+// ---------------------------------------------------------------------------
+async function listZones(shopId) {
+  const [rows] = await pool.execute(
+    `SELECT z.id, z.name, z.sort_order,
+            (SELECT COUNT(*) FROM table_names n WHERE n.zone_id = z.id) AS table_count
+       FROM zones z
+      WHERE z.shop_id = ?
+      ORDER BY z.sort_order ASC, z.id ASC`,
+    [shopId]
+  );
+  return rows.map((z) => ({ ...z, table_count: Number(z.table_count) || 0 }));
+}
+
+async function findZoneById(id, shopId) {
+  const [rows] = await pool.execute('SELECT * FROM zones WHERE id = ? AND shop_id = ?', [id, shopId]);
+  return rows[0] || null;
+}
+
+async function findZoneByName(shopId, name) {
+  const [rows] = await pool.execute('SELECT * FROM zones WHERE shop_id = ? AND name = ?', [shopId, name]);
+  return rows[0] || null;
+}
+
+async function createZone({ shopId, name }) {
+  const [rows] = await pool.execute('SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM zones WHERE shop_id = ?', [shopId]);
+  const [result] = await pool.execute('INSERT INTO zones (shop_id, name, sort_order) VALUES (?, ?, ?)', [shopId, name, Number(rows[0].n) || 1]);
+  return Number(result.insertId);
+}
+
+async function renameZone(id, shopId, name) {
+  await pool.execute('UPDATE zones SET name = ? WHERE id = ? AND shop_id = ?', [name, id, shopId]);
+}
+
+async function deleteZone(id, shopId) {
+  // ชื่อโต๊ะในโซนนี้จะกลายเป็น "ไม่ระบุโซน" (ไม่ลบชื่อทิ้ง)
+  await pool.execute('UPDATE table_names SET zone_id = NULL WHERE zone_id = ? AND shop_id = ?', [id, shopId]);
+  await pool.execute('DELETE FROM zones WHERE id = ? AND shop_id = ?', [id, shopId]);
+}
+
+async function reorderZones(shopId, ids) {
+  for (let i = 0; i < ids.length; i++) {
+    await pool.execute('UPDATE zones SET sort_order = ? WHERE id = ? AND shop_id = ?', [i + 1, Number(ids[i]) || 0, shopId]);
+  }
+}
+
 
 async function findTableNameById(id, shopId) {
   const [rows] = await pool.execute('SELECT * FROM table_names WHERE id = ? AND shop_id = ?', [id, shopId]);
@@ -1814,6 +1892,15 @@ module.exports = {
   deleteTable,
   listTableNames,
   listTableNamesWithQr,
+  setTableNameZone,
+  reorderTableNames,
+  listZones,
+  findZoneById,
+  findZoneByName,
+  createZone,
+  renameZone,
+  deleteZone,
+  reorderZones,
   findTableNameById,
   findTableNameByName,
   ensureTableName,
