@@ -208,7 +208,7 @@ function buildPackagePurchasedEmail({ packageName, durationMonths, amount, start
     : '';
   const featureText = features.map((d) => '- ' + [d.heading, d.text].filter(Boolean).join(' — ')).join('\n');
   const cta = baseUrl
-    ? `<p style="margin:24px 0;text-align:center;"><a href="${baseUrl}/shop/menu.html" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 30px;border-radius:10px;">ไปที่ร้านค้าของฉัน</a></p>`
+    ? `<p style="margin:24px 0;text-align:center;"><a href="${baseUrl}/shop/orders.html" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 30px;border-radius:10px;">ไปที่ร้านค้าของฉัน</a></p>`
     : '';
 
   const htmlBody = `
@@ -232,7 +232,7 @@ function buildPackagePurchasedEmail({ packageName, durationMonths, amount, start
     ...rows.map(([k, v]) => k + ': ' + String(v).replace(/<[^>]+>/g, '')),
     '',
     ...(featureText ? ['รายละเอียดแพ็กเกจ', featureText, ''] : []),
-    ...(baseUrl ? ['ไปที่ร้านค้าของฉัน: ' + baseUrl + '/shop/menu.html', ''] : []),
+    ...(baseUrl ? ['ไปที่ร้านค้าของฉัน: ' + baseUrl + '/shop/orders.html', ''] : []),
     'ดูรายการซื้อทั้งหมดได้ที่หน้าบัญชีของฉัน → ประวัติการชำระเงิน',
   ].join('\n');
 

@@ -28,9 +28,9 @@ const item = (href, label) => `      <a class="menu-item" href="${href}">
 
 function shopMenuHtml(role) {
   if (!role || role === 'admin' || role === 'owner') return '';
-  // เจ้าของร้านเห็น 2 เมนู: จัดการร้าน + ซื้อเพิ่ม/ต่ออายุแพ็กเกจ
+  // เจ้าของร้านเห็น 2 เมนู: เข้าร้าน (เริ่มที่หน้าสั่งอาหาร) + ซื้อเพิ่ม/ต่ออายุแพ็กเกจ
   const links = isShop(role)
-    ? item('/shop/menu.html', 'ร้านค้าของฉัน') + '\n' + item('/shop/purchase.html', 'ต่ออายุแพ็กเกจ')
+    ? item('/shop/orders.html', 'ร้านค้าของฉัน') + '\n' + item('/shop/purchase.html', 'ต่ออายุแพ็กเกจ')
     : item('/shop/purchase.html', 'ซื้อแพ็กเกจร้านค้า');
   return `      <div class="menu-title">ร้านค้า</div>\n${links}`;
 }

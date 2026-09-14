@@ -22,7 +22,8 @@
         if (role === 'admin' || role === 'owner') { location.replace('/admin/'); return; }
         if (role !== 'shop') { location.replace('/shop/purchase.html'); return; }
         const s = await (await fetch('/api/shop/me')).json();
-        location.replace(s.ok && s.shop ? '/shop/menu.html' : '/shop/setup.html');
+        // เข้าร้านแล้วเปิด "หน้าสั่งอาหาร" เป็นหน้าเริ่มต้น (ถ้ายังไม่มีข้อมูลร้าน ให้ไปตั้งค่าก่อน)
+        location.replace(s.ok && s.shop ? '/shop/orders.html' : '/shop/setup.html');
       } catch {
         location.replace('/shop/purchase.html');
       }
