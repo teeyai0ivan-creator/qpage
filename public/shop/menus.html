@@ -60,16 +60,15 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
     @media (max-width: 620px) { .grid-2 { grid-template-columns: 1fr; } }
 
-    /* ปุ่มในแถวหมวดย่อย — เล็กกว่าปุ่มหมวดหลักเล็กน้อย */
-    #fSubRow .cat-pick { font-size: 12px; padding: 6px 11px; gap: 6px; }
-    #fSubRow .cat-pick .cat-count { font-size: 10px; padding: 2px 6px; }
-
-    /* ปุ่ม "ทั้งหมด" ของแถวหมวดย่อย — มาร์คด้วยสีเหลืองให้ต่างจากปุ่ม "ทั้งหมด" แถวหมวดหลัก */
-    .cat-pick.yellow { background: var(--warning-bg); border-color: var(--warning-border); color: var(--warning); }
-    .cat-pick.yellow:hover { background: var(--warning-bg); filter: brightness(.97); }
-    .cat-pick.yellow .cat-count { background: rgba(245, 179, 1, .22); color: var(--warning); }
-    .cat-pick.yellow.on { background: #f5b301; border-color: transparent; color: #3d2c00; box-shadow: 0 6px 14px rgba(245, 179, 1, .32); }
-    .cat-pick.yellow.on .cat-count { background: rgba(0, 0, 0, .14); color: #3d2c00; }
+    /* แถวหมวดย่อย — ทุกปุ่มเป็นสีเหลือง (แถวหมวดหลักเป็นสีม่วง) และเล็กกว่าหมวดหลักเล็กน้อย */
+    #fSubRow .cat-pick {
+      font-size: 12px; padding: 6px 11px; gap: 6px;
+      background: var(--warning-bg); border-color: var(--warning-border); color: var(--warning);
+    }
+    #fSubRow .cat-pick:hover { background: var(--warning-bg); filter: brightness(.97); }
+    #fSubRow .cat-pick .cat-count { font-size: 10px; padding: 2px 6px; background: rgba(245, 179, 1, .22); color: var(--warning); }
+    #fSubRow .cat-pick.on { background: #f5b301; border-color: transparent; color: #3d2c00; font-weight: 800; box-shadow: 0 6px 14px rgba(245, 179, 1, .32); }
+    #fSubRow .cat-pick.on .cat-count { background: rgba(0, 0, 0, .14); color: #3d2c00; }
 
     @media print { .site-nav, .xl-top-actions, .cat-pick-row { display: none !important; } .xl-wrap { max-height: none; border: none; } }
   </style>
