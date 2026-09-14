@@ -108,7 +108,7 @@
         </select>
         <div class="xl-btn-pair">
           <button class="mini-btn" id="csvBtn" type="button">⬇ ออกรายการ (CSV)</button>
-          <a class="mini-btn" href="/shop/menu.html">＋ เพิ่มเมนูใหม่</a>
+          <button class="mini-btn" id="addMenuBtn" type="button">＋ เพิ่มเมนูใหม่</button>
         </div>
       </div>
     </div>
@@ -435,20 +435,25 @@
       el.innerHTML = opts.join('');
       el.value = selected ? String(selected) : '';
     }
-    function openEdit(id) {
-      const m = state.menus.find((x) => Number(x.id) === Number(id));
-      if (!m) return;
-      editMenu = m;
-      editImageUrl = m.image_url || '';
-      document.getElementById('editSub').textContent = '#' + m.id + ' · ' + catPath(m.category_id);
-      document.getElementById('eName').value = m.name || '';
-      document.getElementById('ePrice').value = Number(m.price) || 0;
-      document.getElementById('eDesc').value = m.description || '';
-      document.getElementById('eAvail').checked = Number(m.available) === 1;
+    // โชว์กล่องเดียวกันทั้ง "แก้ไขเมนู" และ "เพิ่มเมนูใหม่" — editMenu = null แปลว่าโหมดเพิ่ม
+    function openMenuForm(menu, presetCat) {
+      editMenu = menu || null;
+      const adding = !menu;
+      editImageUrl = menu ? (menu.image_url || '') : '';
+      document.getElementById('editTitle').textContent = adding ? 'เพิ่มเมนูใหม่' : 'แก้ไขเมนู';
+      document.getElementById('editSub').textContent = adding
+        ? 'กรอกข้อมูลเมนูแล้วกด “เพิ่มเมนู” ได้เลย'
+        : '#' + menu.id + ' · ' + catPath(menu.category_id);
+      document.getElementById('eName').value = menu ? (menu.name || '') : '';
+      document.getElementById('ePrice').value = menu ? (Number(menu.price) || 0) : '';
+      document.getElementById('eDesc').value = menu ? (menu.description || '') : '';
+      document.getElementById('eAvail').checked = menu ? Number(menu.available) === 1 : true;
       document.getElementById('eImgPreview').src = editImageUrl || IMG_PLACEHOLDER;
       document.getElementById('eImgFile').value = '';
-      renderEditCatOptions(m.category_id);
-      const linked = state.menuGroups.filter((g) => Number(g.menu_id) === Number(m.id)).map((g) => Number(g.group_id));
+      document.getElementById('eSave').textContent = adding ? 'เพิ่มเมนู' : 'บันทึก';
+      // ตอนเพิ่ม: ตั้งหมวดหมู่ให้ตามที่กำลังกรองอยู่ (ถ้ามี) เพื่อลดขั้นตอน
+      renderEditCatOptions(menu ? menu.category_id : (presetCat || ''));
+      const linked = menu ? state.menuGroups.filter((g) => Number(g.menu_id) === Number(menu.id)).map((g) => Number(g.group_id)) : [];
       const box = document.getElementById('eGroupPick');
       box.innerHTML = state.optionGroups.length
         ? state.optionGroups.map((g) => `<label style="display:flex;gap:7px;align-items:center;"><input type="checkbox" class="egpick" value="${g.id}"${linked.includes(Number(g.id)) ? ' checked' : ''}> <span>${esc(g.name)} <small style="color:var(--muted);">(${g.required ? 'บังคับ' : 'ไม่บังคับ'}${g.multi ? ', หลายอย่าง' : ''})</small></span></label>`).join('')
@@ -456,12 +461,17 @@
       editErr('');
       document.getElementById('editModal').classList.add('show');
     }
+    function openEdit(id) {
+      const m = state.menus.find((x) => Number(x.id) === Number(id));
+      if (m) openMenuForm(m);
+    }
+    function openAdd() { openMenuForm(null, subFilterValue || catFilterValue || ''); }
     function closeEdit() {
       document.getElementById('editModal').classList.remove('show');
       editMenu = null;
     }
     async function saveEdit() {
-      if (!editMenu) return;
+      const editing = !!editMenu;
       const name = document.getElementById('eName').value.trim();
       if (!name) { editErr('กรุณากรอกชื่อเมนู'); return; }
       const cat = document.getElementById('eCat').value;
@@ -469,20 +479,25 @@
       btn.disabled = true; btn.classList.add('loading');
       editErr('');
       try {
-        await api('/api/shop/menus/' + editMenu.id, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name,
-            categoryId: cat ? Number(cat) : null,
-            price: Number(document.getElementById('ePrice').value) || 0,
-            description: document.getElementById('eDesc').value.trim(),
-            imageUrl: editImageUrl,
-            available: document.getElementById('eAvail').checked,
-          }),
-        });
+        const payload = {
+          name,
+          categoryId: cat ? Number(cat) : null,
+          price: Number(document.getElementById('ePrice').value) || 0,
+          description: document.getElementById('eDesc').value.trim(),
+          imageUrl: editImageUrl,
+          available: document.getElementById('eAvail').checked,
+        };
+        let menuId;
+        if (editing) {
+          await api('/api/shop/menus/' + editMenu.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          menuId = editMenu.id;
+        } else {
+          const created = await api('/api/shop/menus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          menuId = created.id;
+        }
         const groupIds = Array.from(document.querySelectorAll('.egpick:checked')).map((cb) => Number(cb.value));
-        await api('/api/shop/menus/' + editMenu.id + '/groups', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupIds }) });
-        toast('บันทึกเมนูแล้ว');
+        await api('/api/shop/menus/' + menuId + '/groups', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupIds }) });
+        toast(editing ? 'บันทึกเมนูแล้ว' : 'เพิ่มเมนูแล้ว');
         closeEdit();
         await load();
       } catch (e) {
@@ -492,6 +507,7 @@
         btn.disabled = false; btn.classList.remove('loading');
       }
     }
+    document.getElementById('addMenuBtn').addEventListener('click', openAdd);
     document.getElementById('eCancel').addEventListener('click', closeEdit);
     document.getElementById('eSave').addEventListener('click', saveEdit);
     document.getElementById('editModal').addEventListener('click', (e) => { if (e.target.id === 'editModal') closeEdit(); });
