@@ -64,11 +64,11 @@ app.use(orderRoutes);
 app.use(notifyRoutes);
 app.use(publicRoutes);
 
-// ไฟล์หน้าเว็บ (.html) บังคับให้ตรวจสอบของใหม่ทุกครั้ง (no-cache) — กันเบราว์เซอร์ (โดยเฉพาะมือถือ)
-// ใช้หน้าเก่าที่ cache ไว้หลัง deploy ทำให้ผู้ใช้เห็นพฤติกรรมเก่า/ปุ่มไม่มี
+// ไฟล์หน้าเว็บ (.html) และไฟล์ CSS/JS บังคับให้ตรวจสอบของใหม่ทุกครั้ง (no-cache) — กันเบราว์เซอร์
+// (โดยเฉพาะมือถือ) ใช้หน้าเก่า/สไตล์เก่าที่ cache ไว้หลัง deploy ทำให้ผู้ใช้เห็นพฤติกรรมเก่า
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   setHeaders(res, filePath) {
-    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
   },
 }));
 
