@@ -109,6 +109,10 @@
             <button class="mini-btn" id="tdRename" type="button">เปลี่ยนชื่อ</button>
             <button class="mini-btn danger" id="tdDelete" type="button">ปิดใช้งาน QR</button>
           </div>
+          <div class="acts" style="align-items:center;">
+            <label for="tdZoneSel" style="font-size:13px;color:var(--muted);font-weight:600;">โซน</label>
+            <select class="mini-input" id="tdZoneSel" style="flex:1;min-width:140px;" title="ย้ายโต๊ะนี้ไปโซนอื่น"></select>
+          </div>
           <p style="font-size:12px;color:var(--muted);text-align:center;margin:0;">QR นี้ใช้ได้เฉพาะโต๊ะนี้ · ปิดใช้งานแล้วสแกนไม่ได้อีก และใช้ซ้ำไม่ได้ — แต่ยังดูย้อนหลังได้ในหน้า “ประวัติ”</p>
         </div>
 
@@ -198,12 +202,38 @@
       }));
     }
 
+    let zoneNameId = 0;   // id ของชื่อโต๊ะในแคตตาล็อก (ใช้ย้ายโซน)
+
     async function load() {
-      const [data, open] = await Promise.all([api('/api/shop/tables'), api('/api/shop/orders/open')]);
+      const [data, open, names] = await Promise.all([api('/api/shop/tables'), api('/api/shop/orders/open'), api('/api/shop/table-names')]);
       table = (data.tables || []).find((t) => Number(t.id) === tableId) || null;
       bill = table ? ((open.orders || []).find((o) => Number(o.table_id) === table.id) || null) : null;
+      renderZoneSelect(table, names);
       render();
     }
+
+    // ตัวเลือกโซนของโต๊ะนี้ (ย้ายได้ทีหลัง โดยไม่ต้องปิด QR แล้วสร้างใหม่)
+    function renderZoneSelect(t, data) {
+      const sel = document.getElementById('tdZoneSel');
+      if (!sel) return;
+      const mine = t ? (data.names || []).find((n) => Number(n.table_id) === Number(t.id) || n.name === t.code) : null;
+      zoneNameId = mine ? mine.id : 0;
+      const zones = data.zones || [];
+      sel.innerHTML = '<option value="">ไม่ระบุโซน</option>' + zones.map((z) =>
+        `<option value="${z.id}"${mine && String(mine.zone_id || '') === String(z.id) ? ' selected' : ''}>${esc(z.name)}</option>`).join('');
+      sel.disabled = !zoneNameId || !zones.length;
+      sel.title = zoneNameId ? 'ย้ายโต๊ะนี้ไปโซนอื่น' : (zones.length ? 'ย้ายโซนไม่ได้' : 'ยังไม่มีโซน — เพิ่มโซนได้ที่หน้าสั่งอาหาร');
+    }
+    document.getElementById('tdZoneSel').addEventListener('change', async (e) => {
+      if (!zoneNameId) return;
+      const sel = e.currentTarget;
+      sel.disabled = true;
+      try {
+        await putJson('/api/shop/table-names/' + zoneNameId, { zoneId: Number(sel.value) || 0 });
+        toast('ย้ายโซนแล้ว');
+        await load();
+      } catch (err) { alert(err.message); } finally { sel.disabled = false; }
+    });
 
     document.getElementById('tdPrint').addEventListener('click', () => {
       if (table) window.open('/shop/label.html?table=' + table.id, '_blank');

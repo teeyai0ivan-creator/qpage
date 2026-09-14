@@ -138,7 +138,7 @@
 
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;">
         <button class="mini-btn primary" id="newQrBtn" type="button">＋ เพิ่มโต๊ะใหม่</button>
-        <button class="mini-btn" id="tableNamesBtn" type="button">รายชื่อโต๊ะ &amp; โซน</button>
+        <button class="mini-btn" id="tableNamesBtn" type="button">เพิ่มโซน</button>
       </div>
       <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">กดช่องที่ยังไม่มี QR เพื่อออก QR ให้โต๊ะนั้น · กดช่องที่มี QR แล้วเพื่อดู/พิมพ์ QR และดูบิลปัจจุบัน</p>
       <div id="tableGrid" class="tile-wrap"></div>
@@ -151,48 +151,43 @@
   </div>
     </div>
 
-  <!-- Modal สร้าง QR โต๊ะใหม่ (เลือกรายชื่อโต๊ะเป็นช่องสี่เหลี่ยม) -->
+  <!-- ป๊อปอัพ: เพิ่มโต๊ะใหม่ (ตั้งชื่อโต๊ะ + เลือกโซนที่จะจัดโต๊ะนี้เข้าไป) -->
   <div class="modal-overlay" id="newQrModal">
-    <div class="modal wide">
-      <h3>สร้าง QR โต๊ะใหม่</h3>
-      <p class="sub">กดช่องของโต๊ะที่ต้องการออก QR — ช่องที่ขึ้น “มี QR อยู่” คือโต๊ะนั้นมี QR ใช้งานอยู่แล้ว<br>
-        ลำดับและตำแหน่งของช่องจัดได้ที่ปุ่ม “รายชื่อโต๊ะ”</p>
-      <div id="nameList" class="tile-wrap"></div>
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
-        <input class="mini-input" id="newQrName" placeholder="พิมพ์ชื่อโต๊ะใหม่ เช่น A5" style="flex:1;min-width:150px;" maxlength="30" autocomplete="off">
-        <select class="mini-input" id="newQrZone"><option value="">ไม่ระบุโซน</option></select>
-        <button class="mini-btn primary" id="newQrCreate" type="button">สร้าง QR</button>
+    <div class="modal">
+      <h3>เพิ่มโต๊ะใหม่</h3>
+      <p class="sub">ตั้งชื่อโต๊ะ แล้วเลือกโซนที่ต้องการจัดโต๊ะนี้เข้าไป — ระบบจะออก QR ให้โต๊ะนี้ทันที</p>
+      <div class="field">
+        <label for="newQrName">ชื่อโต๊ะ *</label>
+        <div class="input-wrap">
+          <input type="text" id="newQrName" list="nameSuggest" placeholder="เช่น 1, A2, โต๊ะริมหน้าต่าง" maxlength="30" autocomplete="off">
+        </div>
+        <datalist id="nameSuggest"></datalist>
+      </div>
+      <div class="field">
+        <label for="newQrZone">โซน</label>
+        <select class="mini-input" id="newQrZone" style="width:100%;"><option value="">ไม่ระบุโซน</option></select>
       </div>
       <div class="error-msg" id="newQrErr" style="display:none;"></div>
-      <p style="font-size:12px;color:var(--muted);margin-top:12px;">QR ที่ลบไปแล้วจะถูกยกเลิกถาวร — สร้างใหม่จะได้ QR ใหม่เสมอ ใช้ซ้ำกับของเดิมไม่ได้</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px;">QR ที่ปิดใช้งานไปแล้วจะถูกยกเลิกถาวร — สร้างใหม่จะได้ QR ใหม่เสมอ ใช้ซ้ำกับของเดิมไม่ได้</p>
       <div class="modal-actions">
         <button class="mini-btn" id="newQrClose" type="button">ปิด</button>
+        <button class="mini-btn primary" id="newQrCreate" type="button">＋ เพิ่มโต๊ะใหม่</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal รายชื่อโต๊ะ + โซน (จัดโซนและจัดลำดับได้) -->
+  <!-- ป๊อปอัพ: เพิ่มโซน (จัดการโซนเท่านั้น) -->
   <div class="modal-overlay" id="namesModal">
-    <div class="modal wide">
-      <h3>รายชื่อโต๊ะ &amp; โซน</h3>
-      <p class="sub">สร้างโซนเพื่อจัดกลุ่มโต๊ะ (เช่น ในร้าน / ริมระเบียง / ชั้น 2) แล้วจัดลำดับการแสดงของโซนและของโต๊ะด้วยปุ่มลูกศร — ลำดับนี้ใช้กับหน้าจอ “สร้าง QR โต๊ะใหม่”</p>
+    <div class="modal">
+      <h3>เพิ่มโซน</h3>
+      <p class="sub">สร้างโซนเพื่อจัดกลุ่มโต๊ะ (เช่น ในร้าน / ริมระเบียง / ชั้น 2) แล้วจัดลำดับการแสดงของโซนด้วยปุ่มลูกศร</p>
 
-      <div class="zone-head">โซน</div>
       <div id="zoneList" class="name-list"></div>
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-        <input class="mini-input" id="newZoneInput" placeholder="เพิ่มโซน เช่น ในร้าน, ริมระเบียง" style="flex:1;min-width:150px;" maxlength="60" autocomplete="off">
-        <button class="mini-btn" id="addZoneBtn" type="button">เพิ่มโซน</button>
+        <input class="mini-input" id="newZoneInput" placeholder="ชื่อโซนใหม่ เช่น ริมระเบียง" style="flex:1;min-width:150px;" maxlength="60" autocomplete="off">
+        <button class="mini-btn primary" id="addZoneBtn" type="button">เพิ่มโซน</button>
       </div>
       <div class="error-msg" id="zoneErr" style="display:none;"></div>
-
-      <div class="zone-head" style="margin-top:18px;">โต๊ะ</div>
-      <div id="namesManageList" class="name-list"></div>
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-        <input class="mini-input" id="newNameInput" placeholder="เพิ่มชื่อโต๊ะ เช่น 1, A2" style="flex:1;min-width:130px;" maxlength="30" autocomplete="off">
-        <select class="mini-input" id="newNameZone"><option value="">ไม่ระบุโซน</option></select>
-        <button class="mini-btn primary" id="addNameBtn" type="button">เพิ่มชื่อ</button>
-      </div>
-      <div class="error-msg" id="namesErr" style="display:none;"></div>
 
       <div class="modal-actions">
         <button class="mini-btn" id="namesClose" type="button">ปิด</button>
@@ -548,63 +543,21 @@
       return tableNames;
     }
 
-    // เติมตัวเลือกโซนใน dropdown ทุกตัว
+    // เติมตัวเลือกโซนใน dropdown
     function zoneOptionsHtml(selected) {
       return '<option value="">ไม่ระบุโซน</option>' + zones.map((z) =>
         `<option value="${z.id}"${String(selected || '') === String(z.id) ? ' selected' : ''}>${esc(z.name)}</option>`).join('');
     }
     function syncZoneSelects() {
-      ['newQrZone', 'newNameZone'].forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = zoneOptionsHtml('');
-      });
+      const el = document.getElementById('newQrZone');
+      if (el) el.innerHTML = zoneOptionsHtml('');
     }
 
-    // ป๊อปอัพ "สร้าง QR โต๊ะใหม่" — ช่องสี่เหลี่ยมจัตุรัส จัดกลุ่มตามโซน เรียงตามลำดับที่ตั้งไว้
-    function renderNewQrList() {
-      const box = document.getElementById('nameList');
-      if (!tableNames.length) {
-        box.innerHTML = '<div class="cat-empty">ยังไม่มีรายชื่อโต๊ะ — พิมพ์ชื่อใหม่ด้านล่างเพื่อเพิ่มและสร้าง QR ได้เลย</div>';
-        return;
-      }
-      // จัดกลุ่มตามโซน (เรียงตามลำดับที่ตั้งไว้), ชื่อที่ไม่มีโซนไปท้ายสุด
-      const groups = [];
-      const byZone = new Map();
-      tableNames.forEach((n) => {
-        const key = n.zone_id ? String(n.zone_id) : '';
-        if (!byZone.has(key)) {
-          const zone = zones.find((z) => String(z.id) === key);
-          const g = { key, label: zone ? zone.name : 'ไม่ระบุโซน', items: [] };
-          byZone.set(key, g);
-          groups.push(g);
-        }
-        byZone.get(key).items.push(n);
-      });
-      box.innerHTML = groups.map((g) => `
-        <div class="zone-group">
-          <div class="zone-label">${esc(g.label)} <span style="font-weight:600;">(${g.items.length})</span></div>
-          <div class="tile-grid">
-            ${g.items.map((n) => `<button type="button" class="tile${n.has_qr ? ' busy' : ''}" ${n.has_qr ? 'disabled' : `data-pick="${n.id}"`}>
-              <span>${esc(n.name)}</span>
-              <small>${n.has_qr ? 'มี QR อยู่' : 'กดเพื่อสร้าง QR'}</small>
-            </button>`).join('')}
-          </div>
-        </div>`).join('');
-      box.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => createQr({ nameId: Number(el.dataset.pick) }, el.querySelector('span').textContent.trim())));
-    }
-
-    // จัดลำดับในรายการด้วยปุ่มลูกศร (สลับกับตัวข้างเคียงแล้วบันทึกลำดับใหม่ทั้งชุด)
-    async function moveName(id, dir) {
-      const i = tableNames.findIndex((n) => Number(n.id) === Number(id));
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= tableNames.length) return;
-      const arr = tableNames.slice();
-      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
-      try {
-        await api('/api/shop/table-names/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: arr.map((n) => n.id) }) });
-        await loadTableNames();
-        renderNamesManage(); renderNewQrList();
-      } catch (e) { alert(e.message); }
+    // ชื่อโต๊ะที่เคยมีอยู่ (รวมชื่อที่ QR ถูกปิดใช้งานไปแล้ว) — ใช้เป็นคำแนะนำให้พิมพ์ซ้ำได้โดยไม่ต้องจำ
+    function renderNameSuggest() {
+      const box = document.getElementById('nameSuggest');
+      if (!box) return;
+      box.innerHTML = tableNames.map((n) => `<option value="${esc(n.name)}"></option>`).join('');
     }
 
     async function moveZone(id, dir) {
@@ -616,7 +569,7 @@
       try {
         await api('/api/shop/zones/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: arr.map((z) => z.id) }) });
         await loadTableNames();
-        renderZones(); renderNamesManage(); renderNewQrList();
+        renderZones(); renderNameSuggest();
       } catch (e) { alert(e.message); }
     }
 
@@ -652,42 +605,12 @@
       }));
     }
 
-    function renderNamesManage() {
-      const box = document.getElementById('namesManageList');
-      if (!tableNames.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีรายชื่อโต๊ะ</div>'; return; }
-      box.innerHTML = tableNames.map((n, idx) => `<div class="name-item">
-        <button class="mini-btn ord-btn" data-nup="${n.id}" ${idx === 0 ? 'disabled' : ''} type="button" title="เลื่อนขึ้น">↑</button>
-        <button class="mini-btn ord-btn" data-ndown="${n.id}" ${idx === tableNames.length - 1 ? 'disabled' : ''} type="button" title="เลื่อนลง">↓</button>
-        <span class="nm">${esc(n.name)}</span>
-        ${n.has_qr ? '<span class="tag on">มี QR อยู่</span>' : ''}
-        <select class="zone-sel" data-nzone="${n.id}">${zoneOptionsHtml(n.zone_id)}</select>
-        <button class="mini-btn danger" data-delname="${n.id}" ${n.has_qr ? 'disabled title="ยังมี QR ของชื่อนี้ใช้งานอยู่"' : ''} type="button">ลบ</button>
-      </div>`).join('');
-      box.querySelectorAll('[data-nup]').forEach((b) => b.addEventListener('click', () => moveName(b.dataset.nup, -1)));
-      box.querySelectorAll('[data-ndown]').forEach((b) => b.addEventListener('click', () => moveName(b.dataset.ndown, 1)));
-      box.querySelectorAll('[data-nzone]').forEach((sel) => sel.addEventListener('change', async () => {
-        try {
-          await api('/api/shop/table-names/' + sel.dataset.nzone, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ zoneId: Number(sel.value) || 0 }) });
-          toast('ย้ายโซนแล้ว');
-          await refreshNames(); renderNamesManage(); renderNewQrList();
-        } catch (e) { showErr('namesErr', e.message); }
-      }));
-      box.querySelectorAll('[data-delname]').forEach((b) => b.addEventListener('click', async () => {
-        try {
-          const r = await api('/api/shop/table-names/' + b.dataset.delname, { method: 'DELETE' });
-          toast(r.message || 'ลบแล้ว');
-          await refreshNames(); renderNamesManage(); renderNewQrList();
-        } catch (e) { alert(e.message); }
-      }));
-    }
-
-    // โหลดใหม่ + วาดทุกส่วนที่เกี่ยวกับรายชื่อ/โซน
+    // โหลดใหม่ + วาดทุกส่วนที่เกี่ยวกับโซน/รายชื่อโต๊ะ
     async function refreshNames() {
       await loadTableNames();
       syncZoneSelects();
       renderZones();
-      renderNamesManage();
-      renderNewQrList();
+      renderNameSuggest();
     }
 
     function showErr(id, msg) {
@@ -722,17 +645,17 @@
     });
     document.getElementById('newQrCreate').addEventListener('click', () => {
       const name = document.getElementById('newQrName').value.trim();
-      if (!name) { showErr('newQrErr', 'กรุณากดเลือกช่องโต๊ะด้านบน หรือพิมพ์ชื่อโต๊ะใหม่'); return; }
-      createQr({ code: name, zoneId: Number(document.getElementById('newQrZone').value) || 0 }, name + ' (ใหม่)');
+      if (!name) { showErr('newQrErr', 'กรุณากรอกชื่อโต๊ะ'); return; }
+      createQr({ code: name, zoneId: Number(document.getElementById('newQrZone').value) || 0 }, name);
     });
+    document.getElementById('newQrName').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('newQrCreate').click(); } });
     document.getElementById('newQrClose').addEventListener('click', () => document.getElementById('newQrModal').classList.remove('show'));
     document.getElementById('newQrModal').addEventListener('click', (e) => { if (e.target.id === 'newQrModal') e.currentTarget.classList.remove('show'); });
 
     document.getElementById('tableNamesBtn').addEventListener('click', async () => {
       try {
         await refreshNames();
-        showErr('namesErr', ''); showErr('zoneErr', '');
-        document.getElementById('newNameInput').value = '';
+        showErr('zoneErr', '');
         document.getElementById('newZoneInput').value = '';
         document.getElementById('namesModal').classList.add('show');
       } catch (e) { alert(e.message); }
@@ -748,19 +671,6 @@
         el.value = '';
         await refreshNames();
       } catch (e) { showErr('zoneErr', e.message); }
-    });
-    document.getElementById('addNameBtn').addEventListener('click', async () => {
-      const el = document.getElementById('newNameInput');
-      const name = el.value.trim();
-      if (!name) { showErr('namesErr', 'กรุณากรอกชื่อโต๊ะ'); return; }
-      showErr('namesErr', '');
-      try {
-        const zoneId = Number(document.getElementById('newNameZone').value) || 0;
-        const r = await api('/api/shop/table-names', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, zoneId }) });
-        toast(r.message || 'เพิ่มชื่อแล้ว');
-        el.value = '';
-        await refreshNames();
-      } catch (e) { showErr('namesErr', e.message); }
     });
     document.getElementById('namesClose').addEventListener('click', () => document.getElementById('namesModal').classList.remove('show'));
     document.getElementById('namesModal').addEventListener('click', (e) => { if (e.target.id === 'namesModal') e.currentTarget.classList.remove('show'); });
