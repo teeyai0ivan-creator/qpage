@@ -52,6 +52,9 @@
     </aside>
 
     <main class="admin-main">
+  <button class="menu-toggle" id="menuToggle" type="button" aria-label="เปิด/ปิดเมนู" aria-expanded="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
       <div class="topbar">
         <div>
           <h1>แพ็กเกจร้านค้า</h1>
@@ -346,5 +349,6 @@
     loadMe();
     loadPackages().catch((err) => showToast(ICON_ALERT + esc(err.message)));
   </script>
+  <script src="/js/side-menu.js" data-key="qpage_admin_menu" data-panel=".admin-sidebar"></script>
 </body>
 </html>
