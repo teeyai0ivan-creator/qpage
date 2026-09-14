@@ -3,13 +3,769 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ตั้งข้อมูลร้าน | ระบบสมาชิก</title>
+  <title>ตั้งค่าระบบ | ระบบสมาชิก</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
-  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
-</head>
+  <script src="/js/shop-ui.js"></script>
+  <style>
+ 
+ 
+<
+s
+t
+y
+l
+e
+>
+
+
+ 
+ 
+ 
+ 
+.
+s
+e
+t
+-
+c
+a
+r
+d
+ 
+{
+ 
+b
+o
+r
+d
+e
+r
+:
+ 
+1
+p
+x
+ 
+s
+o
+l
+i
+d
+ 
+v
+a
+r
+(
+-
+-
+b
+o
+r
+d
+e
+r
+)
+;
+ 
+b
+o
+r
+d
+e
+r
+-
+r
+a
+d
+i
+u
+s
+:
+ 
+v
+a
+r
+(
+-
+-
+r
+a
+d
+i
+u
+s
+)
+;
+ 
+p
+a
+d
+d
+i
+n
+g
+:
+ 
+1
+6
+p
+x
+;
+ 
+b
+a
+c
+k
+g
+r
+o
+u
+n
+d
+:
+ 
+v
+a
+r
+(
+-
+-
+s
+u
+r
+f
+a
+c
+e
+-
+2
+)
+;
+ 
+m
+a
+r
+g
+i
+n
+-
+b
+o
+t
+t
+o
+m
+:
+ 
+1
+4
+p
+x
+;
+ 
+}
+
+
+ 
+ 
+ 
+ 
+.
+s
+e
+t
+-
+r
+o
+w
+ 
+{
+ 
+d
+i
+s
+p
+l
+a
+y
+:
+ 
+f
+l
+e
+x
+;
+ 
+g
+a
+p
+:
+ 
+1
+4
+p
+x
+;
+ 
+a
+l
+i
+g
+n
+-
+i
+t
+e
+m
+s
+:
+ 
+f
+l
+e
+x
+-
+s
+t
+a
+r
+t
+;
+ 
+}
+
+
+ 
+ 
+ 
+ 
+.
+s
+e
+t
+-
+r
+o
+w
+ 
+.
+s
+w
+i
+t
+c
+h
+ 
+{
+ 
+f
+l
+e
+x
+-
+s
+h
+r
+i
+n
+k
+:
+ 
+0
+;
+ 
+}
+
+
+ 
+ 
+ 
+ 
+.
+s
+e
+t
+-
+t
+i
+t
+l
+e
+ 
+{
+ 
+f
+o
+n
+t
+-
+s
+i
+z
+e
+:
+ 
+1
+4
+.
+5
+p
+x
+;
+ 
+f
+o
+n
+t
+-
+w
+e
+i
+g
+h
+t
+:
+ 
+8
+0
+0
+;
+ 
+}
+
+
+ 
+ 
+ 
+ 
+.
+s
+e
+t
+-
+s
+u
+b
+ 
+{
+ 
+f
+o
+n
+t
+-
+s
+i
+z
+e
+:
+ 
+1
+2
+.
+5
+p
+x
+;
+ 
+c
+o
+l
+o
+r
+:
+ 
+v
+a
+r
+(
+-
+-
+m
+u
+t
+e
+d
+)
+;
+ 
+m
+a
+r
+g
+i
+n
+-
+t
+o
+p
+:
+ 
+4
+p
+x
+;
+ 
+l
+i
+n
+e
+-
+h
+e
+i
+g
+h
+t
+:
+ 
+1
+.
+7
+;
+ 
+}
+
+
+ 
+ 
+ 
+ 
+.
+s
+e
+t
+-
+s
+t
+a
+t
+e
+ 
+{
+ 
+d
+i
+s
+p
+l
+a
+y
+:
+ 
+i
+n
+l
+i
+n
+e
+-
+b
+l
+o
+c
+k
+;
+ 
+f
+o
+n
+t
+-
+s
+i
+z
+e
+:
+ 
+1
+1
+.
+5
+p
+x
+;
+ 
+f
+o
+n
+t
+-
+w
+e
+i
+g
+h
+t
+:
+ 
+8
+0
+0
+;
+ 
+p
+a
+d
+d
+i
+n
+g
+:
+ 
+2
+p
+x
+ 
+9
+p
+x
+;
+ 
+b
+o
+r
+d
+e
+r
+-
+r
+a
+d
+i
+u
+s
+:
+ 
+9
+9
+9
+p
+x
+;
+ 
+m
+a
+r
+g
+i
+n
+-
+l
+e
+f
+t
+:
+ 
+6
+p
+x
+;
+ 
+}
+
+
+ 
+ 
+ 
+ 
+.
+s
+e
+t
+-
+s
+t
+a
+t
+e
+.
+o
+n
+ 
+{
+ 
+b
+a
+c
+k
+g
+r
+o
+u
+n
+d
+:
+ 
+v
+a
+r
+(
+-
+-
+s
+u
+c
+c
+e
+s
+s
+-
+b
+g
+,
+ 
+r
+g
+b
+a
+(
+5
+,
+1
+5
+0
+,
+1
+0
+5
+,
+.
+1
+4
+)
+)
+;
+ 
+c
+o
+l
+o
+r
+:
+ 
+v
+a
+r
+(
+-
+-
+s
+u
+c
+c
+e
+s
+s
+,
+ 
+#
+0
+5
+9
+6
+6
+9
+)
+;
+ 
+}
+
+
+ 
+ 
+ 
+ 
+.
+s
+e
+t
+-
+s
+t
+a
+t
+e
+.
+o
+f
+f
+ 
+{
+ 
+b
+a
+c
+k
+g
+r
+o
+u
+n
+d
+:
+ 
+r
+g
+b
+a
+(
+1
+0
+0
+,
+1
+1
+6
+,
+1
+3
+9
+,
+.
+1
+4
+)
+;
+ 
+c
+o
+l
+o
+r
+:
+ 
+v
+a
+r
+(
+-
+-
+m
+u
+t
+e
+d
+)
+;
+ 
+}
+
+
+ 
+ 
+<
+/
+s
+t
+y
+l
+e
+>
+
 <body>
   <nav class="site-nav">
     <a class="brand" href="/shop">
@@ -118,148 +874,90 @@
       </script>
 
       <div class="shop-wrap">
-    <div class="shop-head">
-      <h1>ข้อมูลร้านค้า</h1>
-      <p>กรอกข้อมูลเบื้องต้นของร้าน — เมื่อบันทึกครบแล้วจะเริ่มจัดการเมนูได้</p>
-      <div class="shop-actions" id="shopActions" style="display:none;">
-        <a class="btn btn-primary btn-small" href="/shop/menu.html">ไปหน้าจัดการเมนู</a>
-      </div>
-    </div>
+        <div class="shop-head">
+          <h1>ตั้งค่าระบบ</h1>
+          <p>ตั้งค่าการทำงานของระบบร้าน — ตัวเลือกด้านล่างมีผลทันทีทั้งร้าน</p>
+        </div>
 
-    <div class="shop-card">
-      <h2>ข้อมูลร้าน</h2>
-      <form class="shop-form" id="shopForm" novalidate>
-        <div class="field">
-          <label for="name">ชื่อร้านค้า *</label>
-          <div class="input-wrap"><input type="text" id="name" maxlength="120" placeholder="เช่น ร้านป้าแดงโภชนา" required></div>
-          <div class="field-error" id="errName"></div>
-        </div>
-        <div class="field">
-          <label for="phone">เบอร์ติดต่อร้านค้า *</label>
-          <div class="input-wrap"><input type="tel" id="phone" maxlength="30" placeholder="เช่น 0812345678" required></div>
-          <div class="field-error" id="errPhone"></div>
-        </div>
-        <div class="field">
-          <label for="lineUrl">ลิงก์ LINE ร้านค้า</label>
-          <div class="input-wrap"><input type="text" id="lineUrl" maxlength="255" placeholder="เช่น https://line.me/R/ti/p/@myshop"></div>
-        </div>
-        <div class="field">
-          <label for="mapsUrl">URL Google Maps (แสดงโลเคชั่น)</label>
-          <div class="input-wrap"><input type="text" id="mapsUrl" maxlength="500" placeholder="วางลิงก์แชร์จาก Google Maps"></div>
-        </div>
-        <div class="field">
-          <label>โลโก้ร้านค้า</label>
-          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <img class="logo-preview" id="logoPreview" alt="โลโก้" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84'%3E%3Crect width='84' height='84' fill='%23eef0fa'/%3E%3C/svg%3E">
-            <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/gif" style="font-size:13px;">
+        <div class="set-card">
+          <div class="set-row">
+            <label class="switch" title="เปิด = เช็คบิลแล้วปิดใช้งาน QR ของโต๊ะนั้นทันที">
+              <input type="checkbox" id="autoDeleteQr">
+              <span class="track"></span>
+            </label>
+            <div style="flex:1;min-width:0;">
+              <div class="set-title">ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล <span class="set-state off" id="setState">ปิดอยู่</span></div>
+              <div class="set-sub" id="autoDeleteHint">กำลังโหลด...</div>
+            </div>
           </div>
-          <div class="field-error" id="errLogo"></div>
+          <div class="set-sub" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            เปิดไว้: เมื่อกดเช็คบิล โต๊ะนั้นจะถูก <strong>ปิดใช้งาน QR ทันที</strong> (สแกนไม่ได้อีก และใช้ซ้ำไม่ได้) และต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป<br>
+            ปิดไว้: เช็คบิลแล้วโต๊ะและ QR ยังใช้งานต่อ และระบบเปิดบิลใหม่ให้อัตโนมัติ<br>
+            ไม่ว่าจะเปิดหรือปิด <strong>QR และโต๊ะที่ปิดใช้งานแล้วจะไม่ถูกลบ</strong> — ดูย้อนหลังได้ที่หน้า <a href="/shop/history.html">ประวัติ</a> (แท็บ “QR โต๊ะที่ปิดใช้งาน”)
+          </div>
+          <div class="error-msg" id="setErr" style="display:none;"></div>
         </div>
+      </div>
 
-        <div class="success-box" id="okBox"></div>
-        <div class="error-msg" id="errMsg"></div>
-        <div class="form-actions" style="margin-top:16px;">
-          <button type="submit" class="btn btn-primary" id="saveBtn">บันทึกข้อมูลร้าน</button>
-        </div>
-      </form>
-    </div>
-  </div>
-    </div>
+  <div class="toast" id="toast"></div>
 
   <script>
-    let logoUrl = '';
-    let hasShop = false;
+    let enabled = false;
+    let toastTimer = null;
+
+    function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
 
     async function api(path, opts) {
       const res = await fetch(path, opts);
-      let data;
-      try { data = await res.json(); } catch { const e = new Error('เซิร์ฟเวอร์ตอบสนองไม่ถูกต้อง (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
+      let data; try { data = await res.json(); } catch { const e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
       if (!data.ok) { const e = new Error(data.message || 'เกิดข้อผิดพลาด'); e.status = res.status; throw e; }
       return data;
     }
-    function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
-
-    async function loadShop() {
-      try {
-        const data = await api('/api/shop/me');
-        if (data.shop) {
-          hasShop = true;
-          document.getElementById('name').value = data.shop.name || '';
-          document.getElementById('phone').value = data.shop.phone || '';
-          document.getElementById('lineUrl').value = data.shop.line_url || '';
-          document.getElementById('mapsUrl').value = data.shop.maps_url || '';
-          logoUrl = data.shop.logo_url || '';
-          if (logoUrl) document.getElementById('logoPreview').src = logoUrl;
-          document.getElementById('shopActions').style.display = '';
-          document.getElementById('viewShopLink').href = data.publicUrl || '#';
-          document.getElementById('saveBtn').textContent = 'บันทึกการแก้ไข';
-        }
-      } catch (err) {
-        if (err.status === 403) { window.location.href = '/shop'; return; }
-      }
+    function showErr(msg) { const el = document.getElementById('setErr'); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+    function paint() {
+      const el = document.getElementById('autoDeleteQr');
+      if (el) el.checked = enabled;
+      const st = document.getElementById('setState');
+      st.textContent = enabled ? 'เปิดอยู่' : 'ปิดอยู่';
+      st.className = 'set-state ' + (enabled ? 'on' : 'off');
+      document.getElementById('autoDeleteHint').textContent = enabled
+        ? 'เปิดอยู่ — เช็คบิลแล้ว QR ของโต๊ะนั้นจะถูกปิดใช้งานทันที (ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป) โดยโต๊ะและ QR เดิมยังดูย้อนหลังได้ในหน้า “ประวัติ”'
+        : 'ปิดอยู่ — เช็คบิลแล้วโต๊ะและ QR ยังใช้งานต่อ และเปิดบิลใหม่ให้อัตโนมัติ';
     }
 
-    document.getElementById('logoFile').addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      showErr('errLogo', '');
-      if (file.size > 3 * 1024 * 1024) { showErr('errLogo', 'ไฟล์ใหญ่เกิน 3MB'); return; }
+    document.getElementById('autoDeleteQr').addEventListener('change', async (e) => {
+      const el = e.currentTarget;
+      const on = el.checked;
+      // กันเผลอกดโดน: ต้องยืนยันก่อนทุกครั้ง (กดยกเลิก = คืนค่าเดิม ไม่บันทึก)
+      const ask = on
+        ? 'ยืนยันเปิด “ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล” ?\n\nเมื่อกดเช็คบิล QR ของโต๊ะนั้นจะถูกปิดใช้งานทันที (สแกนไม่ได้อีก) และต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป — ตัว QR และประวัติยังดูย้อนหลังได้ในหน้า "ประวัติ"'
+        : 'ยืนยันปิด “ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล” ?\n\nเมื่อกดเช็คบิล โต๊ะและ QR จะยังใช้งานต่อ และระบบจะเปิดบิลใหม่ให้อัตโนมัติ';
+      if (!confirm(ask)) { el.checked = !on; return; }
+      el.disabled = true;
+      showErr('');
       try {
-        const dataUrl = await new Promise((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result);
-          fr.onerror = reject;
-          fr.readAsDataURL(file);
-        });
-        const up = await api('/api/shop/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl }) });
-        logoUrl = up.url;
-        document.getElementById('logoPreview').src = logoUrl;
-      } catch (err) { showErr('errLogo', err.message); }
-    });
-
-    document.getElementById('shopForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      ['errName', 'errPhone', 'errMsg'].forEach((id) => showErr(id, ''));
-      const name = document.getElementById('name').value.trim();
-      const phone = document.getElementById('phone').value.trim();
-      if (name.length < 2) return showErr('errName', 'กรุณากรอกชื่อร้าน (อย่างน้อย 2 ตัวอักษร)');
-      if (phone.length < 6) return showErr('errPhone', 'กรุณากรอกเบอร์ติดต่อร้าน');
-
-      const payload = {
-        name, phone,
-        lineUrl: document.getElementById('lineUrl').value.trim(),
-        mapsUrl: document.getElementById('mapsUrl').value.trim(),
-        logoUrl,
-      };
-      const btn = document.getElementById('saveBtn');
-      btn.disabled = true; btn.classList.add('loading');
-      try {
-        const data = await api('/api/shop', {
-          method: hasShop ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        hasShop = true;
-        if (data.shop && data.shop.public_code) {
-          document.getElementById('shopActions').style.display = '';
-          document.getElementById('viewShopLink').href = '/s/' + data.shop.public_code;
-        }
-        const ok = document.getElementById('okBox');
-        ok.innerHTML = '<strong>บันทึกข้อมูลร้านแล้ว</strong> — ไปหน้าจัดการเมนูได้เลย';
-        ok.style.display = 'block';
-        document.getElementById('saveBtn').textContent = 'บันทึกการแก้ไข';
+        const r = await api('/api/shop/qr-auto-delete', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }) });
+        enabled = !!r.enabled;
+        paint();
+        toast(r.message || 'บันทึกแล้ว');
       } catch (err) {
-        if (err.status === 403) { window.location.href = '/shop'; return; }
-        if (/ชื่อร้าน/.test(err.message)) showErr('errName', err.message);
-        else if (/เบอร์/.test(err.message)) showErr('errPhone', err.message);
-        else showErr('errMsg', err.message);
-      } finally {
-        btn.disabled = false; btn.classList.remove('loading');
-      }
+        el.checked = !on;
+        showErr(err.message);
+      } finally { el.disabled = false; }
     });
 
-
-    loadShop();
+    (async () => {
+      try {
+        const me = await api('/api/shop/me');
+        if (!me.shop) { location.href = '/shop/setup.html'; return; }
+        document.getElementById('shopName').textContent = me.shop.name || 'ร้านของฉัน';
+        enabled = Number(me.shop.delete_qr_on_checkout) === 1;
+        paint();
+      } catch (e) {
+        if (e.status === 403) { location.href = '/shop'; return; }
+        showErr(e.message);
+      }
+    })();
   </script>
 </body>
 </html>

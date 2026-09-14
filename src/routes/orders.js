@@ -55,6 +55,13 @@ router.get('/shop/orders.html', requireShopPage, async (req, res) => {
   await sendShopPage(res, 'orders.html', shop);
 });
 
+// หน้าตั้งค่าระบบของร้าน (เจ้าของร้าน) — เช่น สวิตช์ปิดใช้งาน QR อัตโนมัติเมื่อเช็คบิล
+router.get('/shop/settings.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  await sendShopPage(res, 'settings.html', shop);
+});
+
 // หน้าสั่งอาหารของลูกค้า (สาธารณะ) — ใช้ token ของโต๊ะ
 router.get('/order/:token', (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -238,13 +245,13 @@ router.put('/api/shop/qr-auto-delete', requireShop, async (req, res) => {
   if (!shop) return;
   const enabled = !!req.body?.enabled;
   await db.updateShop(shop.id, { deleteQrOnCheckout: enabled ? 1 : 0 });
-  console.log(`🧾 ตั้งค่า "${shop.name}": ลบ QR อัตโนมัติเมื่อเช็คบิล = ${enabled ? 'เปิด' : 'ปิด'}`);
+  console.log(`🧾 ตั้งค่า "${shop.name}": ปิดใช้งาน QR อัตโนมัติเมื่อเช็คบิล = ${enabled ? 'เปิด' : 'ปิด'}`);
   res.json({
     ok: true,
     enabled,
     message: enabled
-      ? 'เปิดแล้ว — เมื่อเช็คบิล โต๊ะนั้นและ QR จะถูกลบทันที (ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป)'
-      : 'ปิดแล้ว — เมื่อเช็คบิล โต๊ะและ QR จะยังอยู่ และเปิดบิลใหม่ให้อัตโนมัติ',
+      ? 'เปิดแล้ว — เมื่อเช็คบิล QR ของโต๊ะนั้นจะถูกปิดใช้งานทันที (ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป)'
+      : 'ปิดแล้ว — เมื่อเช็คบิล โต๊ะและ QR จะยังใช้งานต่อ และเปิดบิลใหม่ให้อัตโนมัติ',
   });
 });
 

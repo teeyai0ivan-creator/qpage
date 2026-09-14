@@ -63,6 +63,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 01-3.4 0" stroke-linecap="round"/></svg>
           แจ้งเตือน
         </a>
+        <a class="menu-item" href="/shop/settings.html" data-path="/shop/settings.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" stroke-linejoin="round"/></svg>
+          ตั้งค่าระบบ
+        </a>
         <a class="menu-item" href="#" data-path="#" id="viewShopLink" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>
           ดูร้าน
@@ -124,23 +128,11 @@
 
     <div class="shop-card">
       <h2>โต๊ะ &amp; QR <span class="count" id="tableCount"></span></h2>
-      <!-- ตัวเลือก: ปิดใช้งาน QR ทันทีเมื่อเช็คบิล -->
-      <div class="qr-switch-row">
-        <label class="switch" title="เปิด = เช็คบิลแล้วปิดใช้งาน QR ของโต๊ะนั้นทันที (ยังดูย้อนหลังได้ในหน้า ประวัติ)">
-          <input type="checkbox" id="autoDeleteQr">
-          <span class="track"></span>
-        </label>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13.5px;font-weight:700;">ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล</div>
-          <div style="font-size:12.5px;color:var(--muted);margin-top:2px;" id="autoDeleteHint">ปิดอยู่ — เช็คบิลแล้วโต๊ะและ QR ยังใช้งานต่อ และเปิดบิลใหม่ให้อัตโนมัติ</div>
-        </div>
-      </div>
-
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;">
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px;">
         <button class="mini-btn primary" id="newQrBtn" type="button">＋ เพิ่มโต๊ะใหม่</button>
         <button class="mini-btn" id="tableNamesBtn" type="button">เพิ่มโซน</button>
       </div>
-      <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">กดช่องที่ยังไม่มี QR เพื่อออก QR ให้โต๊ะนั้น · กดช่องที่มี QR แล้วเพื่อดู/พิมพ์ QR และดูบิลปัจจุบัน</p>
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">กดช่องที่ยังไม่มี QR เพื่อออก QR ให้โต๊ะนั้น · กดช่องที่มี QR แล้วเพื่อดู/พิมพ์ QR และดูบิลปัจจุบัน · ตั้งค่า “ปิดใช้งาน QR อัตโนมัติเมื่อเช็คบิล” ได้ที่หน้า <a href="/shop/settings.html">ตั้งค่าระบบ</a></p>
       <div id="tableGrid" class="tile-wrap"></div>
     </div>
 
@@ -281,9 +273,6 @@
 
     async function loadTables() {
       const data = await api('/api/shop/tables');
-      autoDeleteQr = !!data.delete_qr_on_checkout;
-      const sw = document.getElementById('autoDeleteQr');
-      if (sw) { sw.checked = autoDeleteQr; setAutoHint(); }
       tablesCache = data.tables || [];
       document.getElementById('tableCount').textContent = tablesCache.length ? '(' + tablesCache.length + ')' : '';
       renderTableGrid();
@@ -502,39 +491,9 @@
     // โหลดข้อมูลให้ครบก่อนวาดตาราง: ชื่อโต๊ะ/โซน ต้องมาก่อน เพราะตารางหน้าแรกใช้ทั้งชื่อและสถานะบิล
     async function loadAll() { if (await loadShop()) { await loadBills(); await refreshNames(); await loadTables(); } }
 
-    // ---------- รายชื่อโต๊ะ + สร้าง QR ใหม่ + สวิตช์ลบ QR อัตโนมัติ ----------
+    // ---------- รายชื่อโต๊ะ + สร้าง QR ใหม่ (สวิตช์ปิดใช้งาน QR อัตโนมัติย้ายไปหน้า ตั้งค่าระบบ) ----------
     let tableNames = [];   // [{ id, name, has_qr, zone_id, zone_name }]
     let zones = [];        // [{ id, name, table_count }]
-    let autoDeleteQr = false;
-
-    function setAutoHint() {
-      document.getElementById('autoDeleteHint').textContent = autoDeleteQr
-        ? 'เปิดอยู่ — เช็คบิลแล้ว QR ของโต๊ะนั้นจะถูกปิดใช้งานทันที (ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป) โดยโต๊ะและ QR เดิมยังดูย้อนหลังได้ในหน้า "ประวัติ"'
-        : 'ปิดอยู่ — เช็คบิลแล้วโต๊ะและ QR ยังใช้งานต่อ และเปิดบิลใหม่ให้อัตโนมัติ';
-    }
-    document.getElementById('autoDeleteQr').addEventListener('change', async (e) => {
-      const el = e.target;
-      const on = el.checked;
-      // กันเผลอกดโดน: ต้องยืนยันก่อนทุกครั้ง (กดยกเลิก = คืนค่าเดิม ไม่บันทึก)
-      const ask = on
-        ? 'ยืนยันเปิด “ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล” ?\n\nเมื่อกดเช็คบิล QR ของโต๊ะนั้นจะถูกปิดใช้งานทันที (สแกนไม่ได้อีก) และต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป — ตัว QR และประวัติยังดูย้อนหลังได้ในหน้า "ประวัติ"'
-        : 'ยืนยันปิด “ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล” ?\n\nเมื่อกดเช็คบิล โต๊ะและ QR จะยังใช้งานต่อ และระบบจะเปิดบิลใหม่ให้อัตโนมัติ';
-      if (!confirm(ask)) { el.checked = !on; return; }
-
-      el.disabled = true; // กันกดรัว ๆ ระหว่างบันทึก
-      try {
-        const r = await api('/api/shop/qr-auto-delete', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }) });
-        autoDeleteQr = !!r.enabled;
-        el.checked = autoDeleteQr;
-        setAutoHint();
-        toast(r.message || 'บันทึกแล้ว');
-      } catch (err) {
-        el.checked = !on;
-        alert(err.message);
-      } finally {
-        el.disabled = false;
-      }
-    });
 
     async function loadTableNames() {
       const data = await api('/api/shop/table-names');

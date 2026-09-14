@@ -54,9 +54,6 @@
 .switch input:checked + .track { background: var(--success); }
 .switch input:checked + .track::before { transform: translateX(20px); }
 
-/* แถวตัวเลือกในหน้าสั่งอาหาร */
-.qr-switch-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
-
 /* รายชื่อโต๊ะ (ในป๊อปอัพ) */
 .name-list { display: grid; gap: 8px; max-height: 260px; overflow-y: auto; }
 .name-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
