@@ -26,7 +26,7 @@
       <a class="btn btn-outline btn-small" href="/shop/menu.html">จัดการเมนู</a>
       <a class="btn btn-outline btn-small" href="/shop/notify.html">แจ้งเตือน</a>
       <a class="btn btn-outline btn-small" href="/shop/setup.html">ตั้งค่าข้อมูลร้าน</a>
-      <a class="btn btn-outline btn-small" href="#" id="logoutBtn">ออกจากระบบ</a>
+      <a class="btn btn-outline btn-small" href="/settings/profile">ออกจากร้านค้า</a>
     </div>
   </nav>
 
@@ -390,11 +390,6 @@
     });
     document.getElementById('refreshBtn').addEventListener('click', async () => {
       try { await loadAll(); toast('อัปเดตข้อมูลแล้ว'); } catch (e) { alert(e.message); }
-    });
-    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-      e.preventDefault();
-      await fetch('/api/logout', { method: 'POST' });
-      window.location.href = '/login.html';
     });
 
     // โหลดใหม่เป็นระยะ (เห็นออเดอร์ใหม่โดยไม่ต้องกดเอง)

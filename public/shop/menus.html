@@ -60,6 +60,10 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
     @media (max-width: 620px) { .grid-2 { grid-template-columns: 1fr; } }
 
+    /* ปุ่มในแถวหมวดย่อย — เล็กกว่าปุ่มหมวดหลักเล็กน้อย */
+    #fSubRow .cat-pick { font-size: 12px; padding: 6px 11px; gap: 6px; }
+    #fSubRow .cat-pick .cat-count { font-size: 10px; padding: 2px 6px; }
+
     /* ปุ่ม "ทั้งหมด" ของแถวหมวดย่อย — มาร์คด้วยสีเหลืองให้ต่างจากปุ่ม "ทั้งหมด" แถวหมวดหลัก */
     .cat-pick.yellow { background: var(--warning-bg); border-color: var(--warning-border); color: var(--warning); }
     .cat-pick.yellow:hover { background: var(--warning-bg); filter: brightness(.97); }
@@ -88,7 +92,7 @@
       <a class="btn btn-outline btn-small" href="/shop/menu.html">จัดการเมนู</a>
       <a class="btn btn-outline btn-small" href="/shop/history.html">ประวัติ</a>
       <a class="btn btn-outline btn-small" href="/shop/setup.html">ตั้งค่าข้อมูลร้าน</a>
-      <a class="btn btn-outline btn-small" href="#" id="logoutBtn">ออกจากระบบ</a>
+      <a class="btn btn-outline btn-small" href="/settings/profile">ออกจากร้านค้า</a>
     </div>
   </nav>
 
@@ -537,11 +541,6 @@
       el.addEventListener(id === 'q' ? 'input' : 'change', render);
     });
 
-    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-      e.preventDefault();
-      await fetch('/api/logout', { method: 'POST' });
-      window.location.href = '/login.html';
-    });
 
     load().catch((e) => {
       if (e.status === 403) { window.location.href = '/shop'; return; }

@@ -74,7 +74,7 @@
       <a class="btn btn-outline btn-small" href="/shop/history.html">ประวัติ</a>
       <a class="btn btn-outline btn-small" href="/shop/menu.html">เมนู</a>
       <a class="btn btn-outline btn-small" href="/shop/setup.html">ตั้งค่าข้อมูลร้าน</a>
-      <a class="btn btn-outline btn-small" href="#" id="logoutBtn">ออกจากระบบ</a>
+      <a class="btn btn-outline btn-small" href="/settings/profile">ออกจากร้านค้า</a>
     </div>
   </nav>
 
@@ -367,11 +367,6 @@
       await load();
     });
 
-    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-      e.preventDefault();
-      await fetch('/api/logout', { method: 'POST' });
-      window.location.href = '/login.html';
-    });
 
     (async () => {
       try {

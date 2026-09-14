@@ -36,7 +36,7 @@
       <a class="btn btn-outline btn-small" href="/shop/kitchen.html">ครัว</a>
       <a class="btn btn-outline btn-small" href="/shop/cashier.html">แคชเชียร์</a>
       <a class="btn btn-outline btn-small" href="/shop/notify.html">แจ้งเตือน</a>
-      <a class="btn btn-outline btn-small" href="#" id="logoutBtn">ออกจากระบบ</a>
+      <a class="btn btn-outline btn-small" href="/settings/profile">ออกจากร้านค้า</a>
     </div>
   </nav>
 
@@ -126,11 +126,6 @@
 
     document.getElementById('fTable').addEventListener('change', () => loadHistory().catch((e) => alert(e.message)));
     document.getElementById('fLimit').addEventListener('change', () => loadHistory().catch((e) => alert(e.message)));
-    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-      e.preventDefault();
-      await fetch('/api/logout', { method: 'POST' });
-      window.location.href = '/login.html';
-    });
 
     document.getElementById('exportBtn').addEventListener('click', () => {
       if (!lastOrders.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
