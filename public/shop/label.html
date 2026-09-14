@@ -30,7 +30,8 @@
     .l-logo { text-align: center; margin: 0 0 8px; }
     .l-logo img { display: block; margin: 0 auto; width: 90%; height: 30mm; object-fit: contain; }
     .l-shop { font-size: 16px; font-weight: 700; color: #344054; margin-bottom: 6px; }
-    .l-table { font-size: 46px; font-weight: 800; line-height: 1.15; letter-spacing: .5px; }
+    /* ชื่อโต๊ะ: บรรทัดเดียวเสมอ · ย่อขนาดอัตโนมัติถ้าชื่อยาว (ดู fitTableLine ด้านล่าง) */
+    .l-table { font-size: 30px; font-weight: 800; line-height: 1.2; letter-spacing: .25px; white-space: nowrap; }
     .l-bill { font-size: 17px; font-weight: 600; margin: 2px 0 10px; }
     .l-qr { width: 60mm; height: 60mm; display: block; margin: 0 auto; }
     .l-hint { font-size: 14px; color: #475467; margin-top: 8px; }
@@ -40,7 +41,7 @@
     body.paper-58mm .label { max-width: 58mm; padding: 10px 8px 12px; }
     body.paper-58mm .l-logo img { width: 94%; height: 22mm; }
     body.paper-58mm .l-shop { font-size: 13px; }
-    body.paper-58mm .l-table { font-size: 34px; }
+    body.paper-58mm .l-table { font-size: 22px; }
     body.paper-58mm .l-bill { font-size: 14px; }
     body.paper-58mm .l-qr { width: 44mm; height: 44mm; }
     body.paper-58mm .l-hint { font-size: 12px; }
@@ -49,7 +50,7 @@
     body.paper-a4 .label { max-width: 190mm; padding: 30px 26px 34px; }
     body.paper-a4 .l-logo img { width: 70%; height: 50mm; }
     body.paper-a4 .l-shop { font-size: 22px; }
-    body.paper-a4 .l-table { font-size: 84px; }
+    body.paper-a4 .l-table { font-size: 56px; }
     body.paper-a4 .l-bill { font-size: 24px; }
     body.paper-a4 .l-qr { width: 90mm; height: 90mm; }
     body.paper-a4 .l-hint { font-size: 18px; }
@@ -107,7 +108,11 @@
     paperSel.addEventListener('change', () => {
       try { localStorage.setItem(PAPER_KEY, paperSel.value); } catch (e) { /* ข้าม */ }
       applyPaper(paperSel.value);
+      fitTableLine();
     });
+    // ฟอนต์/โลโก้โหลดเสร็จแล้วความกว้างอาจเปลี่ยน — วัดใหม่ให้ยังบรรทัดเดียว
+    window.addEventListener('load', () => fitTableLine());
+    window.addEventListener('resize', () => fitTableLine());
 
     document.getElementById('printBtn').addEventListener('click', () => window.print());
     document.getElementById('closeBtn').addEventListener('click', () => { window.close(); });
@@ -122,11 +127,36 @@
       document.getElementById('label').innerHTML = `
         ${logo ? `<div class="l-logo"><img src="${logo}" alt="" onerror="this.parentNode.style.display='none'"></div>` : ''}
         ${shop.name ? `<div class="l-shop">${esc(shop.name)}</div>` : ''}
-        <div class="l-table">โต๊ะ ${esc(table.code)}</div>
+        <div class="l-table">${esc(table.code)}</div>
         <div class="l-bill">บิล ${billNoFmt(table.bill_no)}</div>
         <img class="l-qr" src="${qr}" alt="QR โต๊ะ ${esc(table.code)}">
         <div class="l-hint">สแกนเพื่อสั่งอาหาร</div>`;
       document.title = 'ป้ายโต๊ะ ' + table.code + (shop.name ? ' · ' + shop.name : '');
+      fitTableLine();
+    }
+
+    // ชื่อโต๊ะต้องอยู่บรรทัดเดียว: วัดความกว้างจริงด้วยสำเนาที่ซ่อนไว้ แล้วย่อขนาดตัวอักษรลงจนพอดี
+    function fitTableLine() {
+      const el = document.querySelector('.l-table');
+      if (!el) return;
+      el.style.fontSize = '';
+      const cs = getComputedStyle(el);
+      const avail = el.clientWidth;
+      if (!avail) return;
+      const probe = document.createElement('span');
+      probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;'
+        + 'font-family:' + cs.fontFamily + ';font-weight:' + cs.fontWeight + ';letter-spacing:' + cs.letterSpacing + ';';
+      probe.textContent = el.textContent;
+      document.body.appendChild(probe);
+      let size = parseFloat(cs.fontSize) || 30;
+      probe.style.fontSize = size + 'px';
+      let guard = 0;
+      while (probe.getBoundingClientRect().width > avail && size > 9 && guard++ < 120) {
+        size -= 1;
+        probe.style.fontSize = size + 'px';
+      }
+      probe.remove();
+      el.style.fontSize = size + 'px';
     }
 
     (async function init() {
