@@ -159,11 +159,12 @@
 
     // เมนูนี้อยู่ในหมวดหลักที่เลือกไหม (นับทั้งเมนูที่ผูกกับหมวดหลักเอง และที่ผูกกับหมวดย่อยของมัน)
     function inMainCat(menu, mainId) {
+      const main = String(mainId); // id จาก API เป็นตัวเลข แต่ค่าจากปุ่ม/ช่องซ่อนเป็นสตริง — เทียบเป็นสตริงเสมอ
       const cid = menu.category_id ? String(menu.category_id) : '';
       if (!cid) return false;
-      if (cid === mainId) return true;
+      if (cid === main) return true;
       const c = state.categories.find((x) => String(x.id) === cid);
-      return Boolean(c && String(c.parent_id || '') === mainId);
+      return Boolean(c && String(c.parent_id || '') === main);
     }
 
     function visibleMenus() {
@@ -259,6 +260,10 @@
     let subFilterValue = ''; // หมวดย่อย
     const norm = (v) => (v == null || v === '' ? '' : String(v));
     const subsOf = (catId) => state.categories.filter((c) => String(c.parent_id || '') === String(catId));
+    // ตัวเลขบนปุ่มกรอง = จำนวนเมนูของหมวดนั้น (นับทุกเมนูในหมวดย่อยด้วยเมื่อเป็นหมวดหลัก)
+    const badge = (n) => `<span class="cat-count">${n}</span>`;
+    const countInSub = (subId) => state.menus.filter((m) => String(m.category_id || '') === String(subId)).length;
+    const countInMain = (mainId) => state.menus.filter((m) => inMainCat(m, mainId)).length;
 
     function setCatFilter(id) {
       catFilterValue = norm(id);
@@ -282,8 +287,8 @@
       if (!state.categories.length) {
         row.innerHTML = '<span style="font-size:12.5px;color:var(--muted);align-self:center;">ยังไม่มีหมวดหมู่ — เพิ่มได้ที่หน้าจัดการเมนู</span>';
       } else {
-        row.innerHTML = ['<button type="button" class="cat-pick" data-cat="">— ทุกหมวดหมู่ —</button>']
-          .concat(mains.map((c) => `<button type="button" class="cat-pick" data-cat="${c.id}">${esc(c.name)}</button>`))
+        row.innerHTML = [`<button type="button" class="cat-pick" data-cat="">— ทุกหมวดหมู่ —${badge(state.menus.length)}</button>`]
+          .concat(mains.map((c) => `<button type="button" class="cat-pick" data-cat="${c.id}">${esc(c.name)}${badge(countInMain(c.id))}</button>`))
           .join('');
         row.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => setCatFilter(b.dataset.cat)));
       }
@@ -298,8 +303,8 @@
       if (!main || !subs.length) { wrap.style.display = 'none'; row.innerHTML = ''; subFilterValue = ''; document.getElementById('fSub').value = ''; return; }
       wrap.style.display = '';
       document.getElementById('fSubLabel').textContent = 'หมวดย่อยของ “' + main.name + '” — กดเพื่อเจาะจงเฉพาะหมวดย่อย';
-      row.innerHTML = [`<button type="button" class="cat-pick" data-sub="">— ทั้งหมดใน ${esc(main.name)} —</button>`]
-        .concat(subs.map((s) => `<button type="button" class="cat-pick sub" data-sub="${s.id}">${esc(s.name)}</button>`))
+      row.innerHTML = [`<button type="button" class="cat-pick" data-sub="">— ทั้งหมดใน ${esc(main.name)} —${badge(countInMain(main.id))}</button>`]
+        .concat(subs.map((s) => `<button type="button" class="cat-pick sub" data-sub="${s.id}">${esc(s.name)}${badge(countInSub(s.id))}</button>`))
         .join('');
       row.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', () => setSubFilter(b.dataset.sub)));
       row.querySelectorAll('[data-sub]').forEach((b) => b.classList.toggle('on', b.dataset.sub === subFilterValue));
