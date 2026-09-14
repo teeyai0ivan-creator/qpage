@@ -49,8 +49,9 @@ router.get('/shop/purchase.html', async (req, res) => {
   if (!user) return res.redirect('/login.html?next=/shop/purchase.html');
   if (isAdminRole(user.role)) return res.redirect('/admin/');
   // เจ้าของร้านเข้าหน้านี้ได้ด้วย เพื่อ "ซื้อเพิ่ม/ต่ออายุ" (ไม่เริ่มนับใหม่)
-  res.set('Cache-Control', 'no-store'); // กัน bfcache กด Back แล้วเจอหน้าเดิมหลังซื้อ
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'purchase.html'));
+  // ถ้าเป็นเจ้าของร้านอยู่แล้ว ให้ใช้ชื่อ/โลโก้ร้านในแถบหัวด้วย (ผู้ใช้ทั่วไปยังเห็นโลโก้ระบบ)
+  const shop = await db.findShopByUserId(user.id);
+  await sendShopPage(res, 'purchase.html', shop);
 });
 
 // หน้าตั้งข้อมูลร้าน (เจ้าของร้าน)
