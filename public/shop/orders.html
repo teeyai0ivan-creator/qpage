@@ -289,6 +289,27 @@
       if (!w) location.href = url; // ถ้าเบราว์เซอร์บล็อกป๊อปอัป ให้เปิดในแท็บนี้แทน
     }
 
+    // เปิดแท็บเปล่าล่วงหน้า (ต้องเรียกจังหวะที่ผู้ใช้กดจริง ไม่งั้นเบราว์เซอร์บล็อกป๊อปอัป)
+    // เขียนข้อความ "กำลังเช็คบิล…" ไว้ด้วย จะได้ไม่เหลือแท็บเปล่าค้างถ้าการพาไปหน้าใบเสร็จล้มเหลว
+    function openBlankTab() {
+      const w = window.open('', '_blank');
+      try {
+        if (w && w.document) {
+          w.document.write('<!doctype html><meta charset="utf-8"><title>กำลังเช็คบิล...</title><body style="font-family:Sarabun,Tahoma,sans-serif;padding:24px;color:#475467">กำลังเช็คบิล... กรุณารอสักครู่</body>');
+          w.document.close();
+        }
+      } catch (e) { /* ข้าม */ }
+      return w;
+    }
+
+    // พาแท็บที่เปิดล่วงหน้าไปหน้าใบเสร็จ · ถ้าป๊อปอัปถูกบล็อกให้เปิดในแท็บนี้แทน
+    // (มีการลองซ้ำ กันเบราว์เซอร์ยังไม่พร้อมรับคำสั่งนำทางแล้วเหลือแท็บเปล่าค้าง)
+    function gotoReceipt(w, url) {
+      if (!w) { location.href = url; return; }
+      try { w.location.href = url; } catch (e) { location.href = url; return; }
+      setTimeout(() => { try { if (w.location.href === 'about:blank') w.location.href = url; } catch (e) { /* ข้าม */ } }, 800);
+    }
+
     let tablesCache = [];
     let openOrdersCache = []; // บิลที่เปิดอยู่ (พร้อมรายการ) — ใช้โชว์ในบล็อกโต๊ะด้วย
     let shopData = null;
@@ -397,7 +418,7 @@
       const tableId = checkoutTableId;
       if (!tableId) return;
       // เปิดแท็บใหม่ล่วงหน้า (กันเบราว์เซอร์บล็อก popup) แล้วค่อยพาไปหน้าใบเสร็จหลังเช็คบิลสำเร็จ
-      const receiptWin = window.open('', '_blank');
+      const receiptWin = openBlankTab();
       btn.disabled = true;
       try {
         const r = await api('/api/shop/tables/' + tableId + '/checkout', { method: 'POST' });
@@ -405,11 +426,12 @@
         closeCheckout();
         toast(r.message || 'เช็คบิลแล้ว');
         const url = orderId ? '/shop/receipt.html?order=' + orderId : '';
-        if (url && receiptWin) receiptWin.location.href = url;
-        else if (url) window.location.href = url; // ถ้า popup ถูกบล็อก ให้ไปหน้าใบเสร็จในแท็บนี้
+        if (url) gotoReceipt(receiptWin, url); // ถ้า popup ถูกบล็อก จะเปิดในแท็บนี้แทน
         else if (receiptWin) receiptWin.close();
         await loadAll();
       } catch (err) {
+        // ปิดป๊อปอัปยืนยันทุกกรณี ไม่งั้นจะค้างทับหน้าจออยู่
+        closeCheckout();
         if (receiptWin) receiptWin.close();
         alert(err.message);
       } finally { btn.disabled = false; }

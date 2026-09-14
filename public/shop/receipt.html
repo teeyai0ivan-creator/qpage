@@ -162,8 +162,19 @@
         <p class="r-foot">พิมพ์โดยระบบ QPage · qpage.website <img src="/img/logo-wordmark.svg" alt="QPage"></p>`;
     }
 
-    function renderError(message) {
-      document.getElementById('receipt').innerHTML = '<p class="r-loading">' + esc(message) + '</p>';
+    function renderError(message, hint) {
+      // ไม่มีใบเสร็จให้พิมพ์ — ซ่อนปุ่มพิมพ์ และให้ทางออกที่ชัดเจน (กันหน้าค้างอยู่)
+      const pb = document.getElementById('printBtn');
+      if (pb) pb.style.display = 'none';
+      const detail = hint || 'บิลนี้อาจถูกลบไปก่อนที่ระบบจะเริ่มเก็บประวัติการเช็คบิล<br>ตอนนี้บิลที่เช็คบิลแล้วจะไม่ถูกลบอีก — ดูย้อนหลังได้ที่หน้า “ประวัติ”';
+      document.getElementById('receipt').innerHTML = `
+        <div class="r-loading" style="padding:26px 14px;line-height:1.7;">
+          <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:8px;">${esc(message)}</div>
+          <div style="font-size:13px;color:#475467;">${detail}</div>
+          <div style="margin-top:16px;">
+            <a href="/shop/history.html" style="display:inline-block;padding:9px 16px;border-radius:9px;background:#4f46e5;color:#fff;text-decoration:none;font-weight:700;font-size:13.5px;">ไปหน้าประวัติ</a>
+          </div>
+        </div>`;
     }
 
     // ---------- เลือกขนาดกระดาษ (ม้วน 58/80mm หรือ A4) — จำค่าไว้ในเครื่อง ----------
@@ -185,17 +196,26 @@
     });
 
     document.getElementById('printBtn').addEventListener('click', () => window.print());
-    document.getElementById('closeBtn').addEventListener('click', () => { window.close(); });
+    // ปิดหน้านี้ให้ได้จริงทุกกรณี: ถ้าเบราว์เซอร์ไม่ยอมให้ปิด (เช่น แท็บที่เปิดด้วยลิงก์) ให้พาออกไปหน้าประวัติแทน
+    function closeSelf() {
+      try { window.close(); } catch (e) { /* ข้าม */ }
+      setTimeout(() => { if (!window.closed) location.replace('/shop/history.html'); }, 350);
+    }
+    document.getElementById('closeBtn').addEventListener('click', closeSelf);
 
     (async function init() {
-      if (!orderId || !/^\d+$/.test(orderId)) { renderError('ไม่พบเลขที่บิลที่ต้องการพิมพ์'); return; }
+      if (!orderId || !/^\d+$/.test(orderId)) {
+        renderError('ไม่พบเลขที่บิลที่ต้องการพิมพ์', 'หน้านี้ต้องเปิดจากปุ่ม “เช็คบิล” หรือปุ่ม “ขอใบเสร็จ (พิมพ์ใหม่)” ในหน้าประวัติ');
+        return;
+      }
       try {
         const [me, data] = await Promise.all([api('/api/shop/me'), api('/api/shop/orders/' + orderId)]);
         render(me.shop || {}, data.order || {}, data.items || []);
         // เปิดหน้าต่างพิมพ์ให้อัตโนมัติหลังเรนเดอร์เสร็จ
         setTimeout(() => { try { window.print(); } catch (e) { /* ผู้ใช้อาจปิดการพิมพ์ */ } }, 500);
       } catch (err) {
-        renderError(err && err.status === 403 ? 'กรุณาเข้าสู่ระบบก่อนเปิดใบเสร็จ' : (err.message || 'โหลดใบเสร็จไม่สำเร็จ'));
+        if (err && err.status === 403) renderError('กรุณาเข้าสู่ระบบก่อนเปิดใบเสร็จ', 'ล็อกอินเข้าระบบแล้วเปิดหน้านี้อีกครั้ง');
+        else renderError(err.message || 'โหลดใบเสร็จไม่สำเร็จ');
       }
     })();
   </script>

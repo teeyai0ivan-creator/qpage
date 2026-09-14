@@ -115,7 +115,11 @@
     window.addEventListener('resize', () => fitTableLine());
 
     document.getElementById('printBtn').addEventListener('click', () => window.print());
-    document.getElementById('closeBtn').addEventListener('click', () => { window.close(); });
+    // ปิดหน้านี้ให้ได้จริงทุกกรณี: ถ้าเบราว์เซอร์ไม่ยอมให้ปิด ให้พากลับหน้าสั่งอาหารแทน
+    document.getElementById('closeBtn').addEventListener('click', () => {
+      try { window.close(); } catch (e) { /* ข้าม */ }
+      setTimeout(() => { if (!window.closed) location.replace('/shop/orders.html'); }, 350);
+    });
 
     function renderError(message) {
       document.getElementById('label').innerHTML = '<p class="l-loading">' + esc(message) + '</p>';

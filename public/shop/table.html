@@ -144,6 +144,25 @@
     function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
     function leaveToOrders() { location.href = '/shop/orders.html'; }
 
+    // เปิดแท็บเปล่าล่วงหน้าพร้อมข้อความ "กำลังเช็คบิล..." (กันป๊อปอัปถูกบล็อก และไม่เหลือแท็บเปล่าค้าง)
+    function openBlankTab() {
+      const w = window.open('', '_blank');
+      try {
+        if (w && w.document) {
+          w.document.write('<!doctype html><meta charset="utf-8"><title>กำลังเช็คบิล...</title><body style="font-family:Sarabun,Tahoma,sans-serif;padding:24px;color:#475467">กำลังเช็คบิล... กรุณารอสักครู่</body>');
+          w.document.close();
+        }
+      } catch (e) { /* ข้าม */ }
+      return w;
+    }
+
+    // พาแท็บที่เปิดล่วงหน้าไปหน้าใบเสร็จ · ป๊อปอัปถูกบล็อก → เปิดในแท็บนี้ (พร้อมลองซ้ำกันแท็บเปล่าค้าง)
+    function gotoReceipt(w, url) {
+      if (!w) { location.href = url; return; }
+      try { w.location.href = url; } catch (e) { location.href = url; return; }
+      setTimeout(() => { try { if (w.location.href === 'about:blank') w.location.href = url; } catch (e) { /* ข้าม */ } }, 800);
+    }
+
     async function api(path, opts) {
       const res = await fetch(path, opts);
       let data; try { data = await res.json(); } catch { const e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
@@ -233,14 +252,13 @@
       if (!items.length) return;
       const total = bill ? bill.total : 0;
       if (!confirm(`ยืนยันเช็คบิลโต๊ะ "${table.code}" ?\n\nยอดรวม ${money(total)} · ${platesOf(items.filter((i) => i.status !== 'cancelled'))} รายการ\nหลังเช็คบิลจะเปิดหน้าใบเสร็จให้พิมพ์`)) return;
-      const win = window.open('', '_blank'); // เปิดแท็บล่วงหน้า กันป๊อปอัปถูกบล็อก
+      const win = openBlankTab(); // เปิดแท็บล่วงหน้า กันป๊อปอัปถูกบล็อก
       try {
         const r = await postJson('/api/shop/tables/' + table.id + '/checkout');
         toast(r.message || 'เช็คบิลแล้ว');
         const orderId = r.closed && r.closed.order_id;
-        if (orderId && win) win.location.href = '/shop/receipt.html?order=' + orderId;
-        else if (win) win.close();
-        leaveToOrders();
+        if (orderId) { gotoReceipt(win, '/shop/receipt.html?order=' + orderId); leaveToOrders(); }
+        else { if (win) win.close(); leaveToOrders(); }
       } catch (e) {
         if (win) win.close();
         alert(e.message);
