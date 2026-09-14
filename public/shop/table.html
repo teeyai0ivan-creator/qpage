@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <style>
     .td-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
     .td-top h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
@@ -131,10 +132,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
-    const platesOf = (items) => (items || []).reduce((n, it) => n + (Number(it.quantity) || 0), 0);
     const ST = { pending: ['รอทำ', 'st-pending'], cooking: ['กำลังทำ', 'st-cooking'], done: ['เสร็จแล้ว', 'st-done'], cancelled: ['ยกเลิก', 'st-cancelled'] };
     const qrUrl = (id) => '/api/shop/tables/' + id + '/qr?origin=' + encodeURIComponent(location.origin);
 
@@ -143,25 +140,6 @@
     let toastTimer = null;
     function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
     function leaveToOrders() { location.href = '/shop/orders.html'; }
-
-    // เปิดแท็บเปล่าล่วงหน้าพร้อมข้อความ "กำลังเช็คบิล..." (กันป๊อปอัปถูกบล็อก และไม่เหลือแท็บเปล่าค้าง)
-    function openBlankTab() {
-      const w = window.open('', '_blank');
-      try {
-        if (w && w.document) {
-          w.document.write('<!doctype html><meta charset="utf-8"><title>กำลังเช็คบิล...</title><body style="font-family:Sarabun,Tahoma,sans-serif;padding:24px;color:#475467">กำลังเช็คบิล... กรุณารอสักครู่</body>');
-          w.document.close();
-        }
-      } catch (e) { /* ข้าม */ }
-      return w;
-    }
-
-    // พาแท็บที่เปิดล่วงหน้าไปหน้าใบเสร็จ · ป๊อปอัปถูกบล็อก → เปิดในแท็บนี้ (พร้อมลองซ้ำกันแท็บเปล่าค้าง)
-    function gotoReceipt(w, url) {
-      if (!w) { location.href = url; return; }
-      try { w.location.href = url; } catch (e) { location.href = url; return; }
-      setTimeout(() => { try { if (w.location.href === 'about:blank') w.location.href = url; } catch (e) { /* ข้าม */ } }, 800);
-    }
 
     async function api(path, opts) {
       const res = await fetch(path, opts);
@@ -257,8 +235,10 @@
         const r = await postJson('/api/shop/tables/' + table.id + '/checkout');
         toast(r.message || 'เช็คบิลแล้ว');
         const orderId = r.closed && r.closed.order_id;
-        if (orderId) { gotoReceipt(win, '/shop/receipt.html?order=' + orderId); leaveToOrders(); }
-        else { if (win) win.close(); leaveToOrders(); }
+        if (!orderId) { if (win) win.close(); leaveToOrders(); return; }
+        const url = '/shop/receipt.html?order=' + orderId;
+        if (win) { gotoReceipt(win, url); leaveToOrders(); } // มีแท็บใหม่ → เปิดใบเสร็จที่นั่น แล้วกลับหน้าสั่งอาหารในแท็บนี้
+        else location.href = url;                            // ป๊อปอัปถูกบล็อก → แสดงใบเสร็จในแท็บนี้เลย (ไม่ต้องกลับหน้าสั่งอาหาร) 
       } catch (e) {
         if (win) win.close();
         alert(e.message);

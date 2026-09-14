@@ -104,10 +104,8 @@
     <div class="r-loading" id="loading">กำลังโหลดใบเสร็จ...</div>
   </div>
 
+  <script src="/js/shop-ui.js"></script>
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
     const orderId = (new URLSearchParams(location.search).get('order') || '').trim();
 
     function fmtDateTime(v) {

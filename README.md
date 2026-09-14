@@ -201,9 +201,11 @@ public/
   admin/                        หลังบ้านแอดมิน (index, otp, users, profile, admin.css)
   shop/                         หน้าร้านค้า (purchase, setup, menu=จัดการเมนู, menus=ตารางเมนูทั้งหมด, orders=สั่งอาหาร, kitchen=ครัว, cashier=แคชเชียร์, receipt=ใบเสร็จ, label=ป้ายโต๊ะสำหรับพิมพ์, table=รายละเอียดโต๊ะ, history=ประวัติ, notify=ตั้งค่าการแจ้งเตือน, index=หน้าร้านสาธารณะ)
   order/index.html              หน้าสั่งอาหารของลูกค้า (/order/:token)
-  css/ (style.css, settings.css, shop.css)  js/theme.js
+  css/ (style.css, settings.css, shop.css)  js/ (theme.js, side-menu.js, shop-ui.js)
   uploads/                      รูปที่อัปโหลด (โลโก้/รูปเมนู)
 ```
+
+`js/shop-ui.js` = ตัวช่วยที่ใช้ร่วมกันทุกหน้าฝั่งร้านและหน้าลูกค้า (`esc`, `money`, `billNoFmt`, `dt`, `platesOf`, `openBlankTab`, `gotoReceipt`) โหลดด้วย `<script src="/js/shop-ui.js">` ในแต่ละหน้า ไม่ต้องมี build step — หน้าที่ต้องการตัวเลขแบบไม่มีสัญลักษณ์ ฿ (menus.html, purchase.html) ใช้ `moneyNum` ของตัวเอง ส่วนตัวช่วยที่ผูกกับหน้าจอ (เช่น `api`, `toast`) ยังอยู่ในหน้าแต่ละหน้าเพราะรายละเอียดต่างกัน
 
 ## 🔒 ความปลอดภัย
 - รหัสผ่านแฮชด้วย **bcrypt** (cost 10) — ไม่เก็บ plain text

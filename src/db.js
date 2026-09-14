@@ -913,11 +913,6 @@ async function findShopByUserId(userId) {
   return rows[0] || null;
 }
 
-async function findShopByCode(code) {
-  const [rows] = await pool.execute('SELECT * FROM shops WHERE public_code = ? LIMIT 1', [code]);
-  return rows[0] || null;
-}
-
 async function createShop({ userId, publicCode, name, phone = '', lineUrl = '', logoUrl = '', mapsUrl = '' }) {
   const [result] = await pool.execute(
     'INSERT INTO shops (user_id, public_code, name, phone, line_url, logo_url, maps_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -1486,11 +1481,6 @@ async function findTableByCode(shopId, code) {
   return rows[0] || null;
 }
 
-async function findTableByToken(token) {
-  const [rows] = await pool.execute('SELECT * FROM `tables` WHERE token = ? LIMIT 1', [token]);
-  return rows[0] || null;
-}
-
 /** โต๊ะที่สั่งอาหารได้ (เจ้าของร้านยังเป็น shop และของขวัญไม่หมดอายุ) + ข้อมูลร้าน
  *  โต๊ะที่ถูกปิดใช้งานแล้วจะสั่งไม่ได้ (แม้แถวยังอยู่เพื่อเก็บประวัติ) */
 async function findOrderableTableByToken(token) {
@@ -1520,10 +1510,6 @@ async function updateTableCode(id, shopId, code) {
     "UPDATE orders SET table_code = ? WHERE shop_id = ? AND table_id = ? AND status = 'open'",
     [code, shopId, id]
   );
-}
-
-async function deleteTable(id, shopId) {
-  await pool.execute('DELETE FROM `tables` WHERE id = ? AND shop_id = ?', [id, shopId]);
 }
 
 /** ปิดใช้งาน QR ของโต๊ะ (soft): ไม่ลบแถวทิ้ง เพื่อเก็บไว้เป็นประวัติ/หลักฐาน
@@ -1559,14 +1545,6 @@ async function listRetiredTables(shopId) {
 // ---------------------------------------------------------------------------
 // รายชื่อโต๊ะ (แคตตาล็อกชื่อโต๊ะ) + โทเคน QR ที่ถูกยกเลิก
 // ---------------------------------------------------------------------------
-async function listTableNames(shopId) {
-  const [rows] = await pool.execute(
-    'SELECT * FROM table_names WHERE shop_id = ? ORDER BY sort_order ASC, id ASC',
-    [shopId]
-  );
-  return rows;
-}
-
 /** ชื่อโต๊ะทั้งหมด พร้อมโซนและบอกว่าตอนนี้มี QR (โต๊ะ) ที่ใช้งานอยู่แล้วหรือยัง */
 async function listTableNamesWithQr(shopId) {
   const [rows] = await pool.execute(
@@ -1674,11 +1652,6 @@ async function isTableTokenTaken(token) {
     [token, token]
   );
   return rows.length > 0;
-}
-
-async function countRetiredTableTokens(shopId) {
-  const [rows] = await pool.execute('SELECT COUNT(*) AS c FROM retired_table_tokens WHERE shop_id = ?', [shopId]);
-  return Number(rows[0].c) || 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -1967,7 +1940,6 @@ module.exports = {
   clearExpiredGifts,
   findPublicShopByCode,
   findShopByUserId,
-  findShopByCode,
   createShop,
   updateShop,
   listCategories,
@@ -2022,14 +1994,11 @@ module.exports = {
   findTableById,
   findTableByIdAny,
   findTableByCode,
-  findTableByToken,
   findOrderableTableByToken,
   createTable,
   updateTableCode,
-  deleteTable,
   retireTable,
   listRetiredTables,
-  listTableNames,
   listTableNamesWithQr,
   setTableNameZone,
   reorderTableNames,
@@ -2046,7 +2015,6 @@ module.exports = {
   deleteTableName,
   retireTableToken,
   isTableTokenTaken,
-  countRetiredTableTokens,
   listNotifyGroups,
   listActiveNotifyGroups,
   findNotifyGroupById,

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <style>
     .ng-intro { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 18px; }
     .ng-intro summary { cursor: pointer; font-weight: 700; font-size: 14px; }
@@ -242,8 +243,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const dt = (iso) => { if (!iso) return '—'; const d = new Date(iso); if (isNaN(d)) return iso; const p = (n) => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
     const mask = (s) => { s = String(s || ''); return s ? (s.length > 4 ? '••••' + s.slice(-4) : '••••') : ''; };
 
     let toastTimer = null;

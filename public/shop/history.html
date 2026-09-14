@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <style>
     .hist-filter { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
     .hist-filter label { font-size: 13px; color: var(--muted); font-weight: 600; }
@@ -172,9 +173,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
     let toastTimer = null;
     let lastOrders = [];
 
@@ -185,7 +183,6 @@
       return data;
     }
     function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }
-    const dt = (iso) => { if (!iso) return '—'; const d = new Date(iso); if (isNaN(d)) return iso; const p = (n) => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
 
     let retired = [];
 

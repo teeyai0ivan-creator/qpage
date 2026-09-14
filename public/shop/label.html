@@ -80,9 +80,8 @@
     <div class="l-loading" id="loading">กำลังโหลดป้าย...</div>
   </div>
 
+  <script src="/js/shop-ui.js"></script>
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
     const tableId = (new URLSearchParams(location.search).get('table') || '').trim();
 
     async function api(path) {

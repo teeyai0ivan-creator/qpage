@@ -454,8 +454,6 @@ input.valid { border-color: var(--success); box-shadow: 0 0 0 4px rgba(5, 150, 1
 }
 
 /* ---------- OTP ---------- */
-.otp-box { text-align: center; }
-.otp-box .auth-head { margin-bottom: 24px; }
 .dev-banner {
   display: none;
   background: var(--success-bg); color: var(--success);

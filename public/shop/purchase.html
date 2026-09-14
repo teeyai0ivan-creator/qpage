@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -52,10 +53,7 @@
       if (!data.ok) { const e = new Error(data.message || 'เกิดข้อผิดพลาด'); e.status = res.status; throw e; }
       return data;
     }
-    function esc(s) {
-      return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-    function money(v) { return Number(v || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+    function moneyNum(v) { return Number(v || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
 
     const ICON_CHECK = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const ICON_ARROW = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -78,7 +76,7 @@
           <span class="pkg-duration">${esc(p.duration_months)} เดือน</span>
         </div>
         <div class="pkg-price-row">
-          <span class="pkg-currency">฿</span><span class="pkg-amount">${money(p.price)}</span>
+          <span class="pkg-currency">฿</span><span class="pkg-amount">${moneyNum(p.price)}</span>
           <span class="pkg-per">/ ${esc(p.duration_months)} เดือน</span>
         </div>
         ${features}
@@ -123,7 +121,7 @@
         <div class="pay-head">
           <span class="pill ${p.notified ? 'pill-valid' : 'pill-warning'}">${p.notified ? 'แจ้งโอนแล้ว — รอตรวจสอบยอด' : 'รอชำระเงิน'}</span>
           <h2>${esc(p.packageName)} · ${esc(p.durationMonths)} เดือน</h2>
-          <div class="pay-amount">฿${money(p.amount)}</div>
+          <div class="pay-amount">฿${moneyNum(p.amount)}</div>
           <div class="pay-ref">รหัสอ้างอิง <strong class="mono">${esc(p.ref)}</strong></div>
           ${!p.notified && p.expiresAtMs ? `<div class="pay-countdown">เหลือเวลา <b id="payCountdown">–</b></div>` : ''}
         </div>
@@ -272,7 +270,7 @@
         <div class="pay-head">
           <span class="pill pill-warning">โหมดทดลอง — ยังไม่เรียกเก็บเงิน</span>
           <h2>${esc(p.name)} · ${esc(p.duration_months)} เดือน</h2>
-          <div class="pay-amount">฿${money(p.price)}</div>
+          <div class="pay-amount">฿${moneyNum(p.price)}</div>
           <div class="pay-ref">ระบบยังไม่เปิดรับชำระเงิน ยอดนี้จะไม่ถูกเรียกเก็บ</div>
         </div>
         ${details.length ? `<ul class="pkg-features">${details.map((d) => `<li><span class="pkg-check">${ICON_CHECK}</span><div><strong>${esc(d.heading)}</strong>${d.text ? '<span class="pkg-desc">' + esc(d.text) + '</span>' : ''}</div></li>`).join('')}</ul>` : ''}

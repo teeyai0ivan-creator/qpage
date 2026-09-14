@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -74,11 +75,8 @@
   </div>
 
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     const token = (location.pathname.split('/').filter(Boolean).pop() || '').trim();
     const f2 = (n) => Math.round(n * 100) / 100;
-    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
     const ST_LABEL = { pending: 'รอทำ', cooking: 'กำลังทำ', done: 'เสร็จแล้ว', cancelled: 'ยกเลิก' };
     const ST_CLASS = { pending: 'st-pending', cooking: 'st-cooking', done: 'st-done', cancelled: 'st-cancelled' };
 

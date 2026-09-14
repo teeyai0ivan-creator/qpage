@@ -81,9 +81,7 @@
 .tile.busy:hover { transform: none; background: var(--surface-2); }
 .tile.busy small { color: var(--success); }
 
-/* ป๊อปอัพโต๊ะ: รูป QR + แถวยอดบิล */
-.td-qr-box { display: flex; justify-content: center; padding: 10px 0 4px; }
-.td-qr-box img { width: 210px; height: 210px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; }
+/* ป๊อปอัพโต๊ะ: แถวยอดบิล */
 .td-total-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .td-total-row strong { font-size: 17px; font-weight: 800; }
 /* ช่องที่มี QR แล้วในตารางหน้าแรก */
@@ -261,12 +259,8 @@
 .pub-empty { color: var(--muted); text-align: center; padding: 40px 0; }
 
 /* ---------- โต๊ะ & QR ---------- */
-.table-card { display: flex; gap: 14px; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; background: var(--surface-2); }
-.table-qr { width: 108px; height: 108px; border-radius: 10px; background: #fff; border: 1px solid var(--border); flex-shrink: 0; }
-.table-info { flex: 1; min-width: 0; }
 .table-code { font-weight: 800; font-size: 16px; }
 .table-sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
-.table-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 
 /* ---------- บิล ---------- */
 .bill-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; background: var(--surface-2); }
@@ -295,8 +289,6 @@
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (max-width: 560px) {
-  .table-card { flex-wrap: wrap; }
-  .table-qr { width: 92px; height: 92px; }
   .cart-bar { padding: 12px 14px; }
   .cart-info { font-size: 13px; }
 }

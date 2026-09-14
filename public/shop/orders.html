@@ -258,9 +258,8 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="/js/shop-ui.js"></script>
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     let toastTimer = null;
 
     async function api(path, opts) {
@@ -276,39 +275,8 @@
       clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
     }
     const qrUrl = (id) => '/api/shop/tables/' + id + '/qr?origin=' + encodeURIComponent(location.origin);
-    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
-    // นับ "รายการ" เป็นจำนวนจาน (ผลรวม quantity) ให้ตรงกับบิล/ใบเสร็จ/แจ้งเตือน
-    const platesOf = (items) => (items || []).reduce((n, it) => n + (Number(it.quantity) || 0), 0);
     // จำนวนจานของบิลที่เปิดอยู่ — เทียบเป็นตัวเลขเสมอ (ค่า 0 ต้องถือว่า "ว่าง")
     const billPlates = (o) => (o ? Number(o.item_count) || 0 : 0);
-
-    // เปิดหน้าป้ายโต๊ะสำหรับพิมพ์ (หน้าจริงแบบเดียวกับใบเสร็จ — พิมพ์บนกระดาษม้วนได้แน่นอน)
-    function printLabel(t) {
-      const url = '/shop/label.html?table=' + encodeURIComponent(t.id);
-      const w = window.open(url, '_blank');
-      if (!w) location.href = url; // ถ้าเบราว์เซอร์บล็อกป๊อปอัป ให้เปิดในแท็บนี้แทน
-    }
-
-    // เปิดแท็บเปล่าล่วงหน้า (ต้องเรียกจังหวะที่ผู้ใช้กดจริง ไม่งั้นเบราว์เซอร์บล็อกป๊อปอัป)
-    // เขียนข้อความ "กำลังเช็คบิล…" ไว้ด้วย จะได้ไม่เหลือแท็บเปล่าค้างถ้าการพาไปหน้าใบเสร็จล้มเหลว
-    function openBlankTab() {
-      const w = window.open('', '_blank');
-      try {
-        if (w && w.document) {
-          w.document.write('<!doctype html><meta charset="utf-8"><title>กำลังเช็คบิล...</title><body style="font-family:Sarabun,Tahoma,sans-serif;padding:24px;color:#475467">กำลังเช็คบิล... กรุณารอสักครู่</body>');
-          w.document.close();
-        }
-      } catch (e) { /* ข้าม */ }
-      return w;
-    }
-
-    // พาแท็บที่เปิดล่วงหน้าไปหน้าใบเสร็จ · ถ้าป๊อปอัปถูกบล็อกให้เปิดในแท็บนี้แทน
-    // (มีการลองซ้ำ กันเบราว์เซอร์ยังไม่พร้อมรับคำสั่งนำทางแล้วเหลือแท็บเปล่าค้าง)
-    function gotoReceipt(w, url) {
-      if (!w) { location.href = url; return; }
-      try { w.location.href = url; } catch (e) { location.href = url; return; }
-      setTimeout(() => { try { if (w.location.href === 'about:blank') w.location.href = url; } catch (e) { /* ข้าม */ } }, 800);
-    }
 
     let tablesCache = [];
     let openOrdersCache = []; // บิลที่เปิดอยู่ (พร้อมรายการ) — ใช้โชว์ในบล็อกโต๊ะด้วย
@@ -426,7 +394,8 @@
         closeCheckout();
         toast(r.message || 'เช็คบิลแล้ว');
         const url = orderId ? '/shop/receipt.html?order=' + orderId : '';
-        if (url) gotoReceipt(receiptWin, url); // ถ้า popup ถูกบล็อก จะเปิดในแท็บนี้แทน
+        if (url && receiptWin) { gotoReceipt(receiptWin, url); await loadAll(); }
+        else if (url) { location.href = url; return; } // ป๊อปอัปถูกบล็อก → ไปหน้าใบเสร็จในแท็บนี้
         else if (receiptWin) receiptWin.close();
         await loadAll();
       } catch (err) {

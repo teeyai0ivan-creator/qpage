@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -15,9 +16,7 @@
   </div>
 
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const code = (location.pathname.split('/').filter(Boolean).pop() || '').trim();
-    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
     function renderMenuCard(m, groups, items) {
       const linked = groups.filter((g) => g.menu_id === m.id).map((g) => ({

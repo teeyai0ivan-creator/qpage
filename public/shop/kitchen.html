@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -163,7 +164,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     // ---------- จุดแสดงผลของหน้านี้: ครัว (/shop/kitchen.html) หรือแคชเชียร์ (/shop/cashier.html) ----------
     // หมวดหมู่แต่ละหมวดถูกตั้ง "เส้นทาง" ได้ว่าจะส่งรายการไปครัวหรือแคชเชียร์ (ตั้งที่หน้าจัดการเมนู)
@@ -202,7 +202,6 @@
     }
     const hhmm = (iso) => { const d = new Date(iso); const p = (n) => String(n).padStart(2, '0'); return isNaN(d) ? '' : p(d.getHours()) + ':' + p(d.getMinutes()); };
 
-    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
 
     function itemHtml(i, showCtx) {
       let opts = []; try { opts = i.options_json ? JSON.parse(i.options_json) : []; } catch (e) {}
@@ -319,8 +318,6 @@
       if (t) t.textContent = L.title;
       const d = document.getElementById('pageDesc');
       if (d) d.textContent = L.desc;
-      const sw = document.getElementById('stationSwitch');
-      if (sw) { sw.textContent = L.switchLabel; sw.href = L.switchHref; }
       const setLabel = (filter, text) => {
         const el = document.querySelector('[data-filter="' + filter + '"] .f-label');
         if (el) el.textContent = text;

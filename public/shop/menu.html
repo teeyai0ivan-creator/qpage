@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -208,7 +209,6 @@
     </div>
 
   <script>
-    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     let state = { shop: null, categories: [], menus: [], optionGroups: [], optionItems: [], menuGroups: [], publicUrl: '' };
     let menuImageUrl = '';
     let toastTimer = null;
@@ -321,7 +321,6 @@
       if (!state.optionGroups.length) { box.innerHTML = '<span style="color:var(--muted);font-size:12.5px;">ยังไม่มีกลุ่มตัวเลือก — สร้างด้านล่างก่อน</span>'; return; }
       box.innerHTML = state.optionGroups.map((g) => `<label style="display:flex;gap:7px;align-items:center;"><input type="checkbox" class="mgpick" value="${g.id}"> <span>${esc(g.name)} <small style="color:var(--muted);">(${g.required ? 'บังคับ' : 'ไม่บังคับ'}${g.multi ? ', หลายอย่าง' : ''})</small></span></label>`).join('');
     }
-    function catName(id) { const c = state.categories.find((x) => x.id === id); return c ? c.name : '—'; }
     // รายการเมนูย้ายไปหน้า /shop/menus.html (ตารางแบบเอ็กเซล) — ที่นี่อัปเดตแค่จำนวนในหัวข้อ
     function renderMenus() {
       const el = document.getElementById('menuCount');
