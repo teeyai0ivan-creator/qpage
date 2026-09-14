@@ -61,6 +61,13 @@ router.get('/order/:token', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'order', 'index.html'));
 });
 
+// หน้ารายละเอียดโต๊ะ (เจ้าของร้าน) — เปิดจากการกดช่องโต๊ะในหน้าสั่งอาหาร
+router.get('/shop/table.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  await sendShopPage(res, 'table.html', shop);
+});
+
 // ---------------------------------------------------------------------------
 // API ฝั่งร้าน: โต๊ะ + QR
 // สร้างโทเคน QR ใหม่ที่ไม่ซ้ำกับโต๊ะที่ใช้งานอยู่ และไม่เคยถูกยกเลิกไปแล้ว
@@ -205,15 +212,21 @@ router.post('/api/shop/zones/reorder', requireShop, async (req, res) => {
 router.get('/api/shop/tables', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
-  const tables = await db.listTables(shop.id);
-  const openOrders = await db.listOpenOrders(shop.id);
+  const [tables, openOrders, catalog] = await Promise.all([
+    db.listTables(shop.id),
+    db.listOpenOrders(shop.id),
+    db.listTableNamesWithQr(shop.id),
+  ]);
   const byTable = {};
   openOrders.forEach((o) => { byTable[o.table_id] = o; });
+  const zoneByName = {};
+  catalog.forEach((n) => { zoneByName[n.name] = n.zone_name || null; });
   res.json({
     ok: true,
     delete_qr_on_checkout: Number(shop.delete_qr_on_checkout) === 1,
     tables: tables.map((t) => ({
       id: t.id, code: t.code, token: t.token,
+      zone_name: zoneByName[t.code] || null,
       open_order: byTable[t.id] || null,
     })),
   });

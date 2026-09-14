@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รายละเอียดโต๊ะ | ระบบสมาชิก</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/settings.css">
+  <link rel="stylesheet" href="/css/shop.css">
+  <script src="/js/theme.js"></script>
+  <style>
+    .td-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .td-top h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+    .td-zone { font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--ring); color: var(--accent); }
+    .td-grid { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
+    @media (max-width: 860px) { .td-grid { grid-template-columns: 1fr; } }
+    .td-qr { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .td-qr img { width: 100%; max-width: 260px; aspect-ratio: 1/1; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
+    .td-qr .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .td-total-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .td-total-row strong { font-size: 18px; font-weight: 800; }
+  </style>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+</head>
+<body>
+  <nav class="site-nav">
+    <a class="brand" href="/shop">
+      <div class="brand-logo"><img src="/img/logo.svg" alt="QPage"></div>
+      <span class="brand-name" id="shopName">ร้านของฉัน</span>
+    </a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="เปิด/ปิดเมนู" aria-expanded="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <button class="theme-toggle" type="button" aria-label="สลับธีม" style="position:static;">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" style="display:none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <a class="btn btn-outline btn-small" href="/settings/profile">ออกจากร้านค้า</a>
+    </div>
+  </nav>
+
+  <div class="shop-shell">
+    <aside class="settings-menu shop-side">
+      <div class="menu-title">ร้านค้า</div>
+      <a class="menu-item" href="/shop/orders.html" data-path="/shop/orders.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/></svg>
+        สั่งอาหาร
+      </a>
+      <a class="menu-item" href="/shop/kitchen.html" data-path="/shop/kitchen.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10h16v6a4 4 0 01-4 4H8a4 4 0 01-4-4v-6z"/><path d="M6 10V7a2 2 0 012-2h8a2 2 0 012 2v3"/></svg>
+        ครัว
+      </a>
+      <a class="menu-item" href="/shop/cashier.html" data-path="/shop/cashier.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h.01M12 11h.01M15 11h.01M9 15h.01M12 15h.01M15 15h.01"/></svg>
+        แคชเชียร์
+      </a>
+      <a class="menu-item" href="/shop/history.html" data-path="/shop/history.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1015.5-6.2M3 4v4h4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8v4l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ประวัติ
+      </a>
+      <a class="menu-item" href="/shop/menu.html" data-path="/shop/menu.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2V5z" stroke-linejoin="round"/><path d="M8 7h8M8 11h5" stroke-linecap="round"/></svg>
+        จัดการเมนู
+      </a>
+      <a class="menu-item" href="/shop/menus.html" data-path="/shop/menus.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg>
+        เมนูทั้งหมด
+      </a>
+      <a class="menu-item" href="/shop/setup.html" data-path="/shop/setup.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke-linejoin="round"/><path d="M3 6h18M16 10a4 4 0 01-8 0" stroke-linecap="round"/></svg>
+        ตั้งค่าข้อมูลร้าน
+      </a>
+      <a class="menu-item" href="/shop/notify.html" data-path="/shop/notify.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 01-3.4 0" stroke-linecap="round"/></svg>
+        แจ้งเตือน
+      </a>
+      <a class="menu-item" href="#" id="viewShopLink" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>
+        ดูร้าน
+      </a>
+      <div class="menu-divider"></div>
+      <a class="menu-item" href="/settings/profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ออกจากร้านค้า
+      </a>
+    </aside>
+    <script src="/js/side-menu.js" data-key="qpage_shop_menu" data-panel=".shop-side"></script>
+
+    <div class="shop-wrap">
+      <div class="shop-head">
+        <div class="td-top">
+          <a class="mini-btn" href="/shop/orders.html">← กลับหน้าสั่งอาหาร</a>
+          <h1 id="tdTitle">กำลังโหลด...</h1>
+          <span class="td-zone" id="tdZone" style="display:none;"></span>
+        </div>
+        <p id="tdSub">รายละเอียดโต๊ะ — QR สำหรับให้ลูกค้าสแกนสั่งอาหาร และบิลปัจจุบันของโต๊ะนี้</p>
+      </div>
+
+      <div class="td-grid">
+        <!-- QR + ปุ่มจัดการ -->
+        <div class="shop-card td-qr">
+          <h2 style="align-self:stretch;">QR ของโต๊ะนี้</h2>
+          <img id="tdQr" src="" alt="QR โต๊ะ">
+          <div class="acts">
+            <button class="mini-btn primary" id="tdPrint" type="button">พิมพ์ QR</button>
+            <a class="mini-btn" id="tdDownload" href="#" download>ดาวน์โหลด QR</a>
+            <button class="mini-btn" id="tdRename" type="button">เปลี่ยนชื่อ</button>
+            <button class="mini-btn danger" id="tdDelete" type="button">ลบ QR</button>
+          </div>
+          <p style="font-size:12px;color:var(--muted);text-align:center;margin:0;">QR นี้ใช้ได้เฉพาะโต๊ะนี้ · ถ้าลบแล้วจะถูกยกเลิกถาวร ใช้ซ้ำไม่ได้</p>
+        </div>
+
+        <!-- บิลปัจจุบัน -->
+        <div class="shop-card">
+          <h2>บิลปัจจุบัน <span class="count" id="tdBillNo"></span></h2>
+          <div id="tdBill"></div>
+          <div class="td-total-row">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="mini-btn primary" id="tdCheckout" type="button">เช็คบิล (ปิดบิล + เปิดบิลใหม่)</button>
+              <button class="mini-btn" id="tdRefresh" type="button">รีเฟรช</button>
+            </div>
+            <strong id="tdTotal">฿0</strong>
+          </div>
+          <div class="table-sub" id="tdWarn" style="color:var(--warning);"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const billNoFmt = (n) => (n ? '#' + String(n).padStart(4, '0') : '—');
+    const platesOf = (items) => (items || []).reduce((n, it) => n + (Number(it.quantity) || 0), 0);
+    const ST = { pending: ['รอทำ', 'st-pending'], cooking: ['กำลังทำ', 'st-cooking'], done: ['เสร็จแล้ว', 'st-done'], cancelled: ['ยกเลิก', 'st-cancelled'] };
+    const qrUrl = (id) => '/api/shop/tables/' + id + '/qr?origin=' + encodeURIComponent(location.origin);
+
+    const tableId = Number(new URLSearchParams(location.search).get('table') || 0);
+    let table = null, bill = null;
+    let toastTimer = null;
+    function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
+    function leaveToOrders() { location.href = '/shop/orders.html'; }
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let data; try { data = await res.json(); } catch { const e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
+      if (!data.ok) { const e = new Error(data.message || 'เกิดข้อผิดพลาด'); e.status = res.status; throw e; }
+      return data;
+    }
+    const putJson = (p, b) => api(p, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+    const postJson = (p, b) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b || {}) });
+
+    function itemRow(it) {
+      let opts = []; try { opts = it.options_json ? JSON.parse(it.options_json) : []; } catch (e) { /* ข้าม */ }
+      const st = it.status || 'pending';
+      const [label, cls] = ST[st] || [st, ''];
+      const cancelled = st === 'cancelled';
+      return `<div class="bill-item"${cancelled ? ' style="opacity:.6;"' : ''}>
+        <span>${it.quantity} × ${cancelled ? '<span style="text-decoration:line-through;">' + esc(it.menu_name) + '</span>' : esc(it.menu_name)}${opts.length ? ' <small>(' + esc(opts.join(', ')) + ')</small>' : ''} <span class="st-badge ${cls}">${label}</span>${cancelled && it.cancel_reason ? ' <small>(' + esc(it.cancel_reason) + ')</small>' : ''}</span>
+        <span>${cancelled ? '—' : money(it.line_total) + `<button class="mini-btn danger" data-delitem="${it.id}" type="button">ลบ</button>`}</span>
+      </div>`;
+    }
+
+    function render() {
+      if (!table) {
+        document.getElementById('tdTitle').textContent = 'ไม่พบโต๊ะนี้';
+        document.getElementById('tdSub').textContent = 'โต๊ะนี้อาจถูกลบไปแล้ว — กลับไปหน้าสั่งอาหารเพื่อสร้าง QR ใหม่';
+        document.getElementById('tdQr').style.display = 'none';
+        document.getElementById('tdBill').innerHTML = '<div class="cat-empty">ไม่มีข้อมูล</div>';
+        return;
+      }
+      document.title = 'โต๊ะ ' + table.code + ' | ระบบสมาชิก';
+      document.getElementById('tdTitle').textContent = 'โต๊ะ ' + table.code;
+      const zone = document.getElementById('tdZone');
+      if (table.zone_name) { zone.textContent = table.zone_name; zone.style.display = ''; } else { zone.style.display = 'none'; }
+      document.getElementById('tdSub').textContent = 'บิล ' + billNoFmt(table.open_order ? table.open_order.bill_no : null) + ' · QR นี้ให้ลูกค้าที่โต๊ะสแกนเพื่อสั่งอาหาร';
+      document.getElementById('tdQr').src = qrUrl(table.id);
+      const dl = document.getElementById('tdDownload');
+      dl.href = qrUrl(table.id);
+      dl.setAttribute('download', 'table-' + table.code + '-qr.png');
+
+      const items = (bill && bill.items) ? bill.items : [];
+      const active = items.filter((i) => i.status !== 'cancelled');
+      document.getElementById('tdBillNo').textContent = table.open_order ? billNoFmt(table.open_order.bill_no) : '';
+      document.getElementById('tdBill').innerHTML = items.length
+        ? '<div class="bill-items">' + items.map(itemRow).join('') + '</div>'
+        : '<div class="cat-empty">บิลนี้ยังไม่มีรายการ</div>';
+      document.getElementById('tdTotal').textContent = money(bill ? bill.total : (table.open_order ? table.open_order.total : 0));
+      const uncleared = platesOf(items.filter((i) => i.status === 'pending' || i.status === 'cooking'));
+      const coBtn = document.getElementById('tdCheckout');
+      coBtn.disabled = !items.length || !!uncleared;
+      document.getElementById('tdWarn').textContent = uncleared ? `⚠ ยังมีรายการรอทำ/กำลังทำ ${uncleared} รายการ — เช็คบิลไม่ได้` : '';
+
+      document.querySelectorAll('[data-delitem]').forEach((b) => b.addEventListener('click', async () => {
+        if (!confirm('ลบรายการนี้ออกจากบิล?')) return;
+        try { await api('/api/shop/order-items/' + b.dataset.delitem, { method: 'DELETE' }); toast('ลบรายการแล้ว'); await load(); }
+        catch (e) { alert(e.message); }
+      }));
+    }
+
+    async function load() {
+      const [data, open] = await Promise.all([api('/api/shop/tables'), api('/api/shop/orders/open')]);
+      table = (data.tables || []).find((t) => Number(t.id) === tableId) || null;
+      bill = table ? ((open.orders || []).find((o) => Number(o.table_id) === table.id) || null) : null;
+      render();
+    }
+
+    document.getElementById('tdPrint').addEventListener('click', () => {
+      if (table) window.open('/shop/label.html?table=' + table.id, '_blank');
+    });
+    document.getElementById('tdRename').addEventListener('click', async () => {
+      if (!table) return;
+      const code = prompt('ชื่อโต๊ะใหม่', table.code);
+      if (!code || !code.trim()) return;
+      try { await putJson('/api/shop/tables/' + table.id, { code: code.trim() }); toast('บันทึกแล้ว'); await load(); }
+      catch (e) { alert(e.message); }
+    });
+    document.getElementById('tdDelete').addEventListener('click', async () => {
+      if (!table) return;
+      if (!confirm(`ลบ QR ของโต๊ะ "${table.code}" ?\n\nQR นี้จะถูกยกเลิกถาวร ใช้ไม่ได้อีก และโต๊ะจะหายจากหน้าสั่งอาหาร`)) return;
+      try { await api('/api/shop/tables/' + table.id, { method: 'DELETE' }); toast('ลบ QR แล้ว'); leaveToOrders(); }
+      catch (e) { alert(e.message); }
+    });
+    document.getElementById('tdRefresh').addEventListener('click', async () => { try { await load(); toast('อัปเดตแล้ว'); } catch (e) { alert(e.message); } });
+
+    // เช็คบิล: ปิดบิล + เปิดใบเสร็จให้พิมพ์ แล้วกลับหน้าสั่งอาหาร
+    document.getElementById('tdCheckout').addEventListener('click', async () => {
+      if (!table) return;
+      const items = (bill && bill.items) ? bill.items : [];
+      if (!items.length) return;
+      const total = bill ? bill.total : 0;
+      if (!confirm(`ยืนยันเช็คบิลโต๊ะ "${table.code}" ?\n\nยอดรวม ${money(total)} · ${platesOf(items.filter((i) => i.status !== 'cancelled'))} รายการ\nหลังเช็คบิลจะเปิดหน้าใบเสร็จให้พิมพ์`)) return;
+      const win = window.open('', '_blank'); // เปิดแท็บล่วงหน้า กันป๊อปอัปถูกบล็อก
+      try {
+        const r = await postJson('/api/shop/tables/' + table.id + '/checkout');
+        toast(r.message || 'เช็คบิลแล้ว');
+        const orderId = r.closed && r.closed.order_id;
+        if (orderId && win) win.location.href = '/shop/receipt.html?order=' + orderId;
+        else if (win) win.close();
+        leaveToOrders();
+      } catch (e) {
+        if (win) win.close();
+        alert(e.message);
+      }
+    });
+
+    (async function init() {
+      try {
+        if (!tableId) { render(); return; }
+        const me = await api('/api/shop/me');
+        if (!me.shop) { location.href = '/shop/setup.html'; return; }
+        document.getElementById('shopName').textContent = me.shop.name || 'ร้านของฉัน';
+        const link = document.getElementById('viewShopLink');
+        if (me.shop.public_code) link.href = '/s/' + me.shop.public_code;
+        await load();
+      } catch (e) {
+        if (e.status === 403) { location.href = '/shop'; return; }
+        document.getElementById('tdTitle').textContent = 'โหลดไม่สำเร็จ';
+        document.getElementById('tdSub').textContent = e.message;
+      }
+    })();
+  </script>
+</body>
+</html>

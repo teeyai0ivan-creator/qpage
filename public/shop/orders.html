@@ -200,39 +200,6 @@
     </div>
   </div>
 
-  <!-- Modal รายละเอียดโต๊ะ: QR + พิมพ์/ดาวน์โหลด + บิลปัจจุบัน -->
-  <div class="modal-overlay" id="tableDetailModal">
-    <div class="modal wide">
-      <h3 id="tdTitle">โต๊ะ</h3>
-      <p class="sub" id="tdSub"></p>
-
-      <div class="td-qr-box">
-        <img id="tdQr" src="" alt="QR โต๊ะ">
-      </div>
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0 4px;">
-        <button class="mini-btn primary" id="tdPrint" type="button">พิมพ์ QR</button>
-        <a class="mini-btn" id="tdDownload" href="#" download>ดาวน์โหลด QR</a>
-        <button class="mini-btn" id="tdRename" type="button">เปลี่ยนชื่อ</button>
-        <button class="mini-btn danger" id="tdDelete" type="button">ลบ QR</button>
-      </div>
-
-      <div class="zone-head" style="margin-top:18px;">บิลปัจจุบัน</div>
-      <div id="tdBill"></div>
-      <div class="td-total-row">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="mini-btn" id="tdDetail" type="button">ดูรายละเอียด / ยกเลิกรายการ</button>
-          <button class="mini-btn primary" id="tdCheckout" type="button">เช็คบิล</button>
-        </div>
-        <strong id="tdTotal">฿0</strong>
-      </div>
-      <div class="table-sub" id="tdWarn" style="color:var(--warning);"></div>
-
-      <div class="modal-actions">
-        <button class="mini-btn" id="tdClose" type="button">ปิด</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Modal เพิ่มอาหาร (แคชเชียร์) -->
   <div class="modal-overlay" id="addModal">
     <div class="modal">
@@ -385,64 +352,8 @@
         const n = tableNames.find((x) => Number(x.id) === Number(el.dataset.newqr));
         if (n) createQr({ nameId: n.id }, n.name);
       }));
-      box.querySelectorAll('[data-open]').forEach((el) => el.addEventListener('click', () => openTableDetail(Number(el.dataset.open))));
+      box.querySelectorAll('[data-open]').forEach((el) => el.addEventListener('click', () => { location.href = '/shop/table.html?table=' + Number(el.dataset.open); }));
     }
-
-    // ป๊อปอัพโต๊ะ: QR + ปุ่มพิมพ์/ดาวน์โหลด/เปลี่ยนชื่อ/ลบ + บิลปัจจุบัน
-    function openTableDetail(tableId) {
-      const t = tablesCache.find((x) => x.id === Number(tableId));
-      if (!t) return;
-      const n = tableNames.find((x) => x.name === t.code) || null;
-      const o = openOrdersCache.find((x) => x.table_id === t.id) || null;
-      const items = o && o.items ? o.items : [];
-      const uncleared = platesOf(items.filter((i) => i.status === 'pending' || i.status === 'cooking'));
-      document.getElementById('tdTitle').textContent = 'โต๊ะ ' + t.code;
-      document.getElementById('tdSub').textContent = (n && n.zone_name ? n.zone_name + ' · ' : '') + 'บิล ' + billNoFmt(t.open_order ? t.open_order.bill_no : null);
-      document.getElementById('tdQr').src = qrUrl(t.id);
-      document.getElementById('tdQr').alt = 'QR โต๊ะ ' + t.code;
-      document.getElementById('tdDownload').href = qrUrl(t.id);
-      document.getElementById('tdDownload').setAttribute('download', 'table-' + t.code + '-qr.png');
-      document.getElementById('tdPrint').onclick = () => printLabel(t);
-      document.getElementById('tdRename').onclick = async () => {
-        const code = prompt('ชื่อโต๊ะใหม่', t.code);
-        if (!code || !code.trim()) return;
-        try {
-          await api('/api/shop/tables/' + t.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code.trim() }) });
-          toast('บันทึกแล้ว'); document.getElementById('tableDetailModal').classList.remove('show'); await loadAll(); await refreshNames();
-        } catch (e) { alert(e.message); }
-      };
-      document.getElementById('tdDelete').onclick = async () => {
-        if (!confirm(`ลบ QR ของโต๊ะ "${t.code}" ?\n\nQR นี้จะถูกยกเลิกถาวร ใช้ไม่ได้อีก`)) return;
-        try {
-          await api('/api/shop/tables/' + t.id, { method: 'DELETE' });
-          toast('ลบ QR แล้ว'); document.getElementById('tableDetailModal').classList.remove('show'); await loadAll(); await refreshNames();
-        } catch (e) { alert(e.message); }
-      };
-      const delBtn = document.getElementById('tdDelete');
-      delBtn.disabled = !!billPlates(t.open_order);
-      delBtn.title = billPlates(t.open_order) ? 'ต้องเช็คบิลก่อนจึงจะลบได้' : '';
-
-      // บิลปัจจุบันของโต๊ะนี้
-      const billBox = document.getElementById('tdBill');
-      if (!items.length) {
-        billBox.innerHTML = '<div class="cat-empty">บิลนี้ยังไม่มีรายการ</div>';
-      } else {
-        billBox.innerHTML = '<div class="bill-items">' + items.map((it) => itemRowHtml(it, false)).join('') + '</div>';
-      }
-      document.getElementById('tdTotal').textContent = money(o ? o.total : (t.open_order ? t.open_order.total : 0));
-      const coBtn = document.getElementById('tdCheckout');
-      coBtn.disabled = !items.length || !!uncleared;
-      coBtn.title = uncleared ? 'ยังมีรายการรอทำ/กำลังทำ' : '';
-      coBtn.onclick = () => { document.getElementById('tableDetailModal').classList.remove('show'); openCheckout(t.id); };
-      const detailBtn = document.getElementById('tdDetail');
-      detailBtn.disabled = !items.length;
-      detailBtn.onclick = () => { document.getElementById('tableDetailModal').classList.remove('show'); openBillDetail(t.id); };
-      document.getElementById('tdWarn').textContent = uncleared ? `⚠ ยังมีรายการรอทำ/กำลังทำ ${uncleared} รายการ — เช็คบิลไม่ได้` : '';
-      tickTimers();
-      document.getElementById('tableDetailModal').classList.add('show');
-    }
-    document.getElementById('tdClose').addEventListener('click', () => document.getElementById('tableDetailModal').classList.remove('show'));
-    document.getElementById('tableDetailModal').addEventListener('click', (e) => { if (e.target.id === 'tableDetailModal') e.currentTarget.classList.remove('show'); });
 
     const ST = { pending: ['รอทำ', 'st-pending'], cooking: ['กำลังทำ', 'st-cooking'], done: ['เสร็จแล้ว', 'st-done'], cancelled: ['ยกเลิก', 'st-cancelled'] };
 
