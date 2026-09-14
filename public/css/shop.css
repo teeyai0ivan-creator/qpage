@@ -70,7 +70,7 @@
 .tile-wrap { display: flex; flex-direction: column; gap: 14px; max-height: 56vh; overflow-y: auto; }
 .zone-group { display: flex; flex-direction: column; gap: 8px; }
 .zone-label { font-size: 12.5px; font-weight: 800; color: var(--muted); letter-spacing: .2px; }
-.tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
 .tile { aspect-ratio: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   padding: 6px; text-align: center; border-radius: var(--radius); border: 1px solid var(--border-strong);
   background: var(--surface); color: var(--text); font-family: var(--font); font-size: 14px; font-weight: 800;
@@ -80,6 +80,15 @@
 .tile.busy { cursor: default; opacity: .55; background: var(--surface-2); border-style: dashed; }
 .tile.busy:hover { transform: none; background: var(--surface-2); }
 .tile.busy small { color: var(--success); }
+
+/* ป๊อปอัพโต๊ะ: รูป QR + แถวยอดบิล */
+.td-qr-box { display: flex; justify-content: center; padding: 10px 0 4px; }
+.td-qr-box img { width: 210px; height: 210px; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; }
+.td-total-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.td-total-row strong { font-size: 17px; font-weight: 800; }
+/* ช่องที่มี QR แล้วในตารางหน้าแรก */
+.tile.hasqr { border-color: var(--success-border, var(--border-strong)); }
+.tile.busy-tile { background: var(--warning-bg); border-color: var(--warning-border); }
 
 /* แถวจัดการโซน */
 .zone-head { font-size: 13px; font-weight: 800; margin-bottom: 8px; }

@@ -124,7 +124,6 @@
 
     <div class="shop-card">
       <h2>โต๊ะ &amp; QR <span class="count" id="tableCount"></span></h2>
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
       <!-- ตัวเลือก: ลบ QR ทันทีเมื่อเช็คบิล -->
       <div class="qr-switch-row">
         <label class="switch" title="เปิด = เช็คบิลแล้วลบ QR ของโต๊ะนั้นทันที">
@@ -138,10 +137,11 @@
       </div>
 
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;">
-        <button class="mini-btn primary" id="newQrBtn" type="button">＋ สร้าง QR โต๊ะใหม่</button>
-        <button class="mini-btn" id="tableNamesBtn" type="button">รายชื่อโต๊ะ</button>
+        <button class="mini-btn primary" id="newQrBtn" type="button">＋ เพิ่มโต๊ะใหม่</button>
+        <button class="mini-btn" id="tableNamesBtn" type="button">รายชื่อโต๊ะ &amp; โซน</button>
       </div>
-      <div id="tableList"></div>
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;">กดช่องที่ยังไม่มี QR เพื่อออก QR ให้โต๊ะนั้น · กดช่องที่มี QR แล้วเพื่อดู/พิมพ์ QR และดูบิลปัจจุบัน</p>
+      <div id="tableGrid" class="tile-wrap"></div>
     </div>
 
     <div class="shop-card">
@@ -196,6 +196,39 @@
 
       <div class="modal-actions">
         <button class="mini-btn" id="namesClose" type="button">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal รายละเอียดโต๊ะ: QR + พิมพ์/ดาวน์โหลด + บิลปัจจุบัน -->
+  <div class="modal-overlay" id="tableDetailModal">
+    <div class="modal wide">
+      <h3 id="tdTitle">โต๊ะ</h3>
+      <p class="sub" id="tdSub"></p>
+
+      <div class="td-qr-box">
+        <img id="tdQr" src="" alt="QR โต๊ะ">
+      </div>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0 4px;">
+        <button class="mini-btn primary" id="tdPrint" type="button">พิมพ์ QR</button>
+        <a class="mini-btn" id="tdDownload" href="#" download>ดาวน์โหลด QR</a>
+        <button class="mini-btn" id="tdRename" type="button">เปลี่ยนชื่อ</button>
+        <button class="mini-btn danger" id="tdDelete" type="button">ลบ QR</button>
+      </div>
+
+      <div class="zone-head" style="margin-top:18px;">บิลปัจจุบัน</div>
+      <div id="tdBill"></div>
+      <div class="td-total-row">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="mini-btn" id="tdDetail" type="button">ดูรายละเอียด / ยกเลิกรายการ</button>
+          <button class="mini-btn primary" id="tdCheckout" type="button">เช็คบิล</button>
+        </div>
+        <strong id="tdTotal">฿0</strong>
+      </div>
+      <div class="table-sub" id="tdWarn" style="color:var(--warning);"></div>
+
+      <div class="modal-actions">
+        <button class="mini-btn" id="tdClose" type="button">ปิด</button>
       </div>
     </div>
   </div>
@@ -302,57 +335,114 @@
       if (sw) { sw.checked = autoDeleteQr; setAutoHint(); }
       tablesCache = data.tables || [];
       document.getElementById('tableCount').textContent = tablesCache.length ? '(' + tablesCache.length + ')' : '';
-      const box = document.getElementById('tableList');
-      if (!tablesCache.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีโต๊ะ — เพิ่มโต๊ะแรกด้านบนได้เลย</div>'; return; }
-      box.innerHTML = tablesCache.map((t) => {
-        // บิลที่เปิดอยู่ของโต๊ะนี้ (ถ้ามี) — ใช้แสดงปุ่มเช็คบิล/ดูรายละเอียดในบล็อกโต๊ะเลย
-        const o = openOrdersCache.find((x) => x.table_id === t.id);
-        const hasItems = Boolean(o && o.items && o.items.length);
-        const uncleared = hasItems ? platesOf(o.items.filter((i) => i.status === 'pending' || i.status === 'cooking')) : 0;
-        return `
-        <div class="table-card">
-          <img class="table-qr" src="${qrUrl(t.id)}" alt="QR โต๊ะ ${esc(t.code)}">
-          <div class="table-info">
-            <div class="table-code">โต๊ะ ${esc(t.code)}</div>
-            <div class="table-sub">${t.open_order
-              ? 'บิล ' + billNoFmt(t.open_order.bill_no) + (billPlates(t.open_order) ? ' · ' + billPlates(t.open_order) + ' รายการ · ' + money(t.open_order.total) : ' · ยังไม่มีรายการ')
-              : 'ยังไม่เปิดบิล'}</div>
-            ${hasItems ? `<div class="table-actions">
-              <button class="mini-btn" data-detail="${t.id}" type="button">ดูรายละเอียดรายการปัจจุบัน</button>
-              <button class="mini-btn primary" data-checkout="${t.id}" ${uncleared ? 'disabled title="ยังมีรายการรอทำ/กำลังทำ (ครัวหรือแคชเชียร์)"' : ''} type="button">เช็คบิล (ปิดบิล + เปิดบิลใหม่)</button>
-            </div>` : ''}
-            <div class="table-actions">
-              <a class="mini-btn" href="${qrUrl(t.id)}" download="table-${esc(t.code)}-qr.png">ดาวน์โหลด QR</a>
-              <button class="mini-btn" data-print="${t.id}" type="button">พิมพ์ QR</button>
-              <button class="mini-btn" data-ren="${t.id}" data-code="${esc(t.code)}" type="button">เปลี่ยนชื่อ</button>
-              <button class="mini-btn danger" data-del="${t.id}" ${billPlates(t.open_order) ? 'disabled title="ต้องเช็คบิลก่อนจึงจะลบได้"' : ''} type="button">ลบ</button>
-            </div>
-            ${uncleared ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีรายการรอทำ/กำลังทำ ' + uncleared + ' รายการ — เช็คบิลไม่ได้</div>' : ''}
-            ${billPlates(t.open_order) ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีบิลที่ยังไม่เช็คบิล — ลบไม่ได้จนกว่าจะกดเช็คบิล</div>' : ''}
-          </div>
-        </div>`;
-      }).join('');
-
-      // ปุ่มในบล็อกโต๊ะ: ดูรายละเอียดรายการปัจจุบัน / เช็คบิล
-      box.querySelectorAll('[data-detail]').forEach((b) => b.addEventListener('click', () => openBillDetail(Number(b.dataset.detail))));
-      box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => openCheckout(Number(b.dataset.checkout))));
-
-      box.querySelectorAll('[data-ren]').forEach((b) => b.addEventListener('click', async () => {
-        const code = prompt('ชื่อโต๊ะใหม่', b.dataset.code);
-        if (!code || !code.trim()) return;
-        try { await api('/api/shop/tables/' + b.dataset.ren, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code.trim() }) }); toast('บันทึกแล้ว'); await loadAll(); }
-        catch (e) { alert(e.message); }
-      }));
-      box.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ลบโต๊ะนี้?')) return;
-        try { await api('/api/shop/tables/' + b.dataset.del, { method: 'DELETE' }); toast('ลบโต๊ะแล้ว'); await loadAll(); }
-        catch (e) { alert(e.message); }
-      }));
-      box.querySelectorAll('[data-print]').forEach((b) => b.addEventListener('click', () => {
-        const t = tablesCache.find((x) => x.id === Number(b.dataset.print));
-        if (t) printLabel(t);
-      }));
+      renderTableGrid();
     }
+
+    // ตารางรายชื่อโต๊ะในหน้าหลัก — ช่องสี่เหลี่ยม จัดกลุ่มตามโซน เรียงตามลำดับที่ตั้งไว้
+    // ช่องที่ยังไม่มี QR = กดเพื่อออก QR / ช่องที่มี QR แล้ว = กดเพื่อดูรายละเอียด (QR + บิลปัจจุบัน)
+    function renderTableGrid() {
+      const box = document.getElementById('tableGrid');
+      if (!box) return;
+      if (!tableNames.length) {
+        box.innerHTML = '<div class="cat-empty">ยังไม่มีรายชื่อโต๊ะ — กด “＋ เพิ่มโต๊ะใหม่” หรือ “รายชื่อโต๊ะ &amp; โซน” เพื่อเริ่มเพิ่ม</div>';
+        return;
+      }
+      const groups = [];
+      const byZone = new Map();
+      tableNames.forEach((n) => {
+        const key = n.zone_id ? String(n.zone_id) : '';
+        if (!byZone.has(key)) {
+          const zone = zones.find((z) => String(z.id) === key);
+          const g = { key, label: zone ? zone.name : 'ไม่ระบุโซน', items: [] };
+          byZone.set(key, g);
+          groups.push(g);
+        }
+        byZone.get(key).items.push(n);
+      });
+      box.innerHTML = groups.map((g) => `
+        <div class="zone-group">
+          <div class="zone-label">${esc(g.label)} <span style="font-weight:600;">(${g.items.length})</span></div>
+          <div class="tile-grid">
+            ${g.items.map((n) => {
+              const t = n.has_qr ? tablesCache.find((x) => x.id === n.table_id) : null;
+              const o = t ? openOrdersCache.find((x) => x.table_id === t.id) : null;
+              const billPlatesN = billPlates(t && t.open_order);
+              const uncleared = t && o && o.items ? platesOf(o.items.filter((i) => i.status === 'pending' || i.status === 'cooking')) : 0;
+              if (!t) {
+                return `<button type="button" class="tile free" data-newqr="${n.id}" title="กดเพื่อออก QR ให้โต๊ะนี้">
+                  <span>${esc(n.name)}</span><small>ยังไม่มี QR · กดเพื่อสร้าง</small>
+                </button>`;
+              }
+              return `<button type="button" class="tile hasqr${billPlatesN ? ' busy-tile' : ''}" data-open="${t.id}" title="กดเพื่อดู/พิมพ์ QR และดูบิลปัจจุบัน">
+                <span>${esc(n.name)}</span>
+                <small>${billPlatesN ? billPlatesN + ' รายการ · ' + money(o ? o.total : t.open_order.total) : 'ว่าง'}</small>
+                ${uncleared ? `<small style="color:var(--warning);">รอทำ ${uncleared}</small>` : ''}
+              </button>`;
+            }).join('')}
+          </div>
+        </div>`).join('');
+      box.querySelectorAll('[data-newqr]').forEach((el) => el.addEventListener('click', () => {
+        const n = tableNames.find((x) => Number(x.id) === Number(el.dataset.newqr));
+        if (n) createQr({ nameId: n.id }, n.name);
+      }));
+      box.querySelectorAll('[data-open]').forEach((el) => el.addEventListener('click', () => openTableDetail(Number(el.dataset.open))));
+    }
+
+    // ป๊อปอัพโต๊ะ: QR + ปุ่มพิมพ์/ดาวน์โหลด/เปลี่ยนชื่อ/ลบ + บิลปัจจุบัน
+    function openTableDetail(tableId) {
+      const t = tablesCache.find((x) => x.id === Number(tableId));
+      if (!t) return;
+      const n = tableNames.find((x) => x.name === t.code) || null;
+      const o = openOrdersCache.find((x) => x.table_id === t.id) || null;
+      const items = o && o.items ? o.items : [];
+      const uncleared = platesOf(items.filter((i) => i.status === 'pending' || i.status === 'cooking'));
+      document.getElementById('tdTitle').textContent = 'โต๊ะ ' + t.code;
+      document.getElementById('tdSub').textContent = (n && n.zone_name ? n.zone_name + ' · ' : '') + 'บิล ' + billNoFmt(t.open_order ? t.open_order.bill_no : null);
+      document.getElementById('tdQr').src = qrUrl(t.id);
+      document.getElementById('tdQr').alt = 'QR โต๊ะ ' + t.code;
+      document.getElementById('tdDownload').href = qrUrl(t.id);
+      document.getElementById('tdDownload').setAttribute('download', 'table-' + t.code + '-qr.png');
+      document.getElementById('tdPrint').onclick = () => printLabel(t);
+      document.getElementById('tdRename').onclick = async () => {
+        const code = prompt('ชื่อโต๊ะใหม่', t.code);
+        if (!code || !code.trim()) return;
+        try {
+          await api('/api/shop/tables/' + t.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code.trim() }) });
+          toast('บันทึกแล้ว'); document.getElementById('tableDetailModal').classList.remove('show'); await loadAll(); await refreshNames();
+        } catch (e) { alert(e.message); }
+      };
+      document.getElementById('tdDelete').onclick = async () => {
+        if (!confirm(`ลบ QR ของโต๊ะ "${t.code}" ?\n\nQR นี้จะถูกยกเลิกถาวร ใช้ไม่ได้อีก`)) return;
+        try {
+          await api('/api/shop/tables/' + t.id, { method: 'DELETE' });
+          toast('ลบ QR แล้ว'); document.getElementById('tableDetailModal').classList.remove('show'); await loadAll(); await refreshNames();
+        } catch (e) { alert(e.message); }
+      };
+      const delBtn = document.getElementById('tdDelete');
+      delBtn.disabled = !!billPlates(t.open_order);
+      delBtn.title = billPlates(t.open_order) ? 'ต้องเช็คบิลก่อนจึงจะลบได้' : '';
+
+      // บิลปัจจุบันของโต๊ะนี้
+      const billBox = document.getElementById('tdBill');
+      if (!items.length) {
+        billBox.innerHTML = '<div class="cat-empty">บิลนี้ยังไม่มีรายการ</div>';
+      } else {
+        billBox.innerHTML = '<div class="bill-items">' + items.map((it) => itemRowHtml(it, false)).join('') + '</div>';
+      }
+      document.getElementById('tdTotal').textContent = money(o ? o.total : (t.open_order ? t.open_order.total : 0));
+      const coBtn = document.getElementById('tdCheckout');
+      coBtn.disabled = !items.length || !!uncleared;
+      coBtn.title = uncleared ? 'ยังมีรายการรอทำ/กำลังทำ' : '';
+      coBtn.onclick = () => { document.getElementById('tableDetailModal').classList.remove('show'); openCheckout(t.id); };
+      const detailBtn = document.getElementById('tdDetail');
+      detailBtn.disabled = !items.length;
+      detailBtn.onclick = () => { document.getElementById('tableDetailModal').classList.remove('show'); openBillDetail(t.id); };
+      document.getElementById('tdWarn').textContent = uncleared ? `⚠ ยังมีรายการรอทำ/กำลังทำ ${uncleared} รายการ — เช็คบิลไม่ได้` : '';
+      tickTimers();
+      document.getElementById('tableDetailModal').classList.add('show');
+    }
+    document.getElementById('tdClose').addEventListener('click', () => document.getElementById('tableDetailModal').classList.remove('show'));
+    document.getElementById('tableDetailModal').addEventListener('click', (e) => { if (e.target.id === 'tableDetailModal') e.currentTarget.classList.remove('show'); });
 
     const ST = { pending: ['รอทำ', 'st-pending'], cooking: ['กำลังทำ', 'st-cooking'], done: ['เสร็จแล้ว', 'st-done'], cancelled: ['ยกเลิก', 'st-cancelled'] };
 
@@ -512,7 +602,8 @@
     }
 
     // โหลดบิลก่อน แล้วค่อยวาดรายการโต๊ะ (บล็อกโต๊ะใช้ข้อมูลบิลที่เปิดอยู่ด้วย)
-    async function loadAll() { if (await loadShop()) { await loadBills(); await loadTables(); } }
+    // โหลดข้อมูลให้ครบก่อนวาดตาราง: ชื่อโต๊ะ/โซน ต้องมาก่อน เพราะตารางหน้าแรกใช้ทั้งชื่อและสถานะบิล
+    async function loadAll() { if (await loadShop()) { await loadBills(); await refreshNames(); await loadTables(); } }
 
     // ---------- รายชื่อโต๊ะ + สร้าง QR ใหม่ + สวิตช์ลบ QR อัตโนมัติ ----------
     let tableNames = [];   // [{ id, name, has_qr, zone_id, zone_name }]
@@ -838,7 +929,7 @@
     });
 
     loadAll().catch((e) => alert(e.message));
-    setInterval(() => { loadBills().catch(() => {}); }, 20000);
+    setInterval(() => { loadBills().then(() => renderTableGrid()).catch(() => {}); }, 20000);
   </script>
 </body>
 </html>
