@@ -94,12 +94,15 @@
               <div id="menuGroupPick" style="display:grid;gap:6px;font-size:13.5px;"></div>
             </div>
             <div class="error-msg" id="menuErr"></div>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
               <button type="submit" class="mini-btn primary" id="menuSaveBtn">เพิ่มเมนู</button>
               <button type="button" class="mini-btn" id="menuCancelBtn" style="display:none;">ยกเลิกแก้ไข</button>
             </div>
           </form>
-          <div id="menuList"></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+            <a class="mini-btn primary" id="viewAllBtn" href="/shop/menus.html">📋 คลิกเพื่อดูเมนูทั้งหมด</a>
+            <span style="font-size:12.5px;color:var(--muted);">เปิดเป็นตารางแบบเอ็กเซล (ค้นหา/กรอง/เรียง/ออก CSV)</span>
+          </div>
         </div>
       </div>
     </div>
@@ -234,34 +237,10 @@
       box.innerHTML = state.optionGroups.map((g) => `<label style="display:flex;gap:7px;align-items:center;"><input type="checkbox" class="mgpick" value="${g.id}"> <span>${esc(g.name)} <small style="color:var(--muted);">(${g.required ? 'บังคับ' : 'ไม่บังคับ'}${g.multi ? ', หลายอย่าง' : ''})</small></span></label>`).join('');
     }
     function catName(id) { const c = state.categories.find((x) => x.id === id); return c ? c.name : '—'; }
+    // รายการเมนูย้ายไปหน้า /shop/menus.html (ตารางแบบเอ็กเซล) — ที่นี่อัปเดตแค่จำนวนในหัวข้อ
     function renderMenus() {
-      document.getElementById('menuCount').textContent = state.menus.length ? '(' + state.menus.length + ')' : '';
-      const box = document.getElementById('menuList');
-      if (!state.menus.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีเมนู</div>'; return; }
-      box.innerHTML = state.menus.map((m) => `<div class="menu-item ${m.available ? '' : 'off'}">
-        ${m.image_url ? `<img src="${esc(m.image_url)}" alt="">` : '<img alt="">'}
-        <div class="info"><div class="n">${esc(m.name)}</div><div class="m">${esc(catName(m.category_id))}${m.available ? '' : ' · ปิดขาย'}</div></div>
-        <div class="price">฿${Number(m.price).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</div>
-        <label class="sw" title="${m.available ? 'เปิดให้สั่งอยู่ — กดเพื่อปิด' : 'ปิดการสั่งอยู่ — กดเพื่อเปิด'}">
-          <input type="checkbox" data-avail="${m.id}" ${m.available ? 'checked' : ''}>
-          <span class="sw-slider"></span>
-        </label>
-        <button class="mini-btn" data-editmenu="${m.id}" type="button">แก้ไข</button>
-        <button class="mini-btn danger" data-delmenu="${m.id}" type="button">ลบ</button>
-      </div>`).join('');
-      box.querySelectorAll('[data-avail]').forEach((cb) => cb.addEventListener('change', async () => {
-        try {
-          await api('/api/shop/menus/' + cb.dataset.avail, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ available: cb.checked }) });
-          toast(cb.checked ? 'เปิดให้ลูกค้าสั่งแล้ว' : 'ปิดการสั่งของเมนูนี้แล้ว');
-          await refresh();
-        } catch (e) { alert(e.message); cb.checked = !cb.checked; }
-      }));
-      box.querySelectorAll('[data-editmenu]').forEach((b) => b.addEventListener('click', () => startEditMenu(Number(b.dataset.editmenu))));
-      box.querySelectorAll('[data-delmenu]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ลบเมนูนี้?')) return;
-        try { await api('/api/shop/menus/' + b.dataset.delmenu, { method: 'DELETE' }); toast('ลบเมนูแล้ว'); await refresh(); }
-        catch (e) { alert(e.message); }
-      }));
+      const el = document.getElementById('menuCount');
+      if (el) el.textContent = state.menus.length ? '(' + state.menus.length + ')' : '';
     }
     function startEditMenu(id) {
       const m = state.menus.find((x) => x.id === id);
@@ -408,10 +387,20 @@
       window.location.href = '/login.html';
     });
 
-    refresh().catch((err) => {
-      if (err.status === 403) window.location.href = '/shop/setup.html';
-      else alert(err.message);
-    });
+    (async function init() {
+      try {
+        await refresh();
+        // มาจากหน้า "เมนูทั้งหมด" ด้วย ?edit=<id> → โหลดเมนูนั้นเข้าแบบฟอร์มให้แก้ต่อทันที
+        const editId = Number(new URLSearchParams(location.search).get('edit'));
+        if (!editId) return;
+        if (!state.menus.some((m) => Number(m.id) === editId)) { toast('ไม่พบเมนูนี้ (อาจถูกลบไปแล้ว)'); return; }
+        startEditMenu(editId);
+        document.getElementById('menuForm').scrollIntoView({ block: 'start', behavior: 'smooth' });
+      } catch (err) {
+        if (err.status === 403) window.location.href = '/shop/setup.html';
+        else alert(err.message);
+      }
+    })();
   </script>
 </body>
 </html>

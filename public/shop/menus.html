@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เมนูทั้งหมด | ระบบสมาชิก</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/shop.css">
+  <script src="/js/theme.js"></script>
+  <style>
+    /* ---------- ตารางแบบเอ็กเซล ---------- */
+    .xl-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .xl-toolbar .grow { flex: 1; min-width: 200px; }
+    .xl-toolbar select, .xl-toolbar input { font-family: var(--font); }
+    .xl-count { font-size: 12.5px; color: var(--muted); }
+
+    .xl-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: auto; background: var(--surface); max-height: 70vh; }
+    table.xl { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 900px; }
+    table.xl th, table.xl td { border: 1px solid var(--border); padding: 7px 10px; vertical-align: middle; }
+    table.xl thead th {
+      position: sticky; top: 0; z-index: 2;
+      background: var(--surface-2); color: var(--text);
+      font-weight: 800; font-size: 12.5px; text-align: left; white-space: nowrap;
+      box-shadow: inset 0 -1px 0 var(--border-strong);
+    }
+    table.xl tbody tr:nth-child(even) td { background: var(--surface-2); }
+    table.xl tbody tr:hover td { background: var(--surface-hover); }
+    table.xl tbody tr.off td { color: var(--muted); }
+    table.xl th.num, table.xl td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table.xl td.idx { text-align: center; color: var(--muted); width: 46px; }
+    table.xl td.img { width: 58px; padding: 4px 6px; text-align: center; }
+    table.xl td.img img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; display: block; margin: 0 auto; background: var(--surface-2); }
+    table.xl td.img .noimg { width: 44px; height: 44px; border-radius: 6px; background: var(--surface-2); border: 1px dashed var(--border); margin: 0 auto; }
+    table.xl .m-name { font-weight: 700; }
+    table.xl .m-desc { color: var(--muted); font-size: 11.5px; margin-top: 2px; max-width: 320px; }
+    table.xl .chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--ring); color: var(--accent); border: 1px solid var(--border-strong); margin: 1px 3px 1px 0; white-space: nowrap; }
+    table.xl .acts { display: flex; gap: 6px; white-space: nowrap; }
+
+    .xl-empty { padding: 26px; text-align: center; color: var(--muted); font-size: 13.5px; }
+
+    /* สวิตช์เปิด/ปิดขายในตาราง */
+    .sw { position: relative; display: inline-block; width: 38px; height: 22px; vertical-align: middle; }
+    .sw input { opacity: 0; width: 0; height: 0; }
+    .sw .sw-slider { position: absolute; inset: 0; background: var(--border-strong); border-radius: 999px; transition: background .15s ease; cursor: pointer; }
+    .sw .sw-slider::before { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s ease; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+    .sw input:checked + .sw-slider { background: var(--success); }
+    .sw input:checked + .sw-slider::before { transform: translateX(16px); }
+
+    @media print { .site-nav, .xl-toolbar, .shop-head p { display: none !important; } .xl-wrap { max-height: none; border: none; } }
+  </style>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+</head>
+<body>
+  <nav class="site-nav">
+    <a class="brand" href="/shop">
+      <div class="brand-logo"><img src="/img/logo.svg" alt="QPage"></div>
+      <span class="brand-name" id="shopName">ร้านของฉัน</span>
+    </a>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="theme-toggle" type="button" aria-label="สลับธีม" style="position:static;">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" style="display:none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <a class="btn btn-outline btn-small" href="/shop/orders.html">สั่งอาหาร</a>
+      <a class="btn btn-outline btn-small" href="/shop/kitchen.html">ครัว</a>
+      <a class="btn btn-outline btn-small" href="/shop/cashier.html">แคชเชียร์</a>
+      <a class="btn btn-outline btn-small" href="/shop/menu.html">จัดการเมนู</a>
+      <a class="btn btn-outline btn-small" href="/shop/history.html">ประวัติ</a>
+      <a class="btn btn-outline btn-small" href="/shop/setup.html">ตั้งค่าข้อมูลร้าน</a>
+      <a class="btn btn-outline btn-small" href="#" id="logoutBtn">ออกจากระบบ</a>
+    </div>
+  </nav>
+
+  <div class="shop-wrap">
+    <div class="shop-head">
+      <h1>เมนูทั้งหมด <span class="count" id="menuCount"></span></h1>
+      <p>รายการเมนูที่เพิ่มไว้ทั้งหมดในตารางเดียว — ค้นหา/กรอง/เรียงได้เหมือนตารางเอ็กเซล ปรับ “พร้อมขาย” ได้ในตารางเลย และออกรายการเป็นไฟล์ CSV ไปเปิดใน Excel ได้</p>
+    </div>
+
+    <div class="xl-toolbar">
+      <input class="mini-input grow" id="q" type="search" placeholder="🔍 ค้นหาชื่อเมนู / รายละเอียด" autocomplete="off">
+      <select class="mini-input" id="fCat"><option value="">ทุกหมวดหมู่</option></select>
+      <select class="mini-input" id="fStatus">
+        <option value="">ทุกสถานะ</option>
+        <option value="1">พร้อมขาย</option>
+        <option value="0">ปิดขาย</option>
+      </select>
+      <select class="mini-input" id="fSort">
+        <option value="cat">เรียง: หมวดหมู่ → ชื่อ</option>
+        <option value="name">เรียง: ชื่อ ก-ฮ</option>
+        <option value="priceAsc">เรียง: ราคา น้อย → มาก</option>
+        <option value="priceDesc">เรียง: ราคา มาก → น้อย</option>
+        <option value="new">เรียง: เพิ่มล่าสุด</option>
+      </select>
+      <button class="mini-btn" id="csvBtn" type="button">⬇ ออกรายการ (CSV)</button>
+      <a class="mini-btn" href="/shop/menu.html">＋ เพิ่มเมนูใหม่</a>
+      <span class="xl-count" id="shownCount"></span>
+    </div>
+
+    <div class="xl-wrap">
+      <table class="xl" id="tbl">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>รูป</th>
+            <th>ชื่อเมนู</th>
+            <th>หมวดหมู่</th>
+            <th class="num">ราคา (บาท)</th>
+            <th>ตัวเลือกที่ใช้</th>
+            <th>สถานะ</th>
+            <th>จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="xl-empty" id="empty" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const money = (n) => Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    let toastTimer = null;
+    function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let data; try { data = await res.json(); } catch { const e = new Error('HTTP ' + res.status); e.status = res.status; throw e; }
+      if (!data.ok) { const e = new Error(data.message || 'เกิดข้อผิดพลาด'); e.status = res.status; throw e; }
+      return data;
+    }
+    const putJson = (path, body) => api(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+    let state = { shop: null, categories: [], menus: [], optionGroups: [], optionItems: [], menuGroups: [] };
+
+    const catName = (id) => { const c = state.categories.find((x) => x.id === id); return c ? c.name : ''; };
+    const catPath = (id) => {
+      const c = state.categories.find((x) => x.id === id);
+      if (!c) return '—';
+      const p = c.parent_id ? state.categories.find((x) => x.id === c.parent_id) : null;
+      return p ? p.name + ' › ' + c.name : c.name;
+    };
+    const groupsOfMenu = (menuId) => {
+      const gids = state.menuGroups.filter((g) => g.menu_id === menuId).map((g) => g.group_id);
+      return gids.map((id) => state.optionGroups.find((g) => g.id === id)).filter(Boolean);
+    };
+
+    function visibleMenus() {
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      const cat = document.getElementById('fCat').value;
+      const st = document.getElementById('fStatus').value;
+      const sort = document.getElementById('fSort').value;
+      let list = state.menus.slice();
+      if (q) list = list.filter((m) => (m.name || '').toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q));
+      if (cat) list = list.filter((m) => String(m.category_id || '') === cat);
+      if (st !== '') list = list.filter((m) => String(Number(m.available) ? 1 : 0) === st);
+      const byName = (a, b) => String(a.name).localeCompare(String(b.name), 'th');
+      if (sort === 'name') list.sort(byName);
+      else if (sort === 'priceAsc') list.sort((a, b) => Number(a.price) - Number(b.price));
+      else if (sort === 'priceDesc') list.sort((a, b) => Number(b.price) - Number(a.price));
+      else if (sort === 'new') list.sort((a, b) => b.id - a.id);
+      else list.sort((a, b) => String(catPath(a.category_id)).localeCompare(String(catPath(b.category_id)), 'th') || byName(a, b));
+      return list;
+    }
+
+    function render() {
+      const list = visibleMenus();
+      document.getElementById('menuCount').textContent = state.menus.length ? '(' + state.menus.length + ')' : '';
+      document.getElementById('shownCount').textContent = 'แสดง ' + list.length + ' จาก ' + state.menus.length + ' เมนู';
+      const tb = document.getElementById('rows');
+      const empty = document.getElementById('empty');
+      if (!state.menus.length) {
+        tb.innerHTML = '';
+        empty.style.display = 'block';
+        empty.innerHTML = 'ยังไม่มีเมนู — กด “＋ เพิ่มเมนูใหม่” เพื่อเริ่มเพิ่ม';
+        return;
+      }
+      if (!list.length) {
+        tb.innerHTML = '';
+        empty.style.display = 'block';
+        empty.innerHTML = 'ไม่พบเมนูที่ตรงกับเงื่อนไขที่เลือก';
+        return;
+      }
+      empty.style.display = 'none';
+      tb.innerHTML = list.map((m, idx) => {
+        const groups = groupsOfMenu(m.id);
+        const on = Number(m.available) === 1;
+        return `<tr class="${on ? '' : 'off'}" data-row="${m.id}">
+          <td class="idx">${idx + 1}</td>
+          <td class="img">${m.image_url ? `<img src="${esc(m.image_url)}" alt="">` : '<div class="noimg"></div>'}</td>
+          <td>
+            <div class="m-name">${esc(m.name)}</div>
+            ${m.description ? `<div class="m-desc">${esc(m.description)}</div>` : ''}
+          </td>
+          <td>${esc(catPath(m.category_id))}</td>
+          <td class="num">${money(m.price)}</td>
+          <td>${groups.length ? groups.map((g) => `<span class="chip">${esc(g.name)}</span>`).join('') : '<span style="color:var(--muted);">—</span>'}</td>
+          <td>
+            <label class="sw" title="${on ? 'พร้อมขาย — กดเพื่อปิด' : 'ปิดขายอยู่ — กดเพื่อเปิด'}">
+              <input type="checkbox" data-avail="${m.id}" ${on ? 'checked' : ''}>
+              <span class="sw-slider"></span>
+            </label>
+            <span style="font-size:11.5px;color:var(--muted);margin-left:6px;">${on ? 'พร้อมขาย' : 'ปิดขาย'}</span>
+          </td>
+          <td>
+            <div class="acts">
+              <a class="mini-btn" href="/shop/menu.html?edit=${m.id}">แก้ไข</a>
+              <button class="mini-btn danger" data-del="${m.id}" data-name="${esc(m.name)}" type="button">ลบ</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+
+      tb.querySelectorAll('[data-avail]').forEach((cb) => cb.addEventListener('change', async () => {
+        try {
+          await putJson('/api/shop/menus/' + cb.dataset.avail, { available: cb.checked });
+          const m = state.menus.find((x) => String(x.id) === cb.dataset.avail);
+          if (m) m.available = cb.checked ? 1 : 0;
+          toast(cb.checked ? 'เปิดให้ลูกค้าสั่งแล้ว' : 'ปิดการสั่งของเมนูนี้แล้ว');
+          render();
+        } catch (e) { alert(e.message); cb.checked = !cb.checked; }
+      }));
+      tb.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+        if (!confirm('ลบเมนู "' + b.dataset.name + '" ?')) return;
+        try {
+          await api('/api/shop/menus/' + b.dataset.del, { method: 'DELETE' });
+          toast('ลบเมนูแล้ว');
+          await load();
+        } catch (e) { alert(e.message); }
+      }));
+    }
+
+    function renderCatFilter() {
+      const sel = document.getElementById('fCat');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">ทุกหมวดหมู่</option>' + state.categories.map((c) => {
+        const p = c.parent_id ? state.categories.find((x) => x.id === c.parent_id) : null;
+        return `<option value="${c.id}">${esc(p ? p.name + ' › ' + c.name : c.name)}</option>`;
+      }).join('');
+      if (cur) sel.value = cur;
+    }
+
+    async function load() {
+      const data = await api('/api/shop/me');
+      if (!data.shop) { window.location.href = '/shop/setup.html'; return; }
+      state = {
+        shop: data.shop,
+        categories: data.categories || [],
+        menus: data.menus || [],
+        optionGroups: data.optionGroups || [],
+        optionItems: data.optionItems || [],
+        menuGroups: data.menuGroups || [],
+      };
+      document.getElementById('shopName').textContent = data.shop.name || 'ร้านของฉัน';
+      renderCatFilter();
+      render();
+    }
+
+    // ---------- ออกรายการ CSV (เปิดใน Excel ได้) ----------
+    document.getElementById('csvBtn').addEventListener('click', () => {
+      const list = visibleMenus();
+      if (!list.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
+      const head = ['ลำดับ', 'ชื่อเมนู', 'หมวดหมู่', 'ราคา (บาท)', 'ตัวเลือกที่ใช้', 'สถานะ', 'รายละเอียด'];
+      const rows = list.map((m, i) => [
+        i + 1, m.name, catPath(m.category_id), Number(m.price),
+        groupsOfMenu(m.id).map((g) => g.name).join(' | '),
+        Number(m.available) ? 'พร้อมขาย' : 'ปิดขาย',
+        m.description || '',
+      ]);
+      const csv = '\ufeff' + [head, ...rows].map((r) => r.map((c) => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'menus-' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    ['q', 'fCat', 'fStatus', 'fSort'].forEach((id) => {
+      const el = document.getElementById(id);
+      el.addEventListener(id === 'q' ? 'input' : 'change', render);
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    load().catch((e) => {
+      if (e.status === 403) { window.location.href = '/shop'; return; }
+      document.getElementById('rows').innerHTML = '';
+      const empty = document.getElementById('empty');
+      empty.style.display = 'block';
+      empty.textContent = e.message;
+    });
+  </script>
+</body>
+</html>

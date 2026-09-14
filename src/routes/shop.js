@@ -66,6 +66,14 @@ router.get('/shop/menu.html', requireShopPage, async (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'shop', 'menu.html'));
 });
 
+// หน้า "เมนูทั้งหมด" — ตารางแบบเอ็กเซล (เปิดจากปุ่มในหน้าจัดการเมนู)
+router.get('/shop/menus.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'menus.html'));
+});
+
 // หน้าร้านสาธารณะ (ไม่ต้องล็อกอิน) — โหลดข้อมูลผ่าน /api/public/shops/:code
 router.get('/s/:code', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'shop', 'index.html'));
