@@ -9,9 +9,18 @@
   <script src="/js/theme.js"></script>
   <style>
     /* ---------- ตารางแบบเอ็กเซล ---------- */
-    .xl-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
-    .xl-toolbar .grow { flex: 1; min-width: 200px; }
-    .xl-toolbar select, .xl-toolbar input { font-family: var(--font); }
+    .xl-top { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 14px; }
+    .xl-top h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+    /* ไม่ให้กลุ่มเครื่องมือถูกบีบจนตกบรรทัดเอง — ถ้าไม่พอให้ย้ายทั้งกลุ่มลงบรรทัดใหม่ */
+    .xl-top-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-wrap: nowrap; margin-left: auto; }
+    .xl-top-actions #q { flex: 0 1 240px; min-width: 170px; }
+    @media (max-width: 760px) { .xl-top-actions { margin-left: 0; width: 100%; flex-wrap: wrap; } .xl-top-actions #q { flex: 1 1 100%; min-width: 0; } }
+
+    /* หัวคอลัมน์ที่กดเพื่อเรียงได้ */
+    table.xl th.sortable { cursor: pointer; user-select: none; }
+    table.xl th.sortable:hover { background: var(--surface-hover); }
+    table.xl th .sort-ar { font-size: 10px; color: var(--muted); margin-left: 5px; }
+    table.xl th.on, table.xl th.on .sort-ar { color: var(--accent); }
     .xl-count { font-size: 12.5px; color: var(--muted); }
 
     .xl-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: auto; background: var(--surface); max-height: 70vh; }
@@ -46,7 +55,7 @@
     .sw input:checked + .sw-slider { background: var(--success); }
     .sw input:checked + .sw-slider::before { transform: translateX(16px); }
 
-    @media print { .site-nav, .xl-toolbar, .shop-head p { display: none !important; } .xl-wrap { max-height: none; border: none; } }
+    @media print { .site-nav, .xl-top-actions, .cat-pick-row { display: none !important; } .xl-wrap { max-height: none; border: none; } }
   </style>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
@@ -72,37 +81,26 @@
   </nav>
 
   <div class="shop-wrap">
-    <div class="shop-head">
+    <div class="xl-top">
       <h1>เมนูทั้งหมด <span class="count" id="menuCount"></span></h1>
-      <p>รายการเมนูที่เพิ่มไว้ทั้งหมดในตารางเดียว — ค้นหา/กรอง/เรียงได้เหมือนตารางเอ็กเซล ปรับ “พร้อมขาย” ได้ในตารางเลย และออกรายการเป็นไฟล์ CSV ไปเปิดใน Excel ได้</p>
-    </div>
-
-    <div class="xl-toolbar">
-      <input class="mini-input grow" id="q" type="search" placeholder="🔍 ค้นหาชื่อเมนู / รายละเอียด" autocomplete="off">
-      <select class="mini-input" id="fStatus">
-        <option value="">ทุกสถานะ</option>
-        <option value="1">พร้อมขาย</option>
-        <option value="0">ปิดขาย</option>
-      </select>
-      <select class="mini-input" id="fSort">
-        <option value="cat">เรียง: หมวดหมู่ → ชื่อ</option>
-        <option value="name">เรียง: ชื่อ ก-ฮ</option>
-        <option value="priceAsc">เรียง: ราคา น้อย → มาก</option>
-        <option value="priceDesc">เรียง: ราคา มาก → น้อย</option>
-        <option value="new">เรียง: เพิ่มล่าสุด</option>
-      </select>
-      <button class="mini-btn" id="csvBtn" type="button">⬇ ออกรายการ (CSV)</button>
-      <a class="mini-btn" href="/shop/menu.html">＋ เพิ่มเมนูใหม่</a>
       <span class="xl-count" id="shownCount"></span>
+      <div class="xl-top-actions">
+        <input class="mini-input" id="q" type="search" placeholder="🔍 ค้นหาชื่อเมนู / รายละเอียด" autocomplete="off">
+        <select class="mini-input" id="fStatus">
+          <option value="">ทุกสถานะ</option>
+          <option value="1">พร้อมขาย</option>
+          <option value="0">ปิดขาย</option>
+        </select>
+        <button class="mini-btn" id="csvBtn" type="button">⬇ ออกรายการ (CSV)</button>
+        <a class="mini-btn" href="/shop/menu.html">＋ เพิ่มเมนูใหม่</a>
+      </div>
     </div>
 
     <div style="margin-bottom:10px;">
-      <label style="display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;">หมวดหมู่หลัก — กดชื่อหมวดเพื่อกรองตาราง (เลือกหมวดหลักจะเห็นเมนูในหมวดย่อยทั้งหมดด้วย)</label>
       <input type="hidden" id="fCat" value="">
       <div class="cat-pick-row" id="fCatRow" role="group" aria-label="กรองตามหมวดหมู่หลัก"></div>
     </div>
-    <div style="margin-bottom:12px;display:none;" id="fSubWrap">
-      <label style="display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;" id="fSubLabel">หมวดย่อย</label>
+    <div id="fSubWrap" style="display:none;margin-bottom:10px;">
       <input type="hidden" id="fSub" value="">
       <div class="cat-pick-row" id="fSubRow" role="group" aria-label="กรองตามหมวดย่อย"></div>
     </div>
@@ -111,13 +109,13 @@
       <table class="xl" id="tbl">
         <thead>
           <tr>
-            <th>#</th>
+            <th class="sortable" data-sort="id">#<span class="sort-ar">⇅</span></th>
             <th>รูป</th>
-            <th>ชื่อเมนู</th>
-            <th>หมวดหมู่</th>
-            <th class="num">ราคา (บาท)</th>
+            <th class="sortable" data-sort="name">ชื่อเมนู<span class="sort-ar">⇅</span></th>
+            <th class="sortable" data-sort="cat">หมวดหมู่<span class="sort-ar">⇅</span></th>
+            <th class="num sortable" data-sort="price">ราคา (บาท)<span class="sort-ar">⇅</span></th>
             <th>ตัวเลือกที่ใช้</th>
-            <th>สถานะ</th>
+            <th class="sortable" data-sort="status">สถานะ<span class="sort-ar">⇅</span></th>
             <th>จัดการ</th>
           </tr>
         </thead>
@@ -170,20 +168,45 @@
     function visibleMenus() {
       const q = document.getElementById('q').value.trim().toLowerCase();
       const st = document.getElementById('fStatus').value;
-      const sort = document.getElementById('fSort').value;
       let list = state.menus.slice();
       if (q) list = list.filter((m) => (m.name || '').toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q));
       // กรอง 2 ชั้น: เลือกหมวดย่อย = เจาะจงหมวดนั้น / เลือกแค่หมวดหลัก = เห็นทุกเมนูในหมวดย่อยด้วย
       if (subFilterValue) list = list.filter((m) => String(m.category_id || '') === subFilterValue);
       else if (catFilterValue) list = list.filter((m) => inMainCat(m, catFilterValue));
       if (st !== '') list = list.filter((m) => String(Number(m.available) ? 1 : 0) === st);
+
       const byName = (a, b) => String(a.name).localeCompare(String(b.name), 'th');
-      if (sort === 'name') list.sort(byName);
-      else if (sort === 'priceAsc') list.sort((a, b) => Number(a.price) - Number(b.price));
-      else if (sort === 'priceDesc') list.sort((a, b) => Number(b.price) - Number(a.price));
-      else if (sort === 'new') list.sort((a, b) => b.id - a.id);
-      else list.sort((a, b) => String(catPath(a.category_id)).localeCompare(String(catPath(b.category_id)), 'th') || byName(a, b));
+      const byCat = (a, b) => String(catPath(a.category_id)).localeCompare(String(catPath(b.category_id)), 'th') || byName(a, b);
+      const dir = sortDir === -1 ? -1 : 1;
+      const cmp = {
+        id: (a, b) => Number(a.id) - Number(b.id),
+        name: byName,
+        cat: byCat,
+        price: (a, b) => Number(a.price) - Number(b.price),
+        status: (a, b) => Number(a.available ? 1 : 0) - Number(b.available ? 1 : 0),
+      };
+      // ค่าเริ่มต้น (ยังไม่กดหัวคอลัมน์) = เรียงตามหมวดหมู่ → ชื่อ
+      if (sortKey && cmp[sortKey]) list.sort((a, b) => cmp[sortKey](a, b) * dir);
+      else list.sort(byCat);
       return list;
+    }
+
+    // ---------- เรียงลำดับด้วยการกดหัวคอลัมน์ (กดซ้ำ = สลับ น้อย→มาก / มาก→น้อย) ----------
+    let sortKey = '';
+    let sortDir = 1;
+    function setSort(key) {
+      if (sortKey === key) sortDir = -sortDir;
+      else { sortKey = key; sortDir = 1; }
+      renderHeaders();
+      render();
+    }
+    function renderHeaders() {
+      document.querySelectorAll('#tbl thead th[data-sort]').forEach((th) => {
+        const on = th.dataset.sort === sortKey;
+        th.classList.toggle('on', on);
+        const ar = th.querySelector('.sort-ar');
+        if (ar) ar.textContent = on ? (sortDir === 1 ? '▲' : '▼') : '⇅';
+      });
     }
 
     function render() {
@@ -302,7 +325,6 @@
       const subs = main ? subsOf(main.id) : [];
       if (!main || !subs.length) { wrap.style.display = 'none'; row.innerHTML = ''; subFilterValue = ''; document.getElementById('fSub').value = ''; return; }
       wrap.style.display = '';
-      document.getElementById('fSubLabel').textContent = 'หมวดย่อยของ “' + main.name + '” — กดเพื่อเจาะจงเฉพาะหมวดย่อย';
       row.innerHTML = [`<button type="button" class="cat-pick" data-sub="">— ทั้งหมดใน ${esc(main.name)} —${badge(countInMain(main.id))}</button>`]
         .concat(subs.map((s) => `<button type="button" class="cat-pick sub" data-sub="${s.id}">${esc(s.name)}${badge(countInSub(s.id))}</button>`))
         .join('');
@@ -346,7 +368,9 @@
       URL.revokeObjectURL(a.href);
     });
 
-    ['q', 'fStatus', 'fSort'].forEach((id) => {
+    document.querySelectorAll('#tbl thead th[data-sort]').forEach((th) => th.addEventListener('click', () => setSort(th.dataset.sort)));
+    renderHeaders();
+    ['q', 'fStatus'].forEach((id) => {
       const el = document.getElementById(id);
       el.addEventListener(id === 'q' ? 'input' : 'change', render);
     });
