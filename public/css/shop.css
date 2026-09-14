@@ -10,7 +10,9 @@
 .shop-head .shop-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 
 .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-@media (max-width: 860px) { .shop-grid { grid-template-columns: 1fr; } }
+/* min-width: 0 ให้เนื้อหาข้างในหดตัวได้ (ไม่งั้นแถวที่มีของยาว ๆ จะดันคอลัมน์ให้กว้างเกินจอมือถือ) */
+.shop-grid > * { min-width: 0; }
+@media (max-width: 860px) { .shop-grid { grid-template-columns: minmax(0, 1fr); } }
 
 @media (max-width: 560px) {
   .shop-wrap { padding: 22px 14px 60px; }
@@ -35,11 +37,12 @@
 .shop-card > h2 .count { font-size: 12px; font-weight: 700; color: var(--muted); }
 
 .shop-form .field { margin-bottom: 14px; max-width: 520px; }
+.shop-form input[type="file"] { max-width: 100%; }
 .shop-form .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
 .shop-form .row .field { flex: 1; min-width: 160px; }
 
 .cat-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; background: var(--surface-2); }
-.cat-item .cat-row { display: flex; align-items: center; gap: 8px; }
+.cat-item .cat-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cat-item .cat-name { font-weight: 700; font-size: 14px; flex: 1; }
 .cat-item .sub { margin: 8px 0 0 18px; }
 .cat-item .sub .cat-row { padding: 6px 0; }
@@ -58,6 +61,19 @@
 .opt-group .g-head { display: flex; align-items: center; gap: 8px; }
 .opt-group .g-head .n { font-weight: 700; flex: 1; }
 .opt-group .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+/* เลือกหมวดหมู่แบบแถวเดียว — ชื่อหมวดเรียงเป็นคอลัมน์ให้กดเลือก (เลื่อนซ้าย-ขวาได้) */
+.cat-pick-row { display: flex; gap: 8px; align-items: center; overflow-x: auto; padding: 2px 2px 8px; -webkit-overflow-scrolling: touch; }
+.cat-pick-row::-webkit-scrollbar { height: 6px; }
+.cat-pick-row::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+.cat-pick {
+  flex: 0 0 auto; font-family: var(--font); font-size: 13px; font-weight: 600;
+  padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border-strong);
+}
+.cat-pick:hover { background: var(--surface-hover); }
+.cat-pick.sub { font-weight: 500; color: var(--muted); }
+.cat-pick.on { background: var(--accent-gradient); color: #fff; border-color: transparent; font-weight: 800; box-shadow: 0 6px 14px rgba(99, 102, 241, .28); }
+
 .opt-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; }
 .opt-chip button { border: none; background: none; color: var(--danger); cursor: pointer; font-size: 14px; line-height: 1; }
 /* ดาวมาร์ค "ค่าเริ่มต้น" ของตัวเลือก (ระบบจะเลือกให้อัตโนมัติเมื่อลูกค้าเลือกเมนูที่ใช้กลุ่มนี้) */
