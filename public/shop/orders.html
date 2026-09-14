@@ -597,7 +597,7 @@
             </button>`).join('')}
           </div>
         </div>`).join('');
-      box.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => createQr({ nameId: Number(el.dataset.pick) })));
+      box.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => createQr({ nameId: Number(el.dataset.pick) }, el.querySelector('span').textContent.trim())));
     }
 
     // จัดลำดับในรายการด้วยปุ่มลูกศร (สลับกับตัวข้างเคียงแล้วบันทึกลำดับใหม่ทั้งชุด)
@@ -703,7 +703,11 @@
       el.style.display = msg ? 'block' : 'none';
     }
 
-    async function createQr(body) {
+    // สร้าง QR — ถามยืนยันก่อนทุกครั้ง (กันเผลอกดโดนช่อง/ปุ่ม แล้วออก QR ผิดโต๊ะ)
+    async function createQr(body, label) {
+      const who = label ? `โต๊ะ "${label}"` : 'โต๊ะนี้';
+      const ask = `ยืนยันสร้าง QR ให้ ${who} ?\n\nระบบจะออก QR ใหม่ (ใช้เฉพาะโต๊ะนี้) — ถ้าต้องการยกเลิกภายหลัง กดลบ QR ของโต๊ะนั้นได้`;
+      if (!confirm(ask)) return false;
       showErr('newQrErr', '');
       try {
         const r = await api('/api/shop/tables', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -711,7 +715,8 @@
         document.getElementById('newQrName').value = '';
         await loadAll();
         await refreshNames();
-      } catch (e) { showErr('newQrErr', e.message); }
+        return true;
+      } catch (e) { showErr('newQrErr', e.message); return false; }
     }
 
     document.getElementById('newQrBtn').addEventListener('click', async () => {
@@ -725,7 +730,7 @@
     document.getElementById('newQrCreate').addEventListener('click', () => {
       const name = document.getElementById('newQrName').value.trim();
       if (!name) { showErr('newQrErr', 'กรุณากดเลือกช่องโต๊ะด้านบน หรือพิมพ์ชื่อโต๊ะใหม่'); return; }
-      createQr({ code: name, zoneId: Number(document.getElementById('newQrZone').value) || 0 });
+      createQr({ code: name, zoneId: Number(document.getElementById('newQrZone').value) || 0 }, name + ' (ใหม่)');
     });
     document.getElementById('newQrClose').addEventListener('click', () => document.getElementById('newQrModal').classList.remove('show'));
     document.getElementById('newQrModal').addEventListener('click', (e) => { if (e.target.id === 'newQrModal') e.currentTarget.classList.remove('show'); });
