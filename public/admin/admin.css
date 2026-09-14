@@ -244,6 +244,19 @@ table.admin-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 900px) {
+  /* ตารางหลังบ้านบนมือถือ: ให้ข้อมูลแต่ละแถวอยู่บรรทัดเดียวกัน อ่านข้ามคอลัมน์ได้
+     (ตารางกว้างตามเนื้อหา แล้วเลื่อนซ้าย-ขวาในกรอบ .table-wrap แทนการบีบจนตัดบรรทัด) */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  table.admin-table { width: auto; min-width: 100%; }
+  .admin-table th, .admin-table td { white-space: nowrap; }
+  /* ช่องอีเมล/ข้อความยาว: ห้ามตัดคำ — ให้อยู่บรรทัดเดียวแล้วเลื่อนตารางแทน
+     (เดิม break-all ทำให้ข้อความถูกบีบจนตัดทีละตัวอักษร แถวจึงสูงและข้อมูลไม่อยู่บรรทัดเดียวกัน) */
+  .admin-table .email-cell { white-space: nowrap; word-break: normal; max-width: none; }
+  /* กลุ่มปุ่ม/ชิปในช่องตาราง: ให้เรียงอยู่ในบรรทัดเดียว (ไม่ตัดขึ้นบรรทัดใหม่จนแถวยืด) */
+  .admin-table td div[style*="display:flex"] { flex-wrap: nowrap !important; }
+}
+
+@media (max-width: 900px) {
   /* เมนูหลังบ้านเป็น “แผงเลื่อนออกจากด้านซ้าย” (แบบเดียวกับหน้า /shop และ /settings) */
   .admin-layout { display: block; }
   .admin-sidebar {
