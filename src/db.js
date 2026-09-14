@@ -305,15 +305,16 @@ async function initSchema() {
   `);
   await pool.execute(`
     CREATE TABLE IF NOT EXISTS orders (
-      id        BIGINT AUTO_INCREMENT PRIMARY KEY,
-      shop_id   BIGINT NOT NULL,
-      table_id  BIGINT NOT NULL,
-      status    VARCHAR(10) NOT NULL DEFAULT 'open',
-      total     DECIMAL(12,2) NOT NULL DEFAULT 0,
-      opened_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      closed_at DATETIME NULL,
+      id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+      shop_id    BIGINT NOT NULL,
+      table_id   BIGINT NULL,
+      table_code VARCHAR(30) NOT NULL DEFAULT '',
+      status     VARCHAR(10) NOT NULL DEFAULT 'open',
+      total      DECIMAL(12,2) NOT NULL DEFAULT 0,
+      opened_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      closed_at  DATETIME NULL,
       CONSTRAINT fk_orders_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
-      CONSTRAINT fk_orders_table FOREIGN KEY (table_id) REFERENCES \`tables\`(id) ON DELETE CASCADE,
+      CONSTRAINT fk_orders_table FOREIGN KEY (table_id) REFERENCES \`tables\`(id) ON DELETE SET NULL,
       KEY idx_orders_open (shop_id, table_id, status)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
@@ -339,6 +340,17 @@ async function initSchema() {
   await ensureColumn('order_items', 'done_at', 'done_at DATETIME NULL');
   await ensureColumn('order_items', 'cancel_reason', 'cancel_reason VARCHAR(255) NULL');
   await ensureColumn('order_items', 'options_ids_json', 'options_ids_json TEXT NULL');
+  // บิลต้องไม่หายไปพร้อมโต๊ะ/QR — เก็บชื่อโต๊ะไว้ในบิลตั้งแต่เปิดบิล (snapshot)
+  // และให้ FK ของ table_id เป็น SET NULL เพื่อให้ประวัติ/ใบเสร็จของบิลที่เช็คบิลแล้วยังอยู่
+  await ensureColumn('orders', 'table_code', "table_code VARCHAR(30) NOT NULL DEFAULT ''");
+  // ถ้าขั้นตอนนี้ล้มเหลว (เช่น สิทธิ์ ALTER ไม่พอ) ไม่ควรทำให้เซิร์ฟเวอร์บูตไม่ขึ้น — แจ้งเตือนแล้วทำงานต่อ
+  try {
+    await backfillOrderTableCode();
+    await relaxOrderTableForeignKey();
+  } catch (err) {
+    console.error('⚠️ ปรับโครงสร้างตาราง orders (table_code / FK SET NULL) ไม่สำเร็จ:', err.message);
+    console.error('   ผลที่ตามมา: บิลที่เช็คบิลแล้วอาจถูกลบไปพร้อมโต๊ะเมื่อเปิดสวิตช์ "ลบ QR ทันทีเมื่อเช็คบิล"');
+  }
 
   // ── รายชื่อโต๊ะ (แคตตาล็อกชื่อโต๊ะของร้าน) ──────────────────────────────
   // เก็บชื่อไว้ถาวร เพื่อให้สร้าง QR ใหม่โดยเลือกจากรายชื่อได้ แม้ตัวโต๊ะ/QR จะถูกลบไปแล้ว
@@ -424,6 +436,31 @@ async function ensureColumn(table, column, ddl) {
   if (Number(rows[0].c) === 0) {
     await pool.execute(`ALTER TABLE \`${table}\` ADD COLUMN ${ddl}`);
   }
+}
+
+// เติมชื่อโต๊ะย้อนหลังให้บิลเก่าที่ยังไม่มี snapshot (ทำครั้งเดียวต่อบิล)
+async function backfillOrderTableCode() {
+  await pool.execute(
+    "UPDATE orders o JOIN `tables` t ON t.id = o.table_id SET o.table_code = t.code WHERE o.table_code = '' AND o.table_id IS NOT NULL"
+  );
+}
+
+// เปลี่ยน FK ของ orders.table_id จาก ON DELETE CASCADE เป็น ON DELETE SET NULL
+// เหตุผล: ถ้าเปิดสวิตช์ "ลบ QR ทันทีเมื่อเช็คบิล" การเช็คบิลจะลบโต๊ะออก
+// ถ้าเป็น CASCADE บิลที่เพิ่งเช็คบิลจะถูกลบตามไปด้วย → ใบเสร็จ/ประวัติขึ้น "ไม่พบบิลนี้"
+async function relaxOrderTableForeignKey() {
+  const [rows] = await pool.execute(
+    `SELECT CONSTRAINT_NAME AS name, DELETE_RULE AS rule
+       FROM information_schema.REFERENTIAL_CONSTRAINTS
+      WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND REFERENCED_TABLE_NAME = 'tables'`
+  );
+  const cur = rows[0];
+  if (cur && cur.rule === 'SET NULL') return;
+  if (cur) await pool.execute(`ALTER TABLE orders DROP FOREIGN KEY \`${cur.name}\``);
+  await pool.execute('ALTER TABLE orders MODIFY table_id BIGINT NULL');
+  await pool.execute(
+    'ALTER TABLE orders ADD CONSTRAINT fk_orders_table FOREIGN KEY (table_id) REFERENCES `tables`(id) ON DELETE SET NULL'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1431,6 +1468,11 @@ async function createTable({ shopId, code, token }) {
 
 async function updateTableCode(id, shopId, code) {
   await pool.execute('UPDATE `tables` SET code = ? WHERE id = ? AND shop_id = ?', [code, id, shopId]);
+  // บิลที่ยังเปิดอยู่ของโต๊ะนี้ให้ใช้ชื่อใหม่ด้วย (บิลที่ปิดแล้วเก็บชื่อเดิมไว้เป็นประวัติ)
+  await pool.execute(
+    "UPDATE orders SET table_code = ? WHERE shop_id = ? AND table_id = ? AND status = 'open'",
+    [code, shopId, id]
+  );
 }
 
 async function deleteTable(id, shopId) {
@@ -1648,9 +1690,12 @@ async function createOrder({ shopId, tableId }) {
   // เลขที่บิลรันต่อร้าน (เริ่มที่ 1)
   const [rows] = await pool.execute('SELECT COALESCE(MAX(bill_no),0)+1 AS n FROM orders WHERE shop_id = ?', [shopId]);
   const billNo = Number(rows[0].n) || 1;
+  // เก็บชื่อโต๊ะไว้ในบิลด้วย เพื่อให้ใบเสร็จ/ประวัติยังแสดงชื่อได้แม้โต๊ะและ QR ถูกลบไปแล้ว
+  const [t] = await pool.execute('SELECT code FROM `tables` WHERE id = ? AND shop_id = ?', [tableId, shopId]);
+  const tableCode = t[0] ? t[0].code : '';
   const [result] = await pool.execute(
-    "INSERT INTO orders (shop_id, table_id, status, bill_no) VALUES (?, ?, 'open', ?)",
-    [shopId, tableId, billNo]
+    "INSERT INTO orders (shop_id, table_id, table_code, status, bill_no) VALUES (?, ?, ?, 'open', ?)",
+    [shopId, tableId, tableCode, billNo]
   );
   return Number(result.insertId);
 }
@@ -1685,11 +1730,12 @@ async function listKitchenItems(shopId, station = 'kitchen') {
   const st = station === 'cashier' ? 'cashier' : 'kitchen';
   const [rows] = await pool.execute(
     `SELECT oi.id, oi.order_id, oi.menu_id, oi.menu_name, oi.quantity, oi.options_json, oi.status,
-            oi.created_at, oi.started_at, oi.done_at, o.bill_no, t.code AS table_code,
+            oi.created_at, oi.started_at, oi.done_at, o.bill_no,
+            COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code,
             m.image_url, COALESCE(c.station, 'kitchen') AS station
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
-       JOIN \`tables\` t ON t.id = o.table_id
+       LEFT JOIN \`tables\` t ON t.id = o.table_id
        LEFT JOIN menus m ON m.id = oi.menu_id
        LEFT JOIN categories c ON c.id = m.category_id
       WHERE o.shop_id = ? AND o.status = 'open' AND oi.status <> 'cancelled'
@@ -1702,7 +1748,7 @@ async function listKitchenItems(shopId, station = 'kitchen') {
 
 async function findOrderItemOwned(id, shopId) {
   const [rows] = await pool.execute(
-    `SELECT oi.*, o.status AS order_status, t.code AS table_code
+    `SELECT oi.*, o.status AS order_status, COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code
        FROM order_items oi
        JOIN orders o ON o.id = oi.order_id
        LEFT JOIN \`tables\` t ON t.id = o.table_id
@@ -1745,13 +1791,24 @@ async function closeOrder(orderId) {
   await pool.execute("UPDATE orders SET status = 'closed', closed_at = UTC_TIMESTAMP() WHERE id = ?", [orderId]);
 }
 
+/** ลบบิลที่ยังเปิดอยู่และยังไม่มีรายการ (ตั๋วเปล่าของโต๊ะที่ถูกลบไปแล้ว)
+ *  บิลที่มีรายการแล้วต้อง "เช็คบิล" เท่านั้น เพื่อไม่ให้ประวัติหาย */
+async function deleteOrder(id, shopId) {
+  await pool.execute(
+    `DELETE o FROM orders o
+      WHERE o.id = ? AND o.shop_id = ? AND o.status = 'open'
+        AND NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)`,
+    [id, shopId]
+  );
+}
+
 async function listOpenOrders(shopId) {
   const [rows] = await pool.execute(
-    `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no, t.code AS table_code,
+    `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no, COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code,
             (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
-       FROM orders o JOIN \`tables\` t ON t.id = o.table_id
+       FROM orders o LEFT JOIN \`tables\` t ON t.id = o.table_id
       WHERE o.shop_id = ? AND o.status = 'open'
-      ORDER BY t.code ASC`,
+      ORDER BY table_code ASC`,
     [shopId]
   );
   // SUM() ของ MySQL คืนค่าเป็นสตริง (เช่น "0") — แปลงเป็นตัวเลขก่อน ไม่งั้นเงื่อนไข if ฝั่งหน้าเว็บจะเห็นเป็นจริง
@@ -1759,11 +1816,13 @@ async function listOpenOrders(shopId) {
 }
 
 // ประวัติบิลที่ปิดแล้ว (ดูย้อนหลัง) — กรองตามโต๊ะได้
+// หมายเหตุ: ใช้ชื่อโต๊ะที่เก็บไว้ในบิล (o.table_code) เพราะบิลที่เช็คบิลแล้วต้องอยู่ต่อแม้โต๊ะ/QR ถูกลบ
 async function listClosedOrders(shopId, { tableId = null, limit = 50 } = {}) {
   const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
-  let sql = `SELECT o.id, o.table_id, o.bill_no, o.total, o.opened_at, o.closed_at, t.code AS table_code,
+  let sql = `SELECT o.id, o.table_id, o.bill_no, o.total, o.opened_at, o.closed_at,
+                    COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code,
                     (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
-               FROM orders o JOIN \`tables\` t ON t.id = o.table_id
+               FROM orders o LEFT JOIN \`tables\` t ON t.id = o.table_id
               WHERE o.shop_id = ? AND o.status = 'closed'`;
   const params = [shopId];
   if (tableId) { sql += ' AND o.table_id = ?'; params.push(tableId); }
@@ -1921,6 +1980,7 @@ module.exports = {
   listOrderItems,
   addOrderItems,
   closeOrder,
+  deleteOrder,
   listOpenOrders,
   listClosedOrders,
   listItemsForOrders,

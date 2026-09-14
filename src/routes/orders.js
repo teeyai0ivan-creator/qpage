@@ -218,7 +218,7 @@ router.get('/api/shop/tables', requireShop, async (req, res) => {
     db.listTableNamesWithQr(shop.id),
   ]);
   const byTable = {};
-  openOrders.forEach((o) => { byTable[o.table_id] = o; });
+  openOrders.forEach((o) => { if (o.table_id) byTable[o.table_id] = o; });
   const zoneByName = {};
   catalog.forEach((n) => { zoneByName[n.name] = n.zone_name || null; });
   res.json({
@@ -321,6 +321,8 @@ router.delete('/api/shop/tables/:id', requireShop, async (req, res) => {
   // ยกเลิกโทเคน QR ของโต๊ะนี้ถาวร — สแกน QR เก่าแล้วจะใช้ไม่ได้อีกและจะไม่ถูกนำกลับมาใช้ใหม่
   await db.retireTableToken(table.token, shop.id);
   await db.deleteTable(id, shop.id);
+  // บิลที่ยังเปิดอยู่แต่ยังไม่มีรายการ (ตั๋วเปล่า) เช็คบิลไม่ได้อีกเพราะไม่มีโต๊ะแล้ว — ลบทิ้งไม่ให้ค้าง
+  if (open) await db.deleteOrder(open.id, shop.id);
   console.log(`🧾 ลบ QR โต๊ะ "${table.code}" (${shop.name}) — ยกเลิกโทเคนถาวรแล้ว`);
   res.json({ ok: true, message: `ลบ QR ของโต๊ะ "${table.code}" แล้ว (QR เดิมใช้ไม่ได้อีก)` });
 });
@@ -562,8 +564,10 @@ router.get('/api/shop/orders/:id', requireShop, async (req, res) => {
   const order = await db.findOrderById(id, shop.id);
   if (!order) return res.status(404).json({ ok: false, message: 'ไม่พบบิลนี้' });
   const items = await db.listOrderItems(id);
+  // ใช้ชื่อโต๊ะที่เก็บไว้ในบิลก่อน — บิลที่เช็คบิลแล้วอาจไม่มีโต๊ะอยู่แล้ว ถ้าเปิดสวิตช์ "ลบ QR ทันทีเมื่อเช็คบิล"
   const table = order.table_id ? await db.findTableById(order.table_id, shop.id) : null;
-  res.json({ ok: true, order: { ...order, table_code: table ? table.code : '' }, items });
+  const tableCode = order.table_code || (table ? table.code : '');
+  res.json({ ok: true, order: { ...order, table_code: tableCode }, items });
 });
 
 module.exports = router;
