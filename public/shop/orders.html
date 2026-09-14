@@ -125,8 +125,21 @@
     <div class="shop-card">
       <h2>โต๊ะ &amp; QR <span class="count" id="tableCount"></span></h2>
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-        <input class="mini-input" id="newTableCode" placeholder="เลขโต๊ะ เช่น 1, A2, โต๊ะริมหน้าต่าง" style="flex:1;min-width:180px;" maxlength="30" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-        <button class="mini-btn primary" id="addTableBtn" type="button">เพิ่มโต๊ะ + สร้าง QR</button>
+      <!-- ตัวเลือก: ลบ QR ทันทีเมื่อเช็คบิล -->
+      <div class="qr-switch-row">
+        <label class="switch" title="เปิด = เช็คบิลแล้วลบ QR ของโต๊ะนั้นทันที">
+          <input type="checkbox" id="autoDeleteQr">
+          <span class="track"></span>
+        </label>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13.5px;font-weight:700;">ลบ QR ของโต๊ะทันทีเมื่อเช็คบิล</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:2px;" id="autoDeleteHint">ปิดอยู่ — เช็คบิลแล้วโต๊ะและ QR ยังอยู่ และเปิดบิลใหม่ให้อัตโนมัติ</div>
+        </div>
+      </div>
+
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;">
+        <button class="mini-btn primary" id="newQrBtn" type="button">＋ สร้าง QR โต๊ะใหม่</button>
+        <button class="mini-btn" id="tableNamesBtn" type="button">รายชื่อโต๊ะ</button>
       </div>
       <div id="tableList"></div>
     </div>
@@ -137,6 +150,41 @@
     </div>
   </div>
     </div>
+
+  <!-- Modal สร้าง QR โต๊ะใหม่ (เลือกรายชื่อโต๊ะ) -->
+  <div class="modal-overlay" id="newQrModal">
+    <div class="modal">
+      <h3>สร้าง QR โต๊ะใหม่</h3>
+      <p class="sub">เลือกรายชื่อโต๊ะที่ต้องการออก QR — หรือพิมพ์ชื่อใหม่เพื่อเพิ่มเข้ารายชื่อแล้วสร้างเลย</p>
+      <div id="nameList" class="name-list"></div>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+        <input class="mini-input" id="newQrName" placeholder="พิมพ์ชื่อโต๊ะใหม่ เช่น A5" style="flex:1;min-width:150px;" maxlength="30" autocomplete="off">
+        <button class="mini-btn primary" id="newQrCreate" type="button">สร้าง QR</button>
+      </div>
+      <div class="error-msg" id="newQrErr" style="display:none;"></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:12px;">QR ที่ลบไปแล้วจะถูกยกเลิกถาวร — สร้างใหม่จะได้ QR ใหม่เสมอ ใช้ซ้ำกับของเดิมไม่ได้</p>
+      <div class="modal-actions">
+        <button class="mini-btn" id="newQrClose" type="button">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal รายชื่อโต๊ะ -->
+  <div class="modal-overlay" id="namesModal">
+    <div class="modal">
+      <h3>รายชื่อโต๊ะ</h3>
+      <p class="sub">เก็บรายชื่อโต๊ะของร้านไว้ล่วงหน้า เพื่อกดสร้าง QR ได้เร็ว ๆ (ลบชื่อได้เมื่อไม่มี QR ของชื่อนั้นใช้งานอยู่)</p>
+      <div id="namesManageList" class="name-list"></div>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+        <input class="mini-input" id="newNameInput" placeholder="เพิ่มชื่อโต๊ะ เช่น 1, A2, โต๊ะริมหน้าต่าง" style="flex:1;min-width:150px;" maxlength="30" autocomplete="off">
+        <button class="mini-btn primary" id="addNameBtn" type="button">เพิ่มชื่อ</button>
+      </div>
+      <div class="error-msg" id="namesErr" style="display:none;"></div>
+      <div class="modal-actions">
+        <button class="mini-btn" id="namesClose" type="button">ปิด</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal เพิ่มอาหาร (แคชเชียร์) -->
   <div class="modal-overlay" id="addModal">
@@ -231,26 +279,13 @@
     let openOrdersCache = []; // บิลที่เปิดอยู่ (พร้อมรายการ) — ใช้โชว์ในบล็อกโต๊ะด้วย
     let shopData = null;
 
-    // กันช่องกรอกได้โฟกัสเองตอนเปิดหน้า — บางเบราว์เซอร์/ออโต้ฟิลล์บนมือถือจะโฟกัสช่องข้อความตัวแรกให้
-    // ทำให้แป้นพิมพ์เด้งขึ้นมาเองทั้งที่ผู้ใช้ยังไม่ได้แตะ ถ้าผู้ใช้ยังไม่ได้แตะอะไร ให้ถอนโฟกัสออก
-    let userTouched = false;
-    ['pointerdown', 'touchstart', 'keydown', 'mousedown'].forEach((ev) =>
-      window.addEventListener(ev, () => { userTouched = true; }, { passive: true }));
-    function dropAutoFocus() {
-      const el = document.getElementById('newTableCode');
-      if (!el || userTouched) return;
-      if (document.activeElement === el) el.blur();
-    }
-    // ตรวจซ้ำช่วงแรกหลังเปิดหน้า เพราะออโต้ฟิลล์บางตัวโฟกัสช้ากว่าที่โหลดเสร็จ
-    // (พอผู้ใช้แตะเอง userTouched จะเป็นจริง แล้วตัวกันนี้หยุดทำงานทันที)
-    window.addEventListener('load', () => {
-      dropAutoFocus();
-      const watch = setInterval(dropAutoFocus, 300);
-      setTimeout(() => clearInterval(watch), 6000);
-    });
+    // (ช่องกรอกเพิ่มเลขโต๊ะย้ายเข้าไปอยู่ในป๊อปอัพแล้ว จึงไม่ต้องกันการโฟกัสอัตโนมัติบนหน้านี้อีก)
 
     async function loadTables() {
       const data = await api('/api/shop/tables');
+      autoDeleteQr = !!data.delete_qr_on_checkout;
+      const sw = document.getElementById('autoDeleteQr');
+      if (sw) { sw.checked = autoDeleteQr; setAutoHint(); }
       tablesCache = data.tables || [];
       document.getElementById('tableCount').textContent = tablesCache.length ? '(' + tablesCache.length + ')' : '';
       const box = document.getElementById('tableList');
@@ -465,13 +500,124 @@
     // โหลดบิลก่อน แล้วค่อยวาดรายการโต๊ะ (บล็อกโต๊ะใช้ข้อมูลบิลที่เปิดอยู่ด้วย)
     async function loadAll() { if (await loadShop()) { await loadBills(); await loadTables(); } }
 
-    document.getElementById('addTableBtn').addEventListener('click', async () => {
-      const el = document.getElementById('newTableCode');
-      const code = el.value.trim();
-      if (!code) return alert('กรุณากรอกเลขโต๊ะ');
-      try { await api('/api/shop/tables', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }); el.value = ''; toast('เพิ่มโต๊ะแล้ว'); await loadAll(); }
-      catch (e) { alert(e.message); }
+    // ---------- รายชื่อโต๊ะ + สร้าง QR ใหม่ + สวิตช์ลบ QR อัตโนมัติ ----------
+    let tableNames = [];   // [{ id, name, has_qr }]
+    let autoDeleteQr = false;
+
+    function setAutoHint() {
+      document.getElementById('autoDeleteHint').textContent = autoDeleteQr
+        ? 'เปิดอยู่ — เช็คบิลแล้วโต๊ะและ QR จะถูกลบทันที ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป'
+        : 'ปิดอยู่ — เช็คบิลแล้วโต๊ะและ QR ยังอยู่ และเปิดบิลใหม่ให้อัตโนมัติ';
+    }
+    document.getElementById('autoDeleteQr').addEventListener('change', async (e) => {
+      const on = e.target.checked;
+      try {
+        const r = await api('/api/shop/qr-auto-delete', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }) });
+        autoDeleteQr = !!r.enabled;
+        setAutoHint();
+        toast(r.message || 'บันทึกแล้ว');
+      } catch (err) {
+        e.target.checked = !on;
+        alert(err.message);
+      }
     });
+
+    async function loadTableNames() {
+      const data = await api('/api/shop/table-names');
+      tableNames = data.names || [];
+      return tableNames;
+    }
+
+    // ป๊อปอัพ "สร้าง QR โต๊ะใหม่" — เลือกจากรายชื่อ (ชื่อที่มี QR อยู่แล้วกดไม่ได้)
+    function renderNewQrList() {
+      const box = document.getElementById('nameList');
+      if (!tableNames.length) {
+        box.innerHTML = '<div class="cat-empty">ยังไม่มีรายชื่อโต๊ะ — พิมพ์ชื่อใหม่ด้านล่างเพื่อเพิ่มและสร้าง QR ได้เลย</div>';
+        return;
+      }
+      box.innerHTML = tableNames.map((n) => `<div class="name-item ${n.has_qr ? '' : 'pick'}" ${n.has_qr ? '' : `data-pick="${n.id}"`}>
+        <span class="nm">${esc(n.name)}</span>
+        <span class="tag ${n.has_qr ? 'on' : ''}">${n.has_qr ? 'มี QR อยู่' : 'ว่าง — กดเพื่อสร้าง QR'}</span>
+      </div>`).join('');
+      box.querySelectorAll('[data-pick]').forEach((el) => el.addEventListener('click', () => createQr({ nameId: Number(el.dataset.pick) })));
+    }
+
+    function renderNamesManage() {
+      const box = document.getElementById('namesManageList');
+      if (!tableNames.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีรายชื่อโต๊ะ</div>'; return; }
+      box.innerHTML = tableNames.map((n) => `<div class="name-item">
+        <span class="nm">${esc(n.name)}</span>
+        ${n.has_qr ? '<span class="tag on">มี QR อยู่</span>' : ''}
+        <button class="mini-btn danger" data-delname="${n.id}" ${n.has_qr ? 'disabled title="ยังมี QR ของชื่อนี้ใช้งานอยู่"' : ''} type="button">ลบ</button>
+      </div>`).join('');
+      box.querySelectorAll('[data-delname]').forEach((b) => b.addEventListener('click', async () => {
+        try {
+          const r = await api('/api/shop/table-names/' + b.dataset.delname, { method: 'DELETE' });
+          toast(r.message || 'ลบแล้ว');
+          await loadTableNames(); renderNamesManage(); renderNewQrList();
+        } catch (e) { alert(e.message); }
+      }));
+    }
+
+    function showErr(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg || '';
+      el.style.display = msg ? 'block' : 'none';
+    }
+
+    async function createQr(body) {
+      showErr('newQrErr', '');
+      try {
+        const r = await api('/api/shop/tables', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        toast(r.message || 'สร้าง QR แล้ว');
+        document.getElementById('newQrName').value = '';
+        await loadAll();
+        await loadTableNames();
+        renderNewQrList();
+        renderNamesManage();
+      } catch (e) { showErr('newQrErr', e.message); }
+    }
+
+    document.getElementById('newQrBtn').addEventListener('click', async () => {
+      try {
+        await loadTableNames();
+        renderNewQrList();
+        showErr('newQrErr', '');
+        document.getElementById('newQrName').value = '';
+        document.getElementById('newQrModal').classList.add('show');
+      } catch (e) { alert(e.message); }
+    });
+    document.getElementById('newQrCreate').addEventListener('click', () => {
+      const name = document.getElementById('newQrName').value.trim();
+      if (!name) { showErr('newQrErr', 'กรุณาเลือกจากรายชื่อด้านบน หรือพิมพ์ชื่อโต๊ะใหม่'); return; }
+      createQr({ code: name });
+    });
+    document.getElementById('newQrClose').addEventListener('click', () => document.getElementById('newQrModal').classList.remove('show'));
+    document.getElementById('newQrModal').addEventListener('click', (e) => { if (e.target.id === 'newQrModal') e.currentTarget.classList.remove('show'); });
+
+    document.getElementById('tableNamesBtn').addEventListener('click', async () => {
+      try {
+        await loadTableNames();
+        renderNamesManage();
+        showErr('namesErr', '');
+        document.getElementById('newNameInput').value = '';
+        document.getElementById('namesModal').classList.add('show');
+      } catch (e) { alert(e.message); }
+    });
+    document.getElementById('addNameBtn').addEventListener('click', async () => {
+      const el = document.getElementById('newNameInput');
+      const name = el.value.trim();
+      if (!name) { showErr('namesErr', 'กรุณากรอกชื่อโต๊ะ'); return; }
+      showErr('namesErr', '');
+      try {
+        const r = await api('/api/shop/table-names', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+        toast(r.message || 'เพิ่มชื่อแล้ว');
+        el.value = '';
+        await loadTableNames(); renderNamesManage(); renderNewQrList();
+      } catch (e) { showErr('namesErr', e.message); }
+    });
+    document.getElementById('namesClose').addEventListener('click', () => document.getElementById('namesModal').classList.remove('show'));
+    document.getElementById('namesModal').addEventListener('click', (e) => { if (e.target.id === 'namesModal') e.currentTarget.classList.remove('show'); });
     document.getElementById('refreshBtn').addEventListener('click', async () => {
       try { await loadAll(); toast('อัปเดตข้อมูลแล้ว'); } catch (e) { alert(e.message); }
     });

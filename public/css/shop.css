@@ -46,6 +46,26 @@
 .shop-head p { color: var(--muted); font-size: 13.5px; margin-top: 6px; line-height: 1.7; }
 .shop-head .shop-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 
+/* สวิตช์เปิด/ปิด (ใช้ในหน้าสั่งอาหาร) */
+.switch { position: relative; display: inline-block; width: 46px; height: 26px; flex: 0 0 auto; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .track { position: absolute; inset: 0; background: var(--border-strong); border-radius: 999px; transition: background .15s ease; cursor: pointer; }
+.switch .track::before { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s ease; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.switch input:checked + .track { background: var(--success); }
+.switch input:checked + .track::before { transform: translateX(20px); }
+
+/* แถวตัวเลือกในหน้าสั่งอาหาร */
+.qr-switch-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+
+/* รายชื่อโต๊ะ (ในป๊อปอัพ) */
+.name-list { display: grid; gap: 8px; max-height: 260px; overflow-y: auto; }
+.name-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.name-item .nm { flex: 1; font-weight: 700; font-size: 13.5px; }
+.name-item .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--ring); color: var(--accent); }
+.name-item .tag.on { background: var(--success-bg); color: var(--success); }
+.name-item.pick { cursor: pointer; }
+.name-item.pick:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+
 /* ปุ่ม "ดูเมนูทั้งหมด" — ปุ่มไล่สีพร้อมไอคอน (ไม่ใช้อิโมจิ) วางคู่กับหัวข้อหน้า */
 .btn-menus {
   display: inline-flex; align-items: center; gap: 8px;

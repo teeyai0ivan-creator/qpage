@@ -63,7 +63,56 @@ router.get('/order/:token', (req, res) => {
 
 // ---------------------------------------------------------------------------
 // API ฝั่งร้าน: โต๊ะ + QR
+// สร้างโทเคน QR ใหม่ที่ไม่ซ้ำกับโต๊ะที่ใช้งานอยู่ และไม่เคยถูกยกเลิกไปแล้ว
+// (รับประกันว่า QR ที่ลบไปแล้วจะไม่ถูกนำกลับมาใช้ใหม่)
+async function freshTableToken() {
+  for (let i = 0; i < 10; i++) {
+    const token = randomToken().slice(0, 16);
+    if (!await db.isTableTokenTaken(token)) return token;
+  }
+  // แทบไม่เกิดขึ้น (สุ่ม 64 บิต) — กันเหนียวด้วยการต่อเวลาเข้าไป
+  return randomToken().slice(0, 8) + Date.now().toString(36).slice(-8);
+}
+
 // ---------------------------------------------------------------------------
+// รายชื่อโต๊ะ (แคตตาล็อก) — สร้าง/ลบชื่อไว้ล่วงหน้า แล้วค่อยเลือกตอนสร้าง QR
+// ---------------------------------------------------------------------------
+router.get('/api/shop/table-names', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const names = await db.listTableNamesWithQr(shop.id);
+  res.json({
+    ok: true,
+    names: names.map((n) => ({ id: n.id, name: n.name, has_qr: Boolean(n.table_id), table_id: n.table_id || null })),
+  });
+});
+
+router.post('/api/shop/table-names', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const name = clip(req.body?.name, 30);
+  if (!name) return res.status(400).json({ ok: false, field: 'name', message: 'กรุณากรอกชื่อโต๊ะ (เช่น 1, A2, โต๊ะริมหน้าต่าง)' });
+  if (await db.findTableNameByName(shop.id, name)) {
+    return res.status(409).json({ ok: false, field: 'name', message: `มีชื่อ "${name}" อยู่ในรายชื่อแล้ว` });
+  }
+  await db.ensureTableName({ shopId: shop.id, name });
+  res.json({ ok: true, message: `เพิ่ม "${name}" เข้ารายชื่อโต๊ะแล้ว` });
+});
+
+router.delete('/api/shop/table-names/:id', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const id = Number(req.params.id);
+  const name = await db.findTableNameById(id, shop.id);
+  if (!name) return res.status(404).json({ ok: false, message: 'ไม่พบชื่อโต๊ะนี้' });
+  // ถ้ายังมี QR (โต๊ะ) ที่ใช้งานชื่อนี้อยู่ ห้ามลบจากรายชื่อ
+  if (await db.findTableByCode(shop.id, name.name)) {
+    return res.status(409).json({ ok: false, message: `ลบไม่ได้ — ยังมี QR ของโต๊ะ "${name.name}" ใช้งานอยู่ (ลบ QR ก่อน)` });
+  }
+  await db.deleteTableName(id, shop.id);
+  res.json({ ok: true, message: `ลบ "${name.name}" ออกจากรายชื่อแล้ว` });
+});
+
 router.get('/api/shop/tables', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
@@ -73,6 +122,7 @@ router.get('/api/shop/tables', requireShop, async (req, res) => {
   openOrders.forEach((o) => { byTable[o.table_id] = o; });
   res.json({
     ok: true,
+    delete_qr_on_checkout: Number(shop.delete_qr_on_checkout) === 1,
     tables: tables.map((t) => ({
       id: t.id, code: t.code, token: t.token,
       open_order: byTable[t.id] || null,
@@ -80,18 +130,45 @@ router.get('/api/shop/tables', requireShop, async (req, res) => {
   });
 });
 
+// เปิด/ปิด "ลบ QR ทันทีเมื่อเช็คบิล"
+router.put('/api/shop/qr-auto-delete', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const enabled = !!req.body?.enabled;
+  await db.updateShop(shop.id, { deleteQrOnCheckout: enabled ? 1 : 0 });
+  console.log(`🧾 ตั้งค่า "${shop.name}": ลบ QR อัตโนมัติเมื่อเช็คบิล = ${enabled ? 'เปิด' : 'ปิด'}`);
+  res.json({
+    ok: true,
+    enabled,
+    message: enabled
+      ? 'เปิดแล้ว — เมื่อเช็คบิล โต๊ะนั้นและ QR จะถูกลบทันที (ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป)'
+      : 'ปิดแล้ว — เมื่อเช็คบิล โต๊ะและ QR จะยังอยู่ และเปิดบิลใหม่ให้อัตโนมัติ',
+  });
+});
+
 router.post('/api/shop/tables', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
-  const code = clip(req.body?.code, 30);
-  if (!code) return res.status(400).json({ ok: false, field: 'code', message: 'กรุณากรอกเลขโต๊ะ (เช่น 1, A2, โต๊ะริมหน้าต่าง)' });
-  if (await db.findTableByCode(shop.id, code)) {
-    return res.status(409).json({ ok: false, field: 'code', message: 'มีเลขโต๊ะนี้อยู่แล้ว' });
+  // เลือกจากรายชื่อโต๊ะ (nameId) หรือพิมพ์ชื่อใหม่ (code)
+  const nameId = Number(req.body?.nameId) || 0;
+  let code = '';
+  if (nameId) {
+    const picked = await db.findTableNameById(nameId, shop.id);
+    if (!picked) return res.status(404).json({ ok: false, message: 'ไม่พบชื่อโต๊ะที่เลือก' });
+    code = picked.name;
+  } else {
+    code = clip(req.body?.code, 30);
   }
-  const id = await db.createTable({ shopId: shop.id, code, token: randomToken().slice(0, 16) });
+  if (!code) return res.status(400).json({ ok: false, field: 'code', message: 'กรุณาเลือกหรือกรอกเลขโต๊ะ (เช่น 1, A2, โต๊ะริมหน้าต่าง)' });
+  if (await db.findTableByCode(shop.id, code)) {
+    return res.status(409).json({ ok: false, field: 'code', message: `โต๊ะ "${code}" มี QR ที่ใช้งานอยู่แล้ว` });
+  }
+  await db.ensureTableName({ shopId: shop.id, name: code }); // พิมพ์ชื่อใหม่ → เข้ารายชื่อให้ด้วย
+  const id = await db.createTable({ shopId: shop.id, code, token: await freshTableToken() });
   // เปิดบิลตั้งต้นให้โต๊ะทันที (มีเลขที่บิล) — ลูกค้าสแกนแล้วเห็นเลขบิลได้เลย
   await db.createOrder({ shopId: shop.id, tableId: id });
-  res.json({ ok: true, message: `เพิ่มโต๊ะ "${code}" แล้ว`, id });
+  console.log(`🧾 สร้าง QR โต๊ะ "${code}" (${shop.name})`);
+  res.json({ ok: true, message: `สร้าง QR โต๊ะ "${code}" แล้ว`, id });
 });
 
 router.put('/api/shop/tables/:id', requireShop, async (req, res) => {
@@ -127,8 +204,11 @@ router.delete('/api/shop/tables/:id', requireShop, async (req, res) => {
     }
   }
 
+  // ยกเลิกโทเคน QR ของโต๊ะนี้ถาวร — สแกน QR เก่าแล้วจะใช้ไม่ได้อีกและจะไม่ถูกนำกลับมาใช้ใหม่
+  await db.retireTableToken(table.token, shop.id);
   await db.deleteTable(id, shop.id);
-  res.json({ ok: true, message: `ลบโต๊ะ "${table.code}" แล้ว` });
+  console.log(`🧾 ลบ QR โต๊ะ "${table.code}" (${shop.name}) — ยกเลิกโทเคนถาวรแล้ว`);
+  res.json({ ok: true, message: `ลบ QR ของโต๊ะ "${table.code}" แล้ว (QR เดิมใช้ไม่ได้อีก)` });
 });
 
 // รูป QR ของโต๊ะ (PNG) — ชี้ไป /order/<token>
@@ -192,9 +272,18 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
     };
     closedItems = items;
   }
-  // เปิดบิลใหม่ว่างให้โต๊ะเดิมทันที
-  await db.createOrder({ shopId: shop.id, tableId: table.id });
-  console.log(`🧾 เช็คบิลโต๊ะ ${table.code} (${shop.name})${closed ? ' ยอด ' + closed.total : ' (ไม่มีรายการ)'}`);
+  // ถ้าเปิด "ลบ QR อัตโนมัติเมื่อเช็คบิล" → ลบโต๊ะและยกเลิกโทเคน QR ถาวร (ไม่เปิดบิลใหม่)
+  // ถ้าปิด → เปิดบิลใหม่ว่างให้โต๊ะเดิมทันที
+  const autoDeleteQr = Number(shop.delete_qr_on_checkout) === 1;
+  let qrDeleted = false;
+  if (autoDeleteQr) {
+    await db.retireTableToken(table.token, shop.id);
+    await db.deleteTable(table.id, shop.id);
+    qrDeleted = true;
+  } else {
+    await db.createOrder({ shopId: shop.id, tableId: table.id });
+  }
+  console.log(`🧾 เช็คบิลโต๊ะ ${table.code} (${shop.name})${closed ? ' ยอด ' + closed.total : ' (ไม่มีรายการ)'}${qrDeleted ? ' · ลบ QR ทันที' : ''}`);
 
   if (closed) {
     void notify.notifyShop(shop.id, 'checkout', notify.buildCheckoutText({
@@ -205,7 +294,14 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
       items: closedItems,
     }));
   }
-  res.json({ ok: true, message: `เช็คบิลโต๊ะ "${table.code}" แล้ว`, closed });
+  res.json({
+    ok: true,
+    message: qrDeleted
+      ? `เช็คบิลโต๊ะ "${table.code}" แล้ว และลบ QR ของโต๊ะนี้ทันที — ต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป`
+      : `เช็คบิลโต๊ะ "${table.code}" แล้ว`,
+    closed,
+    qr_deleted: qrDeleted,
+  });
 });
 
 // ---------------------------------------------------------------------------

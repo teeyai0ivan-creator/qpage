@@ -340,6 +340,36 @@ async function initSchema() {
   await ensureColumn('order_items', 'cancel_reason', 'cancel_reason VARCHAR(255) NULL');
   await ensureColumn('order_items', 'options_ids_json', 'options_ids_json TEXT NULL');
 
+  // ── รายชื่อโต๊ะ (แคตตาล็อกชื่อโต๊ะของร้าน) ──────────────────────────────
+  // เก็บชื่อไว้ถาวร เพื่อให้สร้าง QR ใหม่โดยเลือกจากรายชื่อได้ แม้ตัวโต๊ะ/QR จะถูกลบไปแล้ว
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS table_names (
+      id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+      shop_id    BIGINT NOT NULL,
+      name       VARCHAR(30) NOT NULL,
+      sort_order INT NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_tname_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
+      UNIQUE KEY uq_shop_tname (shop_id, name)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  // ── โทเคน QR ที่ถูกลบไปแล้ว ────────────────────────────────────────────
+  // เก็บไว้เป็นหลักฐาน/กันการใช้ซ้ำ: โทเคนที่เคยลบจะไม่ถูกออกให้โต๊ะใดอีกในอนาคต
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS retired_table_tokens (
+      token      CHAR(16) PRIMARY KEY,
+      shop_id    BIGINT NOT NULL,
+      retired_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  // ตัวเลือกลบ QR ของโต๊ะทันทีเมื่อเช็คบิล (ปิดไว้เป็นค่าเริ่มต้น)
+  await ensureColumn('shops', 'delete_qr_on_checkout', 'delete_qr_on_checkout TINYINT(1) NOT NULL DEFAULT 0');
+
+  // โต๊ะที่มีอยู่ก่อนมีระบบรายชื่อ → เติมชื่อลงแคตตาล็อกให้ (ทำซ้ำได้ ไม่พัง)
+  await pool.execute('INSERT IGNORE INTO table_names (shop_id, name) SELECT shop_id, code FROM `tables`');
+
   // ตัวเลือกที่ "มาร์คเป็นค่าเริ่มต้น" → เวลาลูกค้าเลือกเมนูที่ใช้กลุ่มนี้ ระบบจะติ๊กให้อัตโนมัติ
   await ensureColumn('option_items', 'is_default', 'is_default TINYINT(1) NOT NULL DEFAULT 0');
 
@@ -816,11 +846,17 @@ async function createShop({ userId, publicCode, name, phone = '', lineUrl = '', 
 }
 
 async function updateShop(id, fields) {
-  const map = { name: 'name', phone: 'phone', lineUrl: 'line_url', logoUrl: 'logo_url', mapsUrl: 'maps_url' };
+  const map = {
+    name: 'name', phone: 'phone', lineUrl: 'line_url', logoUrl: 'logo_url', mapsUrl: 'maps_url',
+    deleteQrOnCheckout: 'delete_qr_on_checkout',
+  };
   const sets = [];
   const params = [];
   for (const key of Object.keys(map)) {
-    if (fields[key] !== undefined) { sets.push(`${map[key]} = ?`); params.push(fields[key]); }
+    if (fields[key] === undefined) continue;
+    sets.push(`${map[key]} = ?`);
+    // ค่าบูลีนในตารางเก็บเป็น 0/1
+    params.push(key === 'deleteQrOnCheckout' ? (fields[key] ? 1 : 0) : fields[key]);
   }
   if (!sets.length) return;
   sets.push('updated_at = CURRENT_TIMESTAMP');
@@ -1386,6 +1422,69 @@ async function deleteTable(id, shopId) {
 }
 
 // ---------------------------------------------------------------------------
+// รายชื่อโต๊ะ (แคตตาล็อกชื่อโต๊ะ) + โทเคน QR ที่ถูกยกเลิก
+// ---------------------------------------------------------------------------
+async function listTableNames(shopId) {
+  const [rows] = await pool.execute(
+    'SELECT * FROM table_names WHERE shop_id = ? ORDER BY sort_order ASC, id ASC',
+    [shopId]
+  );
+  return rows;
+}
+
+/** ชื่อโต๊ะทั้งหมด พร้อมบอกว่าตอนนี้มี QR (โต๊ะ) ที่ใช้งานอยู่แล้วหรือยัง */
+async function listTableNamesWithQr(shopId) {
+  const [rows] = await pool.execute(
+    `SELECT n.id, n.name, n.sort_order, t.id AS table_id
+       FROM table_names n
+       LEFT JOIN \`tables\` t ON t.shop_id = n.shop_id AND t.code = n.name
+      WHERE n.shop_id = ?
+      ORDER BY n.sort_order ASC, n.id ASC`,
+    [shopId]
+  );
+  return rows;
+}
+
+async function findTableNameById(id, shopId) {
+  const [rows] = await pool.execute('SELECT * FROM table_names WHERE id = ? AND shop_id = ?', [id, shopId]);
+  return rows[0] || null;
+}
+
+async function findTableNameByName(shopId, name) {
+  const [rows] = await pool.execute('SELECT * FROM table_names WHERE shop_id = ? AND name = ?', [shopId, name]);
+  return rows[0] || null;
+}
+
+/** เพิ่มชื่อโต๊ะเข้ารายชื่อ (ถ้ามีอยู่แล้วไม่ต้องทำอะไร) */
+async function ensureTableName({ shopId, name }) {
+  await pool.execute('INSERT IGNORE INTO table_names (shop_id, name) VALUES (?, ?)', [shopId, name]);
+}
+
+async function deleteTableName(id, shopId) {
+  await pool.execute('DELETE FROM table_names WHERE id = ? AND shop_id = ?', [id, shopId]);
+}
+
+/** บันทึกว่าโทเคนนี้ถูกยกเลิกแล้ว — จะไม่ถูกนำกลับมาใช้กับโต๊ะใดอีก */
+async function retireTableToken(token, shopId) {
+  if (!token) return;
+  await pool.execute('INSERT IGNORE INTO retired_table_tokens (token, shop_id) VALUES (?, ?)', [token, shopId]);
+}
+
+/** โทเคนนี้ถูกใช้อยู่ หรือเคยถูกยกเลิกไปแล้วหรือยัง */
+async function isTableTokenTaken(token) {
+  const [rows] = await pool.execute(
+    'SELECT 1 FROM `tables` WHERE token = ? UNION ALL SELECT 1 FROM retired_table_tokens WHERE token = ? LIMIT 1',
+    [token, token]
+  );
+  return rows.length > 0;
+}
+
+async function countRetiredTableTokens(shopId) {
+  const [rows] = await pool.execute('SELECT COUNT(*) AS c FROM retired_table_tokens WHERE shop_id = ?', [shopId]);
+  return Number(rows[0].c) || 0;
+}
+
+// ---------------------------------------------------------------------------
 // กลุ่มแจ้งเตือน (LINE / Telegram)
 // ---------------------------------------------------------------------------
 async function listNotifyGroups(shopId) {
@@ -1713,6 +1812,15 @@ module.exports = {
   createTable,
   updateTableCode,
   deleteTable,
+  listTableNames,
+  listTableNamesWithQr,
+  findTableNameById,
+  findTableNameByName,
+  ensureTableName,
+  deleteTableName,
+  retireTableToken,
+  isTableTokenTaken,
+  countRetiredTableTokens,
   listNotifyGroups,
   listActiveNotifyGroups,
   findNotifyGroupById,
