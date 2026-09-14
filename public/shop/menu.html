@@ -45,16 +45,14 @@
           <h2>หมวดหมู่ <span class="count" id="catCount"></span></h2>
           <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
             <input class="mini-input" id="newCatName" placeholder="ชื่อหมวดหมู่ เช่น อาหาร" style="flex:1;min-width:140px;">
+            <select class="mini-input" id="newCatParent">
+              <option value="">— หมวดหลัก —</option>
+            </select>
             <select class="mini-input" id="newCatStation" title="ส่งรายการของหมวดนี้ไปที่ไหน">
               <option value="kitchen">🍳 ส่งเข้า ครัว</option>
               <option value="cashier">🧾 ส่งเข้า แคชเชียร์</option>
             </select>
             <button class="mini-btn primary" id="addCatBtn" type="button">เพิ่ม</button>
-          </div>
-          <div style="margin-bottom:10px;">
-            <label style="display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;">หมวดหลัก — ถ้าจะสร้างเป็น “หมวดย่อย” ให้กดเลือกหมวดแม่</label>
-            <input type="hidden" id="newCatParent" value="">
-            <div class="cat-pick-row" id="newCatParentRow" role="group" aria-label="เลือกหมวดหลัก"></div>
           </div>
           <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;">เลือก "เส้นทาง" ของหมวด: เมนูในหมวดนี้จะไปแสดงที่หน้าครัว หรือหน้าแคชเชียร์ (แก้ทีหลังได้)</p>
           <div id="catList"></div>
@@ -72,10 +70,8 @@
               <div class="input-wrap"><input type="text" id="menuName" maxlength="150" placeholder="เช่น ข้าวผัด" required></div>
             </div>
             <div class="row">
-              <div class="field" style="max-width:none;"><label>หมวดหมู่</label>
-                <input type="hidden" id="menuCat" value="">
-                <div class="cat-pick-row" id="menuCatRow" role="group" aria-label="เลือกหมวดหมู่"></div>
-              </div>
+              <div class="field"><label for="menuCat">หมวดหมู่</label>
+                <select id="menuCat" class="mini-input" style="width:100%;"></select></div>
               <div class="field"><label for="menuPrice">ราคา (บาท)</label>
                 <input type="number" id="menuPrice" min="0" step="0.01" class="mini-input" style="width:100%;" placeholder="0"></div>
             </div>
@@ -160,34 +156,14 @@
     }
 
     // ---------- หมวดหมู่ ----------
-    // เลือก "หมวดหลัก" แบบแถวเดียว — ชื่อหมวดเรียงเป็นปุ่มให้กดเลือก (ไม่ต้องเปิด dropdown)
-    let newCatParentValue = '';
-    function setNewCatParent(id) {
-      newCatParentValue = id == null || id === '' ? '' : String(id);
-      const hidden = document.getElementById('newCatParent');
-      if (hidden) hidden.value = newCatParentValue;
-      const row = document.getElementById('newCatParentRow');
-      if (row) row.querySelectorAll('[data-parent]').forEach((b) => b.classList.toggle('on', b.dataset.parent === newCatParentValue));
-    }
-    function renderCatParentPicker() {
-      const row = document.getElementById('newCatParentRow');
-      if (!row) return;
-      const tops = state.categories.filter((c) => !c.parent_id);
-      if (!tops.length) {
-        row.innerHTML = '<span style="font-size:12.5px;color:var(--muted);align-self:center;">ยังไม่มีหมวดหมู่ — พิมพ์ชื่อแล้วกด “เพิ่ม” เพื่อสร้างหมวดแรกได้เลย</span>';
-        setNewCatParent('');
-        return;
-      }
-      row.innerHTML = ['<button type="button" class="cat-pick" data-parent="">— เป็นหมวดหลัก —</button>']
-        .concat(tops.map((c) => `<button type="button" class="cat-pick" data-parent="${c.id}">${esc(c.name)}</button>`))
-        .join('');
-      row.querySelectorAll('[data-parent]').forEach((b) => b.addEventListener('click', () => setNewCatParent(b.dataset.parent)));
-      setNewCatParent(newCatParentValue);
+    function parentOptionsHtml() {
+      return '<option value="">— หมวดหลัก —</option>' +
+        state.categories.filter((c) => !c.parent_id).map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
     }
     function renderCategories() {
       const tops = state.categories.filter((c) => !c.parent_id);
       document.getElementById('catCount').textContent = state.categories.length ? '(' + state.categories.length + ')' : '';
-      renderCatParentPicker();
+      document.getElementById('newCatParent').innerHTML = parentOptionsHtml();
       const box = document.getElementById('catList');
       if (!tops.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีหมวดหมู่ — เพิ่มหมวดแรกด้านบนได้เลย</div>'; return; }
       const stationSelect = (c, small) => `<select class="mini-input station-sel" data-stationcat="${c.id}" title="เส้นทางแสดงผลของหมวดนี้" style="width:auto;${small ? 'font-size:12px;padding:4px 6px;' : ''}">`
@@ -242,34 +218,18 @@
       const station = document.getElementById('newCatStation').value === 'cashier' ? 'cashier' : 'kitchen';
       try {
         await api('/api/shop/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, parentId: parentId ? Number(parentId) : null, station }) });
-        el.value = ''; setNewCatParent(''); toast('เพิ่มหมวดหมู่แล้ว'); await refresh();
+        el.value = ''; toast('เพิ่มหมวดหมู่แล้ว'); await refresh();
       } catch (e) { alert(e.message); }
     });
 
     // ---------- เมนู ----------
-    // เลือกหมวดหมู่แบบ "แถวเดียว" — ชื่อหมวดเรียงเป็นคอลัมน์ให้กดเลือก (เลื่อนซ้าย-ขวาได้ถ้ามีหลายหมวด)
-    let menuCatValue = '';
-    function setMenuCat(id) {
-      menuCatValue = id == null || id === '' ? '' : String(id);
-      const hidden = document.getElementById('menuCat');
-      if (hidden) hidden.value = menuCatValue;
-      const row = document.getElementById('menuCatRow');
-      if (row) row.querySelectorAll('[data-cat]').forEach((b) => b.classList.toggle('on', b.dataset.cat === menuCatValue));
-    }
     function renderCategorySelects() {
-      const row = document.getElementById('menuCatRow');
-      if (!row) return;
-      const chips = ['<button type="button" class="cat-pick" data-cat="">— ไม่ระบุหมวด —</button>'];
+      const opts = ['<option value="">— ไม่ระบุหมวด —</option>'];
       state.categories.filter((c) => !c.parent_id).forEach((c) => {
-        chips.push(`<button type="button" class="cat-pick" data-cat="${c.id}">${esc(c.name)}</button>`);
-        state.categories.filter((s) => s.parent_id === c.id).forEach((s) => chips.push(`<button type="button" class="cat-pick sub" data-cat="${s.id}">${esc(c.name)} › ${esc(s.name)}</button>`));
+        opts.push(`<option value="${c.id}">${esc(c.name)}</option>`);
+        state.categories.filter((s) => s.parent_id === c.id).forEach((s) => opts.push(`<option value="${s.id}">&nbsp;&nbsp;└ ${esc(s.name)}</option>`));
       });
-      row.innerHTML = chips.join('');
-      row.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => setMenuCat(b.dataset.cat)));
-      if (!state.categories.length) {
-        row.innerHTML = '<span style="font-size:12.5px;color:var(--muted);align-self:center;">ยังไม่มีหมวดหมู่ — สร้างที่ช่อง “หมวดหมู่” ด้านซ้ายก่อน</span>';
-      }
-      setMenuCat(menuCatValue);
+      document.getElementById('menuCat').innerHTML = opts.join('');
     }
     function renderMenuGroupPick() {
       const box = document.getElementById('menuGroupPick');
@@ -287,7 +247,7 @@
       if (!m) return;
       document.getElementById('menuId').value = m.id;
       document.getElementById('menuName').value = m.name || '';
-      setMenuCat(m.category_id || '');
+      document.getElementById('menuCat').value = m.category_id || '';
       document.getElementById('menuPrice').value = m.price || '';
       document.getElementById('menuDesc').value = m.description || '';
       document.getElementById('menuAvailable').checked = !!m.available;
@@ -301,7 +261,6 @@
     }
     function resetMenuForm() {
       document.getElementById('menuForm').reset();
-      setMenuCat('');
       document.getElementById('menuId').value = '';
       document.getElementById('menuAvailable').checked = true;
       menuImageUrl = '';
