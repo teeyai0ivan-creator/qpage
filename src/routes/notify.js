@@ -9,6 +9,7 @@
 const path = require('node:path');
 const express = require('express');
 const db = require('../db');
+const { sendShopPage } = require('../lib/shop-page');
 const notify = require('../lib/notify');
 const { getCurrentUser, requireShop } = require('../middleware/auth');
 const { isShop } = require('../lib/roles');
@@ -86,8 +87,7 @@ function configError(c) {
 router.get('/shop/notify.html', requireShopPage, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
   if (!shop) return res.redirect('/shop/setup.html');
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'notify.html'));
+  await sendShopPage(res, 'notify.html', shop);
 });
 
 // ---------------------------------------------------------------------------

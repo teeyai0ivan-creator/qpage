@@ -7,6 +7,7 @@ const path = require('node:path');
 const express = require('express');
 const QRCode = require('qrcode');
 const db = require('../db');
+const { sendShopPage } = require('../lib/shop-page');
 const { getCurrentUser, requireShop } = require('../middleware/auth');
 const { isShop } = require('../lib/roles');
 const { randomToken } = require('../lib/crypto');
@@ -51,8 +52,7 @@ async function myShop(req, res) {
 router.get('/shop/orders.html', requireShopPage, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
   if (!shop) return res.redirect('/shop/setup.html');
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'orders.html'));
+  await sendShopPage(res, 'orders.html', shop);
 });
 
 // หน้าสั่งอาหารของลูกค้า (สาธารณะ) — ใช้ token ของโต๊ะ
@@ -261,8 +261,7 @@ router.delete('/api/shop/order-items/:id', requireShop, async (req, res) => {
 router.get(['/shop/kitchen.html', '/shop/cashier.html'], requireShopPage, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
   if (!shop) return res.redirect('/shop/setup.html');
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'kitchen.html'));
+  await sendShopPage(res, 'kitchen.html', shop);
 });
 
 router.get('/api/shop/kitchen', requireShop, async (req, res) => {
@@ -313,8 +312,7 @@ router.post('/api/shop/order-items/:id/status', requireShop, async (req, res) =>
 router.get('/shop/history.html', requireShopPage, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
   if (!shop) return res.redirect('/shop/setup.html');
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'history.html'));
+  await sendShopPage(res, 'history.html', shop);
 });
 
 router.get('/api/shop/orders/history', requireShop, async (req, res) => {

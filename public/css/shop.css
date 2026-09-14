@@ -18,6 +18,18 @@
 .shop-head p { color: var(--muted); font-size: 13.5px; margin-top: 6px; line-height: 1.7; }
 .shop-head .shop-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 
+/* ปุ่ม "ดูเมนูทั้งหมด" — ปุ่มไล่สีพร้อมไอคอน (ไม่ใช้อิโมจิ) วางคู่กับหัวข้อหน้า */
+.btn-menus {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font); font-size: 13.5px; font-weight: 700;
+  padding: 10px 16px; border-radius: 999px; text-decoration: none;
+  background: var(--accent-gradient); color: #fff;
+  box-shadow: 0 8px 18px rgba(99, 102, 241, .28);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn-menus:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(99, 102, 241, .38); }
+.btn-menus svg { width: 16px; height: 16px; flex: 0 0 auto; }
+
 .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
 /* min-width: 0 ให้เนื้อหาข้างในหดตัวได้ (ไม่งั้นแถวที่มีของยาว ๆ จะดันคอลัมน์ให้กว้างเกินจอมือถือ) */
 .shop-grid > * { min-width: 0; }

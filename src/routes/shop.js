@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const express = require('express');
 const db = require('../db');
+const { sendShopPage } = require('../lib/shop-page');
 const { getCurrentUser, requireLogin, requireShop } = require('../middleware/auth');
 const { isAdminRole, isShop } = require('../lib/roles');
 const { randomToken } = require('../lib/crypto');
@@ -53,25 +54,23 @@ router.get('/shop/purchase.html', async (req, res) => {
 });
 
 // หน้าตั้งข้อมูลร้าน (เจ้าของร้าน)
-router.get('/shop/setup.html', requireShopPage, (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'setup.html'));
+router.get('/shop/setup.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  await sendShopPage(res, 'setup.html', shop);
 });
 
 // หน้าจัดการเมนู (เจ้าของร้าน + ต้องมีข้อมูลร้านก่อน)
 router.get('/shop/menu.html', requireShopPage, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
   if (!shop) return res.redirect('/shop/setup.html');
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'menu.html'));
+  await sendShopPage(res, 'menu.html', shop);
 });
 
 // หน้า "เมนูทั้งหมด" — ตารางแบบเอ็กเซล (เปิดจากปุ่มในหน้าจัดการเมนู)
 router.get('/shop/menus.html', requireShopPage, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
   if (!shop) return res.redirect('/shop/setup.html');
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'menus.html'));
+  await sendShopPage(res, 'menus.html', shop);
 });
 
 // หน้าร้านสาธารณะ (ไม่ต้องล็อกอิน) — โหลดข้อมูลผ่าน /api/public/shops/:code
