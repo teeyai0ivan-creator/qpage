@@ -525,15 +525,26 @@
         : 'ปิดอยู่ — เช็คบิลแล้วโต๊ะและ QR ยังอยู่ และเปิดบิลใหม่ให้อัตโนมัติ';
     }
     document.getElementById('autoDeleteQr').addEventListener('change', async (e) => {
-      const on = e.target.checked;
+      const el = e.target;
+      const on = el.checked;
+      // กันเผลอกดโดน: ต้องยืนยันก่อนทุกครั้ง (กดยกเลิก = คืนค่าเดิม ไม่บันทึก)
+      const ask = on
+        ? 'ยืนยันเปิด “ลบ QR ของโต๊ะทันทีเมื่อเช็คบิล” ?\n\nเมื่อกดเช็คบิล โต๊ะและ QR ของโต๊ะนั้นจะถูกลบทันที และต้องสร้าง QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป'
+        : 'ยืนยันปิด “ลบ QR ของโต๊ะทันทีเมื่อเช็คบิล” ?\n\nเมื่อกดเช็คบิล โต๊ะและ QR จะยังอยู่ และระบบจะเปิดบิลใหม่ให้อัตโนมัติ';
+      if (!confirm(ask)) { el.checked = !on; return; }
+
+      el.disabled = true; // กันกดรัว ๆ ระหว่างบันทึก
       try {
         const r = await api('/api/shop/qr-auto-delete', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }) });
         autoDeleteQr = !!r.enabled;
+        el.checked = autoDeleteQr;
         setAutoHint();
         toast(r.message || 'บันทึกแล้ว');
       } catch (err) {
-        e.target.checked = !on;
+        el.checked = !on;
         alert(err.message);
+      } finally {
+        el.disabled = false;
       }
     });
 
