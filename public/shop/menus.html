@@ -14,6 +14,8 @@
     /* ไม่ให้กลุ่มเครื่องมือถูกบีบจนตกบรรทัดเอง — ถ้าไม่พอให้ย้ายทั้งกลุ่มลงบรรทัดใหม่ */
     .xl-top-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-wrap: nowrap; margin-left: auto; }
     .xl-top-actions #q { flex: 0 1 240px; min-width: 170px; }
+    /* ปุ่มออกรายการ + เพิ่มเมนูใหม่ ให้อยู่บรรทัดเดียวกันเสมอ (ย้ายทั้งคู่พร้อมกัน ไม่แยกกัน) */
+    .xl-btn-pair { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; flex-wrap: nowrap; }
     @media (max-width: 760px) { .xl-top-actions { margin-left: 0; width: 100%; flex-wrap: wrap; } .xl-top-actions #q { flex: 1 1 100%; min-width: 0; } }
 
     /* หัวคอลัมน์ที่กดเพื่อเรียงได้ */
@@ -91,8 +93,10 @@
           <option value="1">พร้อมขาย</option>
           <option value="0">ปิดขาย</option>
         </select>
-        <button class="mini-btn" id="csvBtn" type="button">⬇ ออกรายการ (CSV)</button>
-        <a class="mini-btn" href="/shop/menu.html">＋ เพิ่มเมนูใหม่</a>
+        <div class="xl-btn-pair">
+          <button class="mini-btn" id="csvBtn" type="button">⬇ ออกรายการ (CSV)</button>
+          <a class="mini-btn" href="/shop/menu.html">＋ เพิ่มเมนูใหม่</a>
+        </div>
       </div>
     </div>
 
