@@ -273,11 +273,17 @@ router.put('/api/shop/tables/:id', requireShop, async (req, res) => {
   const table = await db.findTableById(id, shop.id);
   if (!table) return res.status(404).json({ ok: false, message: 'ไม่พบโต๊ะ' });
   const code = clip(req.body?.code, 30);
-  if (!code) return res.status(400).json({ ok: false, field: 'code', message: 'กรุณากรอกเลขโต๊ะ' });
+  if (!code) return res.status(400).json({ ok: false, field: 'code', message: 'กรุณากรอกชื่อโต๊ะ' });
   const dup = await db.findTableByCode(shop.id, code);
-  if (dup && dup.id !== id) return res.status(409).json({ ok: false, field: 'code', message: 'มีเลขโต๊ะนี้อยู่แล้ว' });
+  if (dup && dup.id !== id) return res.status(409).json({ ok: false, field: 'code', message: `มีโต๊ะชื่อ "${code}" อยู่แล้ว` });
   await db.updateTableCode(id, shop.id, code);
-  res.json({ ok: true, message: 'บันทึกเลขโต๊ะแล้ว' });
+  // เปลี่ยนชื่อโต๊ะแล้วให้รายชื่อโต๊ะตรงกันด้วย: ชื่อใหม่เข้ารายชื่อ / ชื่อเดิมออกจากรายชื่อ (ถ้าไม่มีใครใช้แล้ว)
+  if (table.code !== code) {
+    await db.ensureTableName({ shopId: shop.id, name: code });
+    const oldName = await db.findTableNameByName(shop.id, table.code);
+    if (oldName && !await db.findTableByCode(shop.id, table.code)) await db.deleteTableName(oldName.id, shop.id);
+  }
+  res.json({ ok: true, message: `เปลี่ยนชื่อโต๊ะเป็น "${code}" แล้ว` });
 });
 
 router.delete('/api/shop/tables/:id', requireShop, async (req, res) => {

@@ -323,8 +323,8 @@
             </div>` : ''}
             <div class="table-actions">
               <a class="mini-btn" href="${qrUrl(t.id)}" download="table-${esc(t.code)}-qr.png">ดาวน์โหลด QR</a>
-              <button class="mini-btn" data-print="${t.id}" type="button">พิมพ์ป้าย (มีเลขบิล)</button>
-              <button class="mini-btn" data-ren="${t.id}" data-code="${esc(t.code)}" type="button">เปลี่ยนเลข</button>
+              <button class="mini-btn" data-print="${t.id}" type="button">พิมพ์ QR</button>
+              <button class="mini-btn" data-ren="${t.id}" data-code="${esc(t.code)}" type="button">เปลี่ยนชื่อ</button>
               <button class="mini-btn danger" data-del="${t.id}" ${billPlates(t.open_order) ? 'disabled title="ต้องเช็คบิลก่อนจึงจะลบได้"' : ''} type="button">ลบ</button>
             </div>
             ${uncleared ? '<div class="table-sub" style="color:var(--warning);">⚠ ยังมีรายการรอทำ/กำลังทำ ' + uncleared + ' รายการ — เช็คบิลไม่ได้</div>' : ''}
@@ -338,7 +338,7 @@
       box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => openCheckout(Number(b.dataset.checkout))));
 
       box.querySelectorAll('[data-ren]').forEach((b) => b.addEventListener('click', async () => {
-        const code = prompt('เลขโต๊ะใหม่', b.dataset.code);
+        const code = prompt('ชื่อโต๊ะใหม่', b.dataset.code);
         if (!code || !code.trim()) return;
         try { await api('/api/shop/tables/' + b.dataset.ren, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code.trim() }) }); toast('บันทึกแล้ว'); await loadAll(); }
         catch (e) { alert(e.message); }
