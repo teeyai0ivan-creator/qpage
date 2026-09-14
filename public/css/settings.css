@@ -184,11 +184,35 @@
 .badge-muted { background: var(--surface-hover); color: var(--muted); }
 
 /* ---------- Responsive ---------- */
+/* ---------- มือถือ: เมนูเป็น “แผงเลื่อนออกจากด้านซ้าย” (เหมือนหน้า /shop) ---------- */
+@media (max-width: 900px) {
+  .settings-layout { display: block; padding: 18px 14px 56px; }
+  .settings-layout > .settings-menu {
+    display: block;
+    position: fixed; top: var(--nav-h, 68px); bottom: 0; left: 0;
+    width: 272px; max-width: 84vw; margin: 0;
+    padding: 10px 10px 24px;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    border-left: none;
+    overflow-y: auto;
+    z-index: 58;
+    transform: translateX(-102%);
+    visibility: hidden;
+    transition: transform .22s ease, visibility .22s ease;
+    box-shadow: var(--shadow-lg);
+  }
+  body:not(.side-menu-closed) .settings-layout > .settings-menu { transform: translateX(0); visibility: visible; }
+  /* รายการในเมนูเรียงลงมาเต็มความกว้าง (ไม่ใช่แถบแนวนอนแบบเดิม) */
+  .settings-layout > .settings-menu .menu-title,
+  .settings-layout > .settings-menu .menu-divider { display: block; }
+  .settings-layout > .settings-menu .menu-item { width: 100%; }
+  /* ฉากมืดด้านหลัง แตะเพื่อปิดเมนู */
+  .side-menu-backdrop { position: fixed; inset: var(--nav-h, 68px) 0 0 0; background: rgba(16, 24, 40, .42); z-index: 55; }
+  body:not(.side-menu-closed) .side-menu-backdrop { display: block; }
+}
+
 @media (max-width: 760px) {
   .settings-layout { flex-direction: column; padding: 24px 16px 48px; }
-  .settings-menu { flex: none; width: 100%; position: static; display: flex; flex-wrap: wrap; gap: 4px; }
-  .settings-menu .menu-title, .settings-menu .menu-divider { display: none; }
-  .settings-menu .menu-item { width: auto; }
   .settings-panel { padding: 24px 20px; }
   .pay-stats { grid-template-columns: 1fr; }
   .pay-hist-card { padding: 14px; }

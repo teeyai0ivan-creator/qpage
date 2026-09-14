@@ -9,16 +9,6 @@
 .shop-shell { display: flex; gap: 24px; max-width: 1400px; margin: 0 auto; padding: 28px 20px 72px; align-items: flex-start; }
 .shop-shell .shop-side { flex: 0 0 240px; position: sticky; top: 88px; }
 .shop-shell .shop-wrap { flex: 1; min-width: 0; max-width: none; margin: 0; padding: 0; }
-/* ปุ่มเปิด/ปิดเมนูด้านซ้าย — แสดงเฉพาะจอมือถือ (จอใหญ่เห็นเมนูตลอด) */
-.menu-toggle {
-  display: none; align-items: center; justify-content: center;
-  width: 38px; height: 38px; padding: 0; flex: 0 0 auto;
-  border-radius: 10px; border: 1px solid var(--border-strong);
-  background: var(--surface); color: var(--text); cursor: pointer;
-}
-.menu-toggle svg { width: 20px; height: 20px; }
-.menu-toggle:hover { background: var(--surface-hover); }
-
 @media (max-width: 900px) {
   /* เนื้อหาเต็มความกว้าง — เมนูไม่กินพื้นที่ด้านบนอีกแล้ว */
   .shop-shell { display: block; padding: 18px 14px 56px; }
@@ -39,18 +29,17 @@
     transition: transform .22s ease, visibility .22s ease;
     box-shadow: var(--shadow-lg);
   }
-  body:not(.shop-menu-closed) .shop-side { transform: translateX(0); visibility: visible; }
+  body:not(.side-menu-closed) .shop-side { transform: translateX(0); visibility: visible; }
 
   /* รายการในเมนูเรียงลงมาเต็มความกว้าง (ไม่ใช่แถบแนวนอนแบบเดิม) */
   .shop-side .menu-title, .shop-side .menu-divider { display: block; }
   .shop-side .menu-item { width: 100%; }
 
   /* ฉากมืดด้านหลัง แตะเพื่อปิดเมนู (แสดงเฉพาะตอนเมนูเปิด) */
-  .shop-menu-backdrop { position: fixed; inset: var(--nav-h, 68px) 0 0 0; background: rgba(16, 24, 40, .42); z-index: 55; }
-  body:not(.shop-menu-closed) .shop-menu-backdrop { display: block; }
-  .menu-toggle { display: inline-flex; }
+  .side-menu-backdrop { position: fixed; inset: var(--nav-h, 68px) 0 0 0; background: rgba(16, 24, 40, .42); z-index: 55; }
+  body:not(.side-menu-closed) .side-menu-backdrop { display: block; }
 }
-.shop-menu-backdrop { display: none; }
+.side-menu-backdrop { display: none; }
 
 .shop-head { margin-bottom: 22px; }
 .shop-head h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.3px; }

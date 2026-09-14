@@ -91,7 +91,7 @@
           var KEY = 'qpage_shop_menu';
           var btn = document.getElementById('menuToggle');
           function applyMenu(open) {
-            document.body.classList.toggle('shop-menu-closed', !open);
+            document.body.classList.toggle('side-menu-closed', !open);
             if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
           }
           function saveMenu(open) { try { localStorage.setItem(KEY, open ? 'open' : 'closed'); } catch (e) { /* ข้าม */ } }
@@ -99,7 +99,7 @@
           try { saved = localStorage.getItem(KEY); } catch (e) { /* ข้าม */ }
           // ค่าเริ่มต้น: จอใหญ่เปิดเมนู จอมือถือซ่อนไว้ก่อน (จำค่าที่ผู้ใช้เลือกไว้ในเครื่อง)
           applyMenu(saved ? saved === 'open' : window.innerWidth > 900);
-          if (btn) btn.addEventListener('click', function () { var open = document.body.classList.contains('shop-menu-closed'); applyMenu(open); saveMenu(open); });
+          if (btn) btn.addEventListener('click', function () { var open = document.body.classList.contains('side-menu-closed'); applyMenu(open); saveMenu(open); });
           // ความสูงจริงของแถบหัว → ใช้เป็นจุดเริ่มของแผงเมนูด้านซ้าย
           function syncNavHeight() {
             var nav = document.querySelector('.site-nav');
@@ -109,7 +109,7 @@
           window.addEventListener('resize', syncNavHeight);
           // ฉากมืดหลังเมนู — แตะแล้วปิดเมนู
           var back = document.createElement('div');
-          back.className = 'shop-menu-backdrop';
+          back.className = 'side-menu-backdrop';
           document.body.appendChild(back);
           back.addEventListener('click', function () { applyMenu(false); saveMenu(false); });
           // ปิดเมนูด้วยปุ่ม Esc

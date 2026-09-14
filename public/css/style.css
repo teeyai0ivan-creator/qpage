@@ -508,6 +508,19 @@ input.valid { border-color: var(--success); box-shadow: 0 0 0 4px rgba(5, 150, 1
 .site-nav .btn { width: auto; }
 .site-nav #authButtons { display: inline-flex; align-items: center; gap: 8px; }
 
+/* ปุ่มเปิด/ปิดเมนูด้านซ้าย — แสดงเฉพาะจอมือถือ (จอใหญ่เห็นเมนูตลอด) */
+.menu-toggle {
+  display: none; align-items: center; justify-content: center;
+  width: 38px; height: 38px; padding: 0; flex: 0 0 auto;
+  border-radius: 10px; border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--text); cursor: pointer;
+}
+.menu-toggle svg { width: 20px; height: 20px; }
+.menu-toggle:hover { background: var(--surface-hover); }
+/* ฉากมืดหลังเมนูด้านซ้าย (เปิด/ปิดด้วยสคริปต์ของแต่ละหน้า) */
+.side-menu-backdrop { display: none; }
+@media (max-width: 900px) { .menu-toggle { display: inline-flex; } }
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);

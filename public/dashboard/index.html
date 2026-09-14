@@ -16,6 +16,9 @@
       <span class="brand-name">ระบบสมาชิก</span>
     </a>
     <div style="display:flex;align-items:center;gap:8px;">
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="เปิด/ปิดเมนู" aria-expanded="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
       <button class="theme-toggle" type="button" aria-label="สลับธีม" style="position:static;">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" style="display:none">
           <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
@@ -573,6 +576,36 @@
         listEl.innerHTML = '<div class="pay-empty">โหลดประวัติไม่สำเร็จ: ' + esc(err.message) + '</div>';
       }
     }
+
+    // ---------- เมนูด้านซ้ายบนมือถือ: เปิด/ปิดได้ (จำค่าไว้ในเครื่อง) ----------
+    (function () {
+      var KEY = 'qpage_settings_menu';
+      var btn = document.getElementById('menuToggle');
+      function applyMenu(open) {
+        document.body.classList.toggle('side-menu-closed', !open);
+        if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      function saveMenu(open) { try { localStorage.setItem(KEY, open ? 'open' : 'closed'); } catch (e) { /* ข้าม */ } }
+      var saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) { /* ข้าม */ }
+      applyMenu(saved ? saved === 'open' : window.innerWidth > 900);
+      if (btn) btn.addEventListener('click', function () { var open = document.body.classList.contains('side-menu-closed'); applyMenu(open); saveMenu(open); });
+      function syncNavHeight() {
+        var nav = document.querySelector('.site-nav');
+        if (nav) document.documentElement.style.setProperty('--nav-h', Math.round(nav.getBoundingClientRect().height) + 'px');
+      }
+      syncNavHeight();
+      window.addEventListener('resize', syncNavHeight);
+      var back = document.createElement('div');
+      back.className = 'side-menu-backdrop';
+      document.body.appendChild(back);
+      back.addEventListener('click', function () { applyMenu(false); saveMenu(false); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { applyMenu(false); saveMenu(false); } });
+      // เลือกเมนูแล้วปิดแผงบนมือถือ
+      document.querySelectorAll('.settings-menu .menu-item').forEach(function (a) {
+        a.addEventListener('click', function () { if (window.innerWidth <= 900) { applyMenu(false); saveMenu(false); } });
+      });
+    })();
 
     loadMe();
     if (activePanel === 'history') loadHistory();
