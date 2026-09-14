@@ -96,10 +96,15 @@
       <span class="xl-count" id="shownCount"></span>
     </div>
 
-    <div style="margin-bottom:12px;">
-      <label style="display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;">หมวดหมู่ — กดชื่อหมวดเพื่อกรองตาราง</label>
+    <div style="margin-bottom:10px;">
+      <label style="display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;">หมวดหมู่หลัก — กดชื่อหมวดเพื่อกรองตาราง (เลือกหมวดหลักจะเห็นเมนูในหมวดย่อยทั้งหมดด้วย)</label>
       <input type="hidden" id="fCat" value="">
-      <div class="cat-pick-row" id="fCatRow" role="group" aria-label="กรองตามหมวดหมู่"></div>
+      <div class="cat-pick-row" id="fCatRow" role="group" aria-label="กรองตามหมวดหมู่หลัก"></div>
+    </div>
+    <div style="margin-bottom:12px;display:none;" id="fSubWrap">
+      <label style="display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:5px;" id="fSubLabel">หมวดย่อย</label>
+      <input type="hidden" id="fSub" value="">
+      <div class="cat-pick-row" id="fSubRow" role="group" aria-label="กรองตามหมวดย่อย"></div>
     </div>
 
     <div class="xl-wrap">
@@ -152,14 +157,24 @@
       return gids.map((id) => state.optionGroups.find((g) => g.id === id)).filter(Boolean);
     };
 
+    // เมนูนี้อยู่ในหมวดหลักที่เลือกไหม (นับทั้งเมนูที่ผูกกับหมวดหลักเอง และที่ผูกกับหมวดย่อยของมัน)
+    function inMainCat(menu, mainId) {
+      const cid = menu.category_id ? String(menu.category_id) : '';
+      if (!cid) return false;
+      if (cid === mainId) return true;
+      const c = state.categories.find((x) => String(x.id) === cid);
+      return Boolean(c && String(c.parent_id || '') === mainId);
+    }
+
     function visibleMenus() {
       const q = document.getElementById('q').value.trim().toLowerCase();
-      const cat = document.getElementById('fCat').value;
       const st = document.getElementById('fStatus').value;
       const sort = document.getElementById('fSort').value;
       let list = state.menus.slice();
       if (q) list = list.filter((m) => (m.name || '').toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q));
-      if (cat) list = list.filter((m) => String(m.category_id || '') === cat);
+      // กรอง 2 ชั้น: เลือกหมวดย่อย = เจาะจงหมวดนั้น / เลือกแค่หมวดหลัก = เห็นทุกเมนูในหมวดย่อยด้วย
+      if (subFilterValue) list = list.filter((m) => String(m.category_id || '') === subFilterValue);
+      else if (catFilterValue) list = list.filter((m) => inMainCat(m, catFilterValue));
       if (st !== '') list = list.filter((m) => String(Number(m.available) ? 1 : 0) === st);
       const byName = (a, b) => String(a.name).localeCompare(String(b.name), 'th');
       if (sort === 'name') list.sort(byName);
@@ -237,29 +252,57 @@
       }));
     }
 
-    // ---------- ตัวกรองหมวดหมู่แบบแถวเดียว (ชื่อหมวดเรียงเป็นปุ่มให้กดเลือก) ----------
-    let catFilterValue = '';
+    // ---------- ตัวกรองหมวดหมู่แบบ 2 ชั้น ----------
+    // ชั้น 1: หมวดหมู่หลัก (เลือกแล้วเห็นเมนูในหมวดย่อยทั้งหมดด้วย)
+    // ชั้น 2: หมวดย่อยของหมวดหลักนั้น (แสดงเฉพาะเมื่อหมวดหลักที่เลือกมีหมวดย่อย)
+    let catFilterValue = ''; // หมวดหมู่หลัก
+    let subFilterValue = ''; // หมวดย่อย
+    const norm = (v) => (v == null || v === '' ? '' : String(v));
+    const subsOf = (catId) => state.categories.filter((c) => String(c.parent_id || '') === String(catId));
+
     function setCatFilter(id) {
-      catFilterValue = id == null || id === '' ? '' : String(id);
-      const hidden = document.getElementById('fCat');
-      if (hidden) hidden.value = catFilterValue;
-      const row = document.getElementById('fCatRow');
-      if (row) row.querySelectorAll('[data-cat]').forEach((b) => b.classList.toggle('on', b.dataset.cat === catFilterValue));
+      catFilterValue = norm(id);
+      subFilterValue = ''; // เปลี่ยนหมวดหลัก → ล้างตัวกรองหมวดย่อย
+      document.getElementById('fCat').value = catFilterValue;
+      document.getElementById('fSub').value = '';
+      renderCatFilter();
+      render();
+    }
+    function setSubFilter(id) {
+      subFilterValue = norm(id);
+      document.getElementById('fSub').value = subFilterValue;
+      document.getElementById('fSubRow').querySelectorAll('[data-sub]')
+        .forEach((b) => b.classList.toggle('on', b.dataset.sub === subFilterValue));
       render();
     }
     function renderCatFilter() {
       const row = document.getElementById('fCatRow');
       if (!row) return;
+      const mains = state.categories.filter((c) => !c.parent_id);
       if (!state.categories.length) {
         row.innerHTML = '<span style="font-size:12.5px;color:var(--muted);align-self:center;">ยังไม่มีหมวดหมู่ — เพิ่มได้ที่หน้าจัดการเมนู</span>';
-        setCatFilter('');
-        return;
+      } else {
+        row.innerHTML = ['<button type="button" class="cat-pick" data-cat="">— ทุกหมวดหมู่ —</button>']
+          .concat(mains.map((c) => `<button type="button" class="cat-pick" data-cat="${c.id}">${esc(c.name)}</button>`))
+          .join('');
+        row.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => setCatFilter(b.dataset.cat)));
       }
-      row.innerHTML = ['<button type="button" class="cat-pick" data-cat="">— ทุกหมวดหมู่ —</button>']
-        .concat(state.categories.map((c) => `<button type="button" class="cat-pick${c.parent_id ? ' sub' : ''}" data-cat="${c.id}">${esc(catPath(c.id))}</button>`))
+      row.querySelectorAll('[data-cat]').forEach((b) => b.classList.toggle('on', b.dataset.cat === catFilterValue));
+      renderSubRow();
+    }
+    function renderSubRow() {
+      const wrap = document.getElementById('fSubWrap');
+      const row = document.getElementById('fSubRow');
+      const main = state.categories.find((c) => String(c.id) === catFilterValue);
+      const subs = main ? subsOf(main.id) : [];
+      if (!main || !subs.length) { wrap.style.display = 'none'; row.innerHTML = ''; subFilterValue = ''; document.getElementById('fSub').value = ''; return; }
+      wrap.style.display = '';
+      document.getElementById('fSubLabel').textContent = 'หมวดย่อยของ “' + main.name + '” — กดเพื่อเจาะจงเฉพาะหมวดย่อย';
+      row.innerHTML = [`<button type="button" class="cat-pick" data-sub="">— ทั้งหมดใน ${esc(main.name)} —</button>`]
+        .concat(subs.map((s) => `<button type="button" class="cat-pick sub" data-sub="${s.id}">${esc(s.name)}</button>`))
         .join('');
-      row.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => setCatFilter(b.dataset.cat)));
-      setCatFilter(catFilterValue);
+      row.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', () => setSubFilter(b.dataset.sub)));
+      row.querySelectorAll('[data-sub]').forEach((b) => b.classList.toggle('on', b.dataset.sub === subFilterValue));
     }
 
     async function load() {
