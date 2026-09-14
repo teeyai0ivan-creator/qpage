@@ -20,14 +20,38 @@
 .menu-toggle:hover { background: var(--surface-hover); }
 
 @media (max-width: 900px) {
-  .shop-shell { flex-direction: column; gap: 14px; padding: 18px 14px 56px; align-items: stretch; }
-  .shop-shell .shop-side { flex: none; width: 100%; position: static; }
-}
+  /* เนื้อหาเต็มความกว้าง — เมนูไม่กินพื้นที่ด้านบนอีกแล้ว */
+  .shop-shell { display: block; padding: 18px 14px 56px; }
+  .shop-shell .shop-wrap { max-width: none; }
 
-@media (max-width: 900px) {
+  /* เมนูเป็น "แผงเลื่อนออกจากด้านซ้าย" */
+  .shop-shell .shop-side {
+    display: block;
+    position: fixed; top: var(--nav-h, 68px); bottom: 0; left: 0;
+    width: 272px; max-width: 84vw; margin: 0;
+    padding: 10px 10px 24px;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    border-left: none;
+    overflow-y: auto;
+    z-index: 58;
+    transform: translateX(-102%);
+    visibility: hidden;
+    transition: transform .22s ease, visibility .22s ease;
+    box-shadow: var(--shadow-lg);
+  }
+  body:not(.shop-menu-closed) .shop-side { transform: translateX(0); visibility: visible; }
+
+  /* รายการในเมนูเรียงลงมาเต็มความกว้าง (ไม่ใช่แถบแนวนอนแบบเดิม) */
+  .shop-side .menu-title, .shop-side .menu-divider { display: block; }
+  .shop-side .menu-item { width: 100%; }
+
+  /* ฉากมืดด้านหลัง แตะเพื่อปิดเมนู (แสดงเฉพาะตอนเมนูเปิด) */
+  .shop-menu-backdrop { position: fixed; inset: var(--nav-h, 68px) 0 0 0; background: rgba(16, 24, 40, .42); z-index: 55; }
+  body:not(.shop-menu-closed) .shop-menu-backdrop { display: block; }
   .menu-toggle { display: inline-flex; }
-  body.shop-menu-closed .shop-side { display: none; }
 }
+.shop-menu-backdrop { display: none; }
+
 .shop-head { margin-bottom: 22px; }
 .shop-head h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.3px; }
 .shop-head p { color: var(--muted); font-size: 13.5px; margin-top: 6px; line-height: 1.7; }
