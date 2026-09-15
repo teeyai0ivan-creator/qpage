@@ -45,10 +45,12 @@
   color: var(--muted);
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 .settings-menu .menu-item svg { width: 18px; height: 18px; flex-shrink: 0; }
-.settings-menu .menu-item:hover { background: var(--surface-hover); color: var(--text); }
+/* เมนูที่เป็นลิงก์ (<a>) ไม่ให้ขีดเส้นใต้ตอนชี้เมาส์ — ให้เหมือนปุ่ม "ออกจากระบบ" ที่เป็น <button> */
+.settings-menu .menu-item:hover { background: var(--surface-hover); color: var(--text); text-decoration: none; }
 .settings-menu .menu-item.active {
   background: var(--ring);
   color: var(--accent);
