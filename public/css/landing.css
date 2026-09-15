@@ -123,3 +123,9 @@
   .land-logo-chip img { height: 36px; }
   .land-pkg-price .amt { font-size: 32px; }
 }
+
+/* ---------- ช่องทางโซเชียลท้ายหน้าเว็บ (แสดงเฉพาะช่องที่กรอกในหลังบ้าน) ---------- */
+.land-social { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 2px 0 16px; }
+.land-social[hidden] { display: none; }
+/* ไอคอนในปุ่มต้องเป็นสีขาว — ทับกฎ .land-footer a ด้านบน (รวมตอน hover) ที่ตั้งสีเทา/สีเน้นไว้ */
+.land-footer .social-btn, .land-footer .social-btn:hover { color: #fff; }

@@ -9,6 +9,7 @@ const { buildOrderItems } = require('../lib/order-builder');
 const notify = require('../lib/notify');
 const realtime = require('../lib/realtime');
 const legal = require('../lib/legal');
+const site = require('../lib/site');
 
 const router = express.Router();
 
@@ -16,6 +17,12 @@ const router = express.Router();
 router.get('/api/public/legal', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(Object.assign({ ok: true }, legal.publicInfo()));
+});
+
+// ลิงก์โซเชียลที่ตั้งไว้หลังบ้าน (เฉพาะช่องที่กรอกจริง) — ใช้แสดงท้ายหน้าเว็บหลัก
+router.get('/api/public/site', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(Object.assign({ ok: true }, site.publicInfo()));
 });
 
 // ข้อมูลร้าน + เมนูทั้งหมด สำหรับหน้าร้านสาธารณะ /s/:code

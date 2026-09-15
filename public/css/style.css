@@ -635,3 +635,21 @@ input.valid { border-color: var(--success); box-shadow: 0 0 0 4px rgba(5, 150, 1
 .otp-block .dev-banner { margin-bottom: 12px; }
 #emailStep .otp-inputs { margin-bottom: 18px; }
 #emailStep .resend-row { text-align: center; }
+
+/* ---------- ปุ่มโซเชียล (ใช้ร่วม: ท้ายหน้าเว็บหลัก + ตัวอย่างในหลังบ้าน) ---------- */
+.social-btn {
+  width: 42px; height: 42px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; text-decoration: none; line-height: 0;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.social-btn svg { width: 22px; height: 22px; }
+.social-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .18); }
+.social-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.social-btn.fb { background: #1877f2; }
+/* เขียว LINE เข้มกว่าแบรนด์เล็กน้อย (#05a94a) เพื่อให้ตัวไอคอนสีขาวอ่านออกชัดทั้งพื้นสว่างและพื้นมืด (contrast ≥ 3:1) */
+.social-btn.line { background: #05a94a; }
+@media (max-width: 480px) {
+  .social-btn { width: 40px; height: 40px; }
+  .social-btn svg { width: 20px; height: 20px; }
+}

@@ -150,6 +150,7 @@
 
   <footer class="land-footer">
     <div class="brand-row"><img src="/img/logo-wordmark.svg" alt="Qpage"></div>
+    <div class="land-social" id="landSocial" hidden></div>
     <div>
       <a href="privacy.html">นโยบายความเป็นส่วนตัว</a>
       &nbsp;·&nbsp;
@@ -162,6 +163,8 @@
 
   <script>
     const TICK = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const ICON_FB = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 22v-8h2.7l.4-3.2h-3.1V8.7c0-.9.3-1.6 1.6-1.6h1.7V4.2c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.2v2.5H7.4V14h2.7v8h3.4z"/></svg>';
+    const ICON_LINE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4c4.4 0 8 2.8 8 6.3 0 3.4-3.6 6.2-8 6.2-.9 0-1.8-.1-2.6-.3l-3.1 1.7c-.3.2-.7-.1-.6-.4l.6-2.5C3.9 13.8 4 12.1 4 10.3 4 6.8 7.6 4 12 4zm-3.4 5.1h-.9v3.1h.9V9.1zm1.6 0h-.8v3.1h.8V9.1zm3.6 0h-.8v2l-1.5-2h-.9v3.1h.8v-2l1.5 2h.9V9.1zm2.9 0h-2.1v3.1h2.1v-.8h-1.3v-.5h1.2v-.7h-1.2v-.4h1.3v-.7z"/></svg>';
     let pkgCta = { href: 'register.html', label: 'สมัครเพื่อเริ่มใช้' };
 
     function esc(s) {
@@ -227,9 +230,25 @@
       } catch (e) { /* โหลดไม่ได้ → ซ่อนส่วนแพ็กเกจ */ }
     }
 
+    // ช่องทางโซเชียลท้ายหน้า (ตั้งค่าที่หลังบ้าน → ตั้งค่าหน้าเว็บไซต์) — กรอกช่องไหนจึงแสดงช่องนั้น
+    async function loadSocial() {
+      try {
+        const data = await (await fetch('/api/public/site')).json();
+        const s = (data && data.social) || {};
+        const parts = [];
+        if (s.facebook) parts.push('<a class="social-btn fb" href="' + esc(s.facebook) + '" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">' + ICON_FB + '</a>');
+        if (s.line) parts.push('<a class="social-btn line" href="' + esc(s.line) + '" target="_blank" rel="noopener" aria-label="LINE" title="LINE">' + ICON_LINE + '</a>');
+        if (!parts.length) return; // ยังไม่ได้กรอก → ไม่แสดงไอคอนใด ๆ
+        const box = document.getElementById('landSocial');
+        box.innerHTML = parts.join('');
+        box.hidden = false;
+      } catch (e) { /* โหลดไม่ได้ → ไม่แสดงไอคอน (ไม่กระทบหน้าเว็บ) */ }
+    }
+
     (async function init() {
       await initNav();
       loadPackages();
+      loadSocial();
     })();
   </script>
 </body>

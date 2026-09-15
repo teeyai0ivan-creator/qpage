@@ -7,6 +7,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const legal = require('../lib/legal');
+const site = require('../lib/site');
 const otp = require('../lib/otp');
 const mailer = require('../lib/mailer');
 const sms = require('../lib/sms');
@@ -339,6 +340,12 @@ router.get('/api/admin/stats', requireAdmin, async (req, res) => {
   res.json({ ok: true, stats: await db.countStats(), legal: legal.publicInfo() });
 });
 
+// ตั้งค่าหน้าเว็บไซต์ (ลิงก์โซเชียล) — ค่าดิบที่บันทึกไว้ + ลิงก์ที่แปลงแล้วสำหรับแสดงตัวอย่าง
+router.get('/api/admin/site', requireAdmin, (req, res) => {
+  const saved = site.savedValues();
+  res.json({ ok: true, saved, links: site.socialLinks() });
+});
+
 // รายการ OTP ทั้งหมด (สำหรับหน้าจัดการ SMS-OTP)
 router.get('/api/admin/otp-logs', requireAdmin, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
@@ -498,7 +505,7 @@ router.post('/api/admin/sms-test', requireAdmin, async (req, res) => {
 
 // ตั้งค่า SMS-OTP (แอดมิน)
 router.post('/api/admin/settings', requireAdmin, async (req, res) => {
-  const { otpTtlMinutes, otpMaxAttempts, devMode: dev, legalOperator, legalEmail } = req.body || {};
+  const { otpTtlMinutes, otpMaxAttempts, devMode: dev, legalOperator, legalEmail, siteFacebook, siteLine } = req.body || {};
   let changed = 0;
 
   if (otpTtlMinutes !== undefined && Number(otpTtlMinutes) >= 1 && Number(otpTtlMinutes) <= 60) {
@@ -524,6 +531,21 @@ router.post('/api/admin/settings', requireAdmin, async (req, res) => {
       return res.status(400).json({ ok: false, field: 'legalEmail', message: 'อีเมลติดต่อไม่ถูกต้อง' });
     }
     await db.setSetting('legal_email', v);
+    changed++;
+  }
+  // ลิงก์โซเชียลท้ายหน้าเว็บหลัก — บันทึกเป็น "ลิงก์ที่แปลงแล้ว" เพื่อให้หน้าเว็บใช้ได้ทันที
+  if (siteFacebook !== undefined) {
+    const raw = String(siteFacebook).trim();
+    const url = site.facebookUrl(raw);
+    if (raw && !url) return res.status(400).json({ ok: false, field: 'siteFacebook', message: 'ลิงก์ Facebook ไม่ถูกต้อง (ใส่ลิงก์เต็ม หรือชื่อเพจก็ได้)' });
+    await db.setSetting(site.KEYS.facebook, url);
+    changed++;
+  }
+  if (siteLine !== undefined) {
+    const raw = String(siteLine).trim();
+    const url = site.lineUrl(raw);
+    if (raw && !url) return res.status(400).json({ ok: false, field: 'siteLine', message: 'ลิงก์ LINE ไม่ถูกต้อง (ใส่ลิงก์เต็ม, @ไอดีทางการ หรือ ~ไอดีส่วนตัว)' });
+    await db.setSetting(site.KEYS.line, url);
     changed++;
   }
 

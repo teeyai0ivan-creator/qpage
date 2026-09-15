@@ -348,3 +348,9 @@ table.admin-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .legal-kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 13.5px; align-items: baseline; }
 .legal-kv dt { color: var(--muted); }
 .legal-kv dd { margin: 0; font-weight: 600; word-break: break-word; }
+
+/* ---------- ตัวอย่างปุ่มโซเชียลในหน้าตั้งค่าหน้าเว็บไซต์ ---------- */
+.social-preview { display: flex; align-items: center; gap: 12px; min-height: 42px; }
+.social-preview[hidden] { display: none; }
+.social-preview-empty { font-size: 12.5px; color: var(--muted); }
+.social-preview-empty[hidden] { display: none; }
