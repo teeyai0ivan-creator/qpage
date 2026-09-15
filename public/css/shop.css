@@ -265,8 +265,12 @@
 .pub-chip.plain.line { background: #06c755; border-color: #06c755; color: #fff; }
 .pub-chip.plain.line:hover { background: #05b04b; border-color: #05b04b; }
 @media (max-width: 560px) {
-  /* จอมือถือ: ให้บล็อกติดต่อกว้างเต็มแบนเนอร์ (ยังคง 2 แถวเหมือนเดิม) */
-  .pub-contact { max-width: none; }
+  /* จอมือถือ: ปุ่มกะทัดรัดตามขนาดข้อความ (ไม่ยืดเต็มความกว้าง) ชิดขวา ยังคง 2 แถว: LINE / เบอร์+แผนที่ */
+  .pub-contact { max-width: none; align-items: flex-end; gap: 6px; margin-top: 8px; }
+  .pub-contact-row { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  .pub-contact-row .pub-chip { flex: 0 1 auto; }
+  .pub-chip { padding: 7px 11px; font-size: 12px; border-radius: 10px; gap: 6px; }
+  .pub-chip svg { width: 12px; height: 12px; }
 }
 .pub-body { max-width: 900px; margin: 0 auto; padding: 26px 20px 72px; }
 .pub-cat { margin-bottom: 28px; }
