@@ -245,15 +245,18 @@
 .pub-hero h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
 .pub-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; opacity: .95; }
 .pub-meta a { color: #fff; text-decoration: underline; }
-/* แถวช่องทางติดต่อร้าน — ปุ่มกลมมีไอคอน เรียง 2 แถวชิดขวา (ใช้ทั้งหน้าร้านสาธารณะและหน้าสั่งอาหารของลูกค้า) */
-.pub-contact { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; margin-top: 10px; width: 100%; }
-.pub-contact-row { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
-.pub-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700; text-decoration: none; border: 1px solid transparent; line-height: 1; transition: background-color .15s ease, border-color .15s ease, transform .15s ease; }
-.pub-chip svg { width: 13px; height: 13px; flex: 0 0 auto; }
+/* ช่องทางติดต่อร้าน — บล็อกปุ่มชิดขวาของแบนเนอร์ (ใช้ทั้งหน้าร้านสาธารณะและหน้าสั่งอาหารของลูกค้า)
+   แถวบน LINE เต็มความกว้าง · แถวล่าง เบอร์โทรร้าน + แผนที่ แบ่งครึ่งเท่ากัน → ขอบทุกด้านตรงกัน อ่านง่าย เป็นระเบียบ */
+.pub-contact { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; width: 100%; max-width: 300px; margin-left: auto; }
+.pub-contact-row { display: flex; gap: 8px; }
+.pub-contact-row .pub-chip { flex: 1 1 0; min-width: 0; }
+.pub-chip { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: hidden; text-decoration: none; border: 1px solid transparent; transition: background-color .15s ease, border-color .15s ease, transform .15s ease; }
+.pub-chip > span { overflow: hidden; text-overflow: ellipsis; }
+.pub-chip svg { width: 14px; height: 14px; flex: 0 0 auto; opacity: .95; }
 .pub-chip:hover { text-decoration: none; transform: translateY(-1px); }
 /* บนแบนเนอร์สีของร้าน (hero) */
-.pub-hero .pub-chip { background: rgba(255, 255, 255, .18); color: #fff; border-color: rgba(255, 255, 255, .3); }
-.pub-hero .pub-chip:hover { background: rgba(255, 255, 255, .3); border-color: rgba(255, 255, 255, .5); }
+.pub-hero .pub-chip { background: rgba(255, 255, 255, .16); color: #fff; border-color: rgba(255, 255, 255, .26); box-shadow: 0 2px 8px rgba(16, 24, 40, .12); }
+.pub-hero .pub-chip:hover { background: rgba(255, 255, 255, .26); border-color: rgba(255, 255, 255, .46); }
 .pub-hero .pub-chip.line { background: #06c755; border-color: #06c755; color: #fff; }
 .pub-hero .pub-chip.line:hover { background: #05b04b; border-color: #05b04b; }
 /* บนพื้นปกติ */
@@ -261,6 +264,10 @@
 .pub-chip.plain:hover { background: var(--surface-hover); }
 .pub-chip.plain.line { background: #06c755; border-color: #06c755; color: #fff; }
 .pub-chip.plain.line:hover { background: #05b04b; border-color: #05b04b; }
+@media (max-width: 560px) {
+  /* จอมือถือ: ให้บล็อกติดต่อกว้างเต็มแบนเนอร์ (ยังคง 2 แถวเหมือนเดิม) */
+  .pub-contact { max-width: none; }
+}
 .pub-body { max-width: 900px; margin: 0 auto; padding: 26px 20px 72px; }
 .pub-cat { margin-bottom: 28px; }
 .pub-cat > h2 { font-size: 19px; font-weight: 800; margin-bottom: 4px; }

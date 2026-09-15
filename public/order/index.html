@@ -157,9 +157,9 @@
             <div style="flex:1;min-width:200px;">
               <h1>${esc(shop.name)}</h1>
               <div class="pub-meta"><strong>โต๊ะ ${esc(S.table.code)}</strong> · บิล <strong>${billNoFmt(S.bill.bill_no)}</strong></div>
-              ${pubContactChips(shop)}
               ${billItems.length ? `<button class="bill-pill" id="billBtn" type="button">🧾 รายการทั้งหมด (${orderedCount} รายการ) · ${money(billTotal)}</button>` : ''}
             </div>
+            ${pubContactChips(shop)}
           </div>
         </header>
         <main class="pub-body">
