@@ -124,11 +124,14 @@
   .land-pkg-price .amt { font-size: 32px; }
 }
 
-/* ---------- แถวบนของท้ายเว็บ: โลโก้ซ้าย · ไอคอนโซเชียลชิดขวา (บรรทัดเดียวกัน) ---------- */
-.land-foot-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+/* ---------- แถวบนของท้ายเว็บ: โลโก้กึ่งกลาง · ไอคอนโซเชียลชิดขวา (บรรทัดเดียวกัน) ----------
+   ใช้ grid 3 คอลัมน์: ที่ว่างซ้าย(กว้างเท่าปุ่มโซเชียล — ตั้งจาก JS) | โลโก้ | ปุ่มโซเชียล
+   ทำให้โลโก้อยู่กึ่งกลางของแถวจริง ไม่ถูกดันไปทางซ้ายเพราะมีปุ่มอยู่ขวา */
+.land-foot-top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin-bottom: 12px; }
+.land-foot-spacer { width: 0; }
 .land-footer .land-foot-top .brand-row { margin-bottom: 0; }
 /* ---------- ช่องทางโซเชียลท้ายหน้าเว็บ (แสดงเฉพาะช่องที่กรอกในหลังบ้าน) ---------- */
-.land-social { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 0 auto; }
+.land-social { display: flex; align-items: center; justify-content: flex-end; justify-self: end; gap: 10px; }
 .land-social[hidden] { display: none; }
 /* สีไอคอนในปุ่ม — ทับกฎ .land-footer a ด้านบน (รวมตอน hover) ที่ตั้งสีเทา/สีเน้นไว้ */
 .land-footer .social-btn.fb { color: #fff; }

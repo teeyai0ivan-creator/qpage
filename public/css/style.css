@@ -658,3 +658,9 @@ input.valid { border-color: var(--success); box-shadow: 0 0 0 4px rgba(5, 150, 1
   .social-btn.fb svg { height: 21px; }
   .social-btn.line svg { width: 23px; height: 23px; }
 }
+/* จอเล็กมาก: ย่อปุ่มลงอีกขั้น เพื่อให้โลโก้กึ่งกลาง + ปุ่มชิดขวาอยู่บรรทัดเดียวกันได้ */
+@media (max-width: 380px) {
+  .social-btn { width: 36px; height: 36px; border-radius: 9px; }
+  .social-btn.fb svg { height: 19px; }
+  .social-btn.line svg { width: 21px; height: 21px; }
+}

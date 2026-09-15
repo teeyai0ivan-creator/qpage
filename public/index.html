@@ -151,6 +151,7 @@
 
   <footer class="land-footer">
     <div class="land-foot-top">
+      <span class="land-foot-spacer" id="footSpacer" aria-hidden="true"></span>
       <div class="brand-row"><img src="/img/logo-wordmark.svg" alt="Qpage"></div>
       <div class="land-social" id="landSocial" hidden></div>
     </div>
@@ -232,6 +233,14 @@
     }
 
     // ช่องทางโซเชียลท้ายหน้า (ตั้งค่าที่หลังบ้าน → ตั้งค่าหน้าเว็บไซต์) — กรอกช่องไหนจึงแสดงช่องนั้น
+    // โลโก้ Qpage ต้องอยู่ "กึ่งกลาง" ของแถว จึงกันที่ว่างด้านซ้ายให้กว้างเท่าปุ่มโซเชียลด้านขวา
+    function syncFootSpacer() {
+      const box = document.getElementById('landSocial');
+      const sp = document.getElementById('footSpacer');
+      if (!box || !sp) return;
+      sp.style.width = (box.hidden ? 0 : Math.round(box.getBoundingClientRect().width)) + 'px';
+    }
+
     async function loadSocial() {
       try {
         const data = await (await fetch('/api/public/site')).json();
@@ -239,12 +248,15 @@
         const parts = [];
         if (s.facebook) parts.push('<a class="social-btn fb" href="' + esc(s.facebook) + '" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">' + BRAND_ICON.facebookF + '</a>');
         if (s.line) parts.push('<a class="social-btn line" href="' + esc(s.line) + '" target="_blank" rel="noopener" aria-label="LINE" title="LINE">' + BRAND_ICON.line + '</a>');
-        if (!parts.length) return; // ยังไม่ได้กรอก → ไม่แสดงไอคอนใด ๆ
+        if (!parts.length) { syncFootSpacer(); return; } // ยังไม่ได้กรอก → ไม่แสดงไอคอนใด ๆ
         const box = document.getElementById('landSocial');
         box.innerHTML = parts.join('');
         box.hidden = false;
+        syncFootSpacer();
       } catch (e) { /* โหลดไม่ได้ → ไม่แสดงไอคอน (ไม่กระทบหน้าเว็บ) */ }
     }
+    window.addEventListener('resize', syncFootSpacer);
+    window.addEventListener('load', syncFootSpacer);
 
     (async function init() {
       await initNav();
