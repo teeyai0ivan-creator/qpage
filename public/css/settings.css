@@ -209,7 +209,7 @@
   .settings-layout > .settings-menu .menu-divider { display: block; }
   .settings-layout > .settings-menu .menu-item { width: 100%; }
   /* ฉากมืดด้านหลัง แตะเพื่อปิดเมนู */
-  .side-menu-backdrop { position: fixed; inset: var(--nav-h, 68px) 0 0 0; background: rgba(16, 24, 40, .42); z-index: 55; }
+  .side-menu-backdrop { position: fixed; inset: var(--nav-h, 68px) 0 0 0; background: var(--overlay, rgba(16, 24, 40, .42)); z-index: 55; }
   body:not(.side-menu-closed) .side-menu-backdrop { display: block; }
 }
 

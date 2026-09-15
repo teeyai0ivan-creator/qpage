@@ -51,9 +51,9 @@
   //      await uiAlert({ title, message, ok })                     → true
   // ---------------------------------------------------------------------------
   const DIALOG_CSS = [
-    '.uidlg-overlay{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;padding:18px;z-index:300;opacity:0;transition:opacity .15s ease;}',
+    '.uidlg-overlay{position:fixed;inset:0;background:var(--overlay,rgba(16,24,40,.45));display:flex;align-items:center;justify-content:center;padding:18px;z-index:300;opacity:0;transition:opacity .15s ease;}',
     '.uidlg-overlay.show{opacity:1;}',
-    '.uidlg{width:100%;max-width:420px;background:var(--surface,#fff);color:var(--text,#101828);border-radius:16px;box-shadow:0 18px 44px rgba(16,24,40,.22);padding:22px;font-family:var(--font,"Sarabun",Tahoma,Arial,sans-serif);transform:translateY(6px);transition:transform .15s ease;}',
+    '.uidlg{width:100%;max-width:420px;background:var(--modal-bg,var(--surface,#fff));color:var(--text,#101828);border:1px solid var(--modal-border,rgba(0,0,0,0));border-radius:16px;box-shadow:0 18px 44px rgba(16,24,40,.22);padding:22px;font-family:var(--font,"Sarabun",Tahoma,Arial,sans-serif);transform:translateY(6px);transition:transform .15s ease;}',
     '.uidlg-overlay.show .uidlg{transform:translateY(0);}',
     '.uidlg h3{margin:0;font-size:17px;font-weight:800;letter-spacing:-.2px;}',
     '.uidlg p{margin:9px 0 0;font-size:13.5px;color:var(--muted,#667085);line-height:1.75;white-space:pre-line;}',

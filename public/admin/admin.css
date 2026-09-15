@@ -191,14 +191,14 @@ table.admin-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 /* ---------- Modal ---------- */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay, rgba(0, 0, 0, 0.5));
   display: none; align-items: center; justify-content: center;
   z-index: 50; padding: 20px;
 }
 .modal-overlay.show { display: flex; }
 .modal {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--modal-bg, var(--surface));
+  border: 1px solid var(--modal-border, var(--border));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   width: 100%; max-width: 480px;

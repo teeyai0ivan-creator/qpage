@@ -17,6 +17,10 @@
   --muted: #667085;
   --border: #e4e7ec;
   --border-strong: #d0d5dd;
+  /* ป๊อปอัป/ฉากมืด — แยกสีตามธีมเพื่อให้ป๊อปอัปเด่นจากพื้นหลังเสมอ (โหมดมืดจะสว่างกว่าการ์ดปกติ) */
+  --modal-bg: #ffffff;
+  --modal-border: #dfe3ea;
+  --overlay: rgba(16, 24, 40, .45);
 
   --accent: #6366f1;
   --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -53,6 +57,10 @@
   --muted: #98a2b8;
   --border: #242b49;
   --border-strong: #323b60;
+  /* ป๊อปอัปในโหมดมืด: พื้นการ์ดสว่างกว่าการ์ดบนหน้า (#141830) + ฉากมืดเข้มขึ้น ให้แยกออกจากพื้นหลังชัดเจน */
+  --modal-bg: #2b3466;
+  --modal-border: #46518c;
+  --overlay: rgba(0, 0, 0, .68);
 
   --accent: #7c8cff;
   --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);

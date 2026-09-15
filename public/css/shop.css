@@ -36,7 +36,7 @@
   .shop-side .menu-item { width: 100%; }
 
   /* ฉากมืดด้านหลัง แตะเพื่อปิดเมนู (แสดงเฉพาะตอนเมนูเปิด) */
-  .side-menu-backdrop { position: fixed; inset: var(--nav-h, 68px) 0 0 0; background: rgba(16, 24, 40, .42); z-index: 55; }
+  .side-menu-backdrop { position: fixed; inset: var(--nav-h, 68px) 0 0 0; background: var(--overlay, rgba(16, 24, 40, .42)); z-index: 55; }
   body:not(.side-menu-closed) .side-menu-backdrop { display: block; }
 }
 .side-menu-backdrop { display: none; }
@@ -278,9 +278,9 @@
 .order-tap:hover { background: var(--surface-hover); border-radius: 10px; }
 
 /* ---------- Modal + toast (ใช้ในหน้าร้านค้า) ---------- */
-.modal-overlay { position: fixed; inset: 0; background: rgba(16,24,40,.45); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 60; }
+.modal-overlay { position: fixed; inset: 0; background: var(--overlay, rgba(16,24,40,.45)); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 60; }
 .modal-overlay.show { display: flex; }
-.modal { width: 100%; max-width: 460px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 22px; max-height: 90vh; overflow: auto; }
+.modal { width: 100%; max-width: 460px; background: var(--modal-bg, var(--surface)); border: 1px solid var(--modal-border, var(--border)); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 22px; max-height: 90vh; overflow: auto; }
 .modal h3 { font-size: 18px; font-weight: 800; }
 .modal .sub { color: var(--muted); font-size: 13px; margin: 4px 0 8px; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
