@@ -15,7 +15,7 @@ const { isAdminRole, isOwner } = require('../lib/roles');
 
 const router = express.Router();
 const ADMIN_DIR = path.join(__dirname, '..', '..', 'public', 'admin');
-const PAGES = ['index.html', 'otp.html', 'users.html', 'profile.html', 'packages.html', 'payments.html', 'purchase-history.html'];
+const PAGES = ['index.html', 'otp.html', 'users.html', 'profile.html', 'packages.html', 'payments.html', 'purchase-history.html', 'legal.html'];
 
 /** เมนูที่เห็นเฉพาะเจ้าของระบบ — เรียงตามลำดับที่แสดงในแถบข้าง */
 const OWNER_MENUS = [
@@ -36,6 +36,12 @@ const OWNER_MENUS = [
     href: '/admin/purchase-history.html',
     label: 'ประวัติการซื้อ',
     icon: '<path d="M3 3v18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 15l3.5-4 3 2.5L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  {
+    file: 'legal.html',
+    href: '/admin/legal.html',
+    label: 'ข้อมูลทางกฎหมาย (PDPA)',
+    icon: '<path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   },
 ];
 

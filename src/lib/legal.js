@@ -1,9 +1,10 @@
 /**
  * legal.js — ข้อมูลทางกฎหมาย/PDPA ของระบบ (ใช้แสดงในหน้าถ้อยแถลง + บันทึกความยินยอม)
  * ค่าที่แสดง ดึงตามลำดับ: ตั้งค่าในหลังบ้าน (settings) → environment → ค่าเริ่มต้น
- * - legal_operator / legal_email  ตั้งได้ที่หลังบ้าน (ภาพรวม → ข้อมูลทางกฎหมายและความเป็นส่วนตัว)
- * - LEGAL_OPERATOR / LEGAL_EMAIL  ตั้งใน .env ได้เช่นกัน
- * - ถ้าไม่ได้ตั้งอีเมลเลย จะใช้ ADMIN_EMAIL ใน .env (อีเมลเจ้าของระบบ) เพื่อไม่ให้หน้าถ้อยแถลงแสดงอีเมลปลอม
+ * - legal_operator / legal_email  ตั้งได้ที่หลังบ้าน → เมนู "ข้อมูลทางกฎหมาย (PDPA)"
+ * - LEGAL_OPERATOR / LEGAL_EMAIL  ตั้งใน .env ได้เช่นกัน (ใช้เมื่อหลังบ้านยังไม่ได้ตั้ง)
+ * - ถ้าไม่มีอีเมลจริงเลย ปล่อยเป็นค่าว่าง แล้วหน้าถ้อยแถลงจะซ่อนบรรทัดอีเมล
+ *   แล้วบอกให้ดูช่องทางติดต่อจากหน้าเว็บแทน — ดีกว่าเอาอีเมลอื่นมาแสดงแทน ทั้งที่อาจไม่มีคนเปิดอ่าน
  */
 'use strict';
 
@@ -14,7 +15,8 @@ const PRIVACY_VERSION = '2026-09-15';
 const PRIVACY_UPDATED_AT = '15 กันยายน 2569';
 
 const DEFAULT_OPERATOR = process.env.LEGAL_OPERATOR || 'ระบบสั่งอาหารและระบบสมาชิกร้านค้า (QPage)';
-const FALLBACK_EMAIL = (process.env.LEGAL_EMAIL || process.env.ADMIN_EMAIL || '').trim();
+// ใช้เฉพาะอีเมลที่ประกาศเจตนาไว้สำหรับเรื่องนี้เท่านั้น (ไม่หยิบ ADMIN_EMAIL มาเดาแทน)
+const FALLBACK_EMAIL = (process.env.LEGAL_EMAIL || '').trim();
 
 function settingValue(key, fallback) {
   let v = '';

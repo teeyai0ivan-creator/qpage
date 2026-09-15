@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ข้อมูลทางกฎหมาย (PDPA) | ระบบหลังบ้าน</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+  <script src="/js/theme.js"></script>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <div class="brand">
+        <div class="brand-logo"><img src="/img/logo.svg" alt="QPage"></div>
+        <span class="brand-name">หลังบ้าน</span>
+      </div>
+
+      <div class="side-label">เมนู</div>
+      <a class="side-link" href="/admin/">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        ภาพรวม
+      </a>
+      <a class="side-link" href="/admin/otp.html">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M6 9h4M6 13h8M15 9l2 2m0 0l2-2m-2 2v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        จัดการ SMS-OTP
+      </a>
+      <a class="side-link" href="/admin/users.html">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ผู้ใช้งาน
+      </a>
+      <!--MENU_OWNER-->
+      <div class="side-label">เว็บไซต์</div>
+      <a class="side-link" href="/settings/profile" title="เปิดหน้าเหมือนผู้ใช้">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.8"/><path d="M8 14h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        เปิดหน้าเหมือนผู้ใช้
+      </a>
+      <div class="sidebar-footer">
+        <a class="sidebar-user" href="/admin/profile.html" title="ข้อมูลส่วนตัว">
+          <div class="avatar" id="adminAvatar">A</div>
+          <div>
+            <div class="u-email" id="adminEmail">—</div>
+            <div class="u-role" id="adminRoleLabel">—</div>
+          </div>
+        </a>
+        <a class="side-link" href="#" id="logoutBtn">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ออกจากระบบ
+        </a>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="เปิด/ปิดเมนู" aria-expanded="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+
+      <div class="topbar">
+        <div>
+          <h1>ข้อมูลทางกฎหมาย (PDPA)</h1>
+          <p>ชื่อผู้ให้บริการและอีเมลติดต่อ ที่แสดงให้ผู้ใช้เห็นในหน้าข้อกำหนดและนโยบายความเป็นส่วนตัว</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <a class="icon-btn" href="/privacy.html" target="_blank" rel="noopener" style="text-decoration:none;">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M14 3h7v7M21 3l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 5H5a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            ดูหน้าถ้อยแถลง
+          </a>
+          <button class="icon-btn" id="refreshBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            รีเฟรช
+          </button>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ชื่อผู้ให้บริการ และอีเมลติดต่อ
+        </h2>
+
+        <div class="legal-note" id="statusNote">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="statusText">กำลังโหลด...</span>
+        </div>
+
+        <div class="legal-form">
+          <div>
+            <label class="legal-label" for="legalOperator">ชื่อผู้ให้บริการ (ผู้ควบคุมข้อมูลส่วนบุคคล)</label>
+            <input id="legalOperator" type="text" maxlength="160" placeholder="เช่น ร้านป้าแดงโภชนา / บริษัท ... จำกัด" autocomplete="off">
+            <div class="legal-hint">ชื่อที่ผู้ใช้จะเห็นว่าเป็น “ผู้ให้บริการ” ในนโยบาย — ใส่ชื่อร้าน/ชื่อบุคคล/ชื่อบริษัทของคุณ</div>
+          </div>
+          <div>
+            <label class="legal-label" for="legalEmail">อีเมลติดต่อเรื่องข้อมูลส่วนบุคคล</label>
+            <input id="legalEmail" type="email" maxlength="160" placeholder="เช่น yourname@gmail.com" autocomplete="off">
+            <div class="legal-hint">
+              ต้องเป็นกล่องเมลที่ <strong>คุณเปิดอ่านได้จริง</strong> เพราะระบบนี้เพียง “แสดง” ที่อยู่ให้ผู้ใช้ติดต่อ ไม่ได้เป็นกล่องรับเมลในตัว
+              — ลูกค้าที่ขอใช้สิทธิ PDPA จะส่งเมลมาที่นี่ แล้วคุณเปิดอ่าน/ตอบกลับในกล่องเมลนั้นตามปกติ
+            </div>
+          </div>
+
+          <div class="legal-preview">
+            <span class="legal-preview-tag">ตัวอย่างข้อความที่จะแสดงในหน้า /privacy.html (ข้อ 11)</span>
+            <div>ผู้ให้บริการ: <strong id="pvOperator">—</strong></div>
+            <div id="pvEmailRow" hidden>อีเมล: <strong id="pvEmail">—</strong></div>
+            <div id="pvFallbackRow">ช่องทางติดต่อของผู้ให้บริการ: ดูได้จากหน้าแรกของเว็บไซต์ หรือหน้า “บัญชีของฉัน” ของคุณ (ในหน้านี้ผู้ให้บริการยังไม่ได้ระบุอีเมลติดต่อ)</div>
+          </div>
+
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="icon-btn primary" id="saveBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              บันทึก
+            </button>
+            <span id="saveMsg" style="font-size:12.5px;color:var(--muted);"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 16v-4M12 8h.01M3 12a9 9 0 1018 0 9 9 0 00-18 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ข้อมูลนี้ถูกใช้ที่ไหนบ้าง
+        </h2>
+        <div class="legal-kv">
+          <dt>เวอร์ชันนโยบาย</dt><dd id="kvVersion">—</dd>
+          <dt>ปรับปรุงล่าสุด</dt><dd id="kvUpdated">—</dd>
+          <dt>แสดงบนหน้า</dt><dd><a href="/privacy.html" target="_blank" rel="noopener">/privacy.html</a> (ข้อ 11) และลิงก์จากหน้าสมัครสมาชิก</dd>
+          <dt>บันทึกความยินยอม</dt><dd>เวลาที่ผู้ใช้กดยอมรับ + เวอร์ชันนโยบาย ถูกเก็บไว้ในบัญชีผู้ใช้เป็นหลักฐาน</dd>
+        </div>
+        <p class="legal-hint" style="margin-top:14px;">
+          ถ้าลูกค้าขอใช้สิทธิ (ขอดู/แก้ไข/ลบข้อมูล) ให้ตรวจสอบอีเมลว่าเป็นเจ้าของบัญชีจริงก่อนดำเนินการ
+          และผู้ใช้ทำเองได้ทันทีที่หน้า “บัญชีของฉัน → ความเป็นส่วนตัว” (ดาวน์โหลดข้อมูล / ลบบัญชี)
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const toast = document.getElementById('toast');
+    const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="vertical-align:-2px;margin-right:5px;"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13" style="vertical-align:-2px;margin-right:5px;"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    let toastTimer = null;
+    function showToast(msg) {
+      toast.innerHTML = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 5000);
+    }
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let data;
+      try { data = await res.json(); }
+      catch { const err = new Error('เซิร์ฟเวอร์ตอบสนองไม่ถูกต้อง (HTTP ' + res.status + ')'); err.status = res.status; throw err; }
+      if (!data.ok) { const err = new Error(data.message || 'เกิดข้อผิดพลาด'); err.status = res.status; throw err; }
+      return data;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    const $ = (id) => document.getElementById(id);
+    let canEdit = false;
+    let current = { operator: '', email: '' };
+
+    function renderPreview(operator, email) {
+      $('pvOperator').textContent = operator || 'ระบบสั่งอาหารและระบบสมาชิกร้านค้า (QPage)';
+      $('pvEmail').textContent = email || '';
+      $('pvEmailRow').hidden = !email;
+      $('pvFallbackRow').hidden = !!email;
+    }
+
+    function renderStatus(email) {
+      const note = $('statusNote');
+      if (email) {
+        note.classList.add('ok');
+        $('statusText').innerHTML = 'ตั้งค่าแล้ว — ผู้ใช้จะเห็นอีเมล <strong>' + escapeHtml(email) + '</strong> ในหน้าถ้อยแถลง';
+      } else {
+        note.classList.remove('ok');
+        $('statusText').innerHTML = '<strong>ยังไม่ได้ตั้งอีเมลติดต่อ</strong> — ตอนนี้หน้าถ้อยแถลงจะไม่แสดงอีเมล และบอกผู้ใช้ให้ดูช่องทางติดต่อจากหน้าเว็บแทน (ถ้าจะรับคำขอใช้สิทธิ PDPA ทางเมล ควรกรอกที่นี่)';
+      }
+    }
+
+    async function load() {
+      const { legal } = await api('/api/admin/stats');
+      current = { operator: legal.operator || '', email: legal.email || '' };
+      $('legalOperator').value = current.operator;
+      $('legalEmail').value = current.email;
+      $('kvVersion').textContent = legal.version || '—';
+      $('kvUpdated').textContent = legal.updatedAt || '—';
+      renderPreview(current.operator, current.email);
+      renderStatus(current.email);
+    }
+
+    async function init() {
+      try {
+        const me = await api('/api/me');
+        if (me.user.role !== 'admin' && me.user.role !== 'owner') { window.location.href = '/login.html'; return; }
+        canEdit = me.user.role === 'owner';
+        $('adminEmail').textContent = me.user.email;
+        $('adminRoleLabel').textContent = me.user.role === 'owner' ? 'เจ้าของระบบ' : 'แอดมิน';
+        $('adminAvatar').textContent = me.user.email.charAt(0).toUpperCase();
+        if (!canEdit) {
+          $('legalOperator').disabled = true;
+          $('legalEmail').disabled = true;
+          $('saveBtn').disabled = true;
+          $('saveMsg').textContent = 'เฉพาะเจ้าของระบบแก้ไขข้อมูลนี้ได้';
+        }
+        await load();
+      } catch (err) {
+        if (err && err.status === 401) { window.location.href = '/login.html'; return; }
+        showToast(ICON_ALERT + (err && err.message ? escapeHtml(err.message) : 'เชื่อมต่อเซิร์ฟเวอร์ขัดข้อง ลองใหม่อีกครั้ง'));
+      }
+    }
+
+    // พรีวิวสด ๆ ระหว่างพิมพ์ (ยังไม่บันทึก)
+    $('legalOperator').addEventListener('input', () => renderPreview($('legalOperator').value.trim(), $('legalEmail').value.trim()));
+    $('legalEmail').addEventListener('input', () => { renderStatus($('legalEmail').value.trim()); renderPreview($('legalOperator').value.trim(), $('legalEmail').value.trim()); });
+
+    $('saveBtn').addEventListener('click', async () => {
+      const btn = $('saveBtn');
+      const msg = $('saveMsg');
+      const legalOperator = $('legalOperator').value.trim();
+      const legalEmail = $('legalEmail').value.trim();
+      msg.style.color = 'var(--muted)';
+      msg.textContent = '';
+      btn.disabled = true;
+      try {
+        await api('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ legalOperator, legalEmail }),
+        });
+        await load();
+        msg.style.color = 'var(--success)';
+        msg.textContent = 'บันทึกแล้ว';
+        showToast(ICON_CHECK + 'บันทึกข้อมูลทางกฎหมายแล้ว');
+      } catch (e) {
+        msg.style.color = 'var(--danger)';
+        msg.textContent = e.message;
+      } finally {
+        if (canEdit) btn.disabled = false;
+      }
+    });
+
+    $('refreshBtn').addEventListener('click', () => {
+      const rb = $('refreshBtn');
+      rb.classList.add('spinning'); rb.disabled = true;
+      load()
+        .then(() => showToast(ICON_CHECK + 'อัปเดตข้อมูลแล้ว'))
+        .catch(() => showToast(ICON_ALERT + 'โหลดข้อมูลไม่สำเร็จ'))
+        .finally(() => { rb.classList.remove('spinning'); rb.disabled = false; });
+    });
+
+    $('logoutBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    init();
+  </script>
+  <script src="/js/side-menu.js" data-key="qpage_admin_menu" data-panel=".admin-sidebar"></script>
+</body>
+</html>
