@@ -143,6 +143,19 @@ button, a, label, input, select, textarea, [role="button"] { touch-action: manip
   min-height: 100vh;
 }
 
+/* ปุ่มกลับไปหน้าแรก (มุมซ้ายบน) — ใช้ในหน้าเข้าสู่ระบบ/สมัครสมาชิก */
+.back-home {
+  position: fixed; top: 14px; left: 14px; z-index: 30;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 14px; border-radius: 999px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-strong); box-shadow: var(--shadow-md);
+  font-size: 13px; font-weight: 700; text-decoration: none; line-height: 1;
+  transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.back-home:hover { background: var(--surface-hover); border-color: var(--accent); text-decoration: none; transform: translateY(-1px); }
+.back-home svg { width: 15px; height: 15px; flex: 0 0 auto; }
+
 /* พาเนลแบรนด์ (ซ้าย) */
 .brand-panel {
   position: relative;

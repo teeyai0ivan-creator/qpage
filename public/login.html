@@ -9,6 +9,11 @@
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
+  <!-- ปุ่มกลับไปหน้าแรก (มุมซ้ายบนของหน้า) -->
+  <a class="back-home" href="/" title="กลับไปหน้าแรก">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+    <span>หน้าแรก</span>
+  </a>
   <div class="auth-layout">
     <!-- พาเนลแบรนด์ (ซ้าย) -->
     <aside class="brand-panel">
@@ -107,9 +112,6 @@
         <p class="auth-switch">
           ยังไม่มีบัญชี? <a href="register.html">สมัครสมาชิก</a>
         </p>
-        <p class="auth-switch" style="margin-top:10px;">
-          <a href="privacy.html" target="_blank" rel="noopener">ข้อกำหนดการใช้บริการและนโยบายความเป็นส่วนตัว (PDPA)</a>
-        </p>
       </div>
     </main>
   </div>
@@ -200,6 +202,15 @@
         showError('ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่');
       }
     });
+    // ไม่โฟกัสช่องอีเมลเองตอนเปิดหน้า (มือถือจะได้ไม่เด้งแป้นพิมพ์ขึ้นมาทันที)
+    (function noAutoFocus() {
+      const clearFocus = () => {
+        const el = document.getElementById('email');
+        if (el && document.activeElement === el) el.blur();
+      };
+      window.addEventListener('pageshow', () => setTimeout(clearFocus, 0));
+      window.addEventListener('load', () => setTimeout(clearFocus, 0));
+    })();
   </script>
 </body>
 </html>
