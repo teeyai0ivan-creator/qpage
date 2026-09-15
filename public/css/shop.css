@@ -269,11 +269,8 @@
 .pub-head-sub { margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 36px; }
 .pub-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; opacity: .95; }
 .pub-meta a { color: #fff; text-decoration: underline; }
-/* ช่องทางติดต่อร้าน — บล็อกปุ่มชิดขวาของแบนเนอร์ (ใช้ทั้งหน้าร้านสาธารณะและหน้าสั่งอาหารของลูกค้า)
-   แถวบน LINE เต็มความกว้าง · แถวล่าง เบอร์โทรร้าน + แผนที่ แบ่งครึ่งเท่ากัน → ขอบทุกด้านตรงกัน อ่านง่าย เป็นระเบียบ */
-.pub-contact { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; width: 100%; max-width: 300px; margin-left: auto; }
-.pub-contact-row { display: flex; gap: 8px; }
-.pub-contact-row .pub-chip { flex: 1 1 0; min-width: 0; }
+/* ช่องทางติดต่อร้าน — ปุ่ม LINE · เบอร์โทร · แผนที่ เรียงแถวเดียวชิดขวาของแบนเนอร์
+   ใช้ชุดเดียวกันทั้งหน้าร้านสาธารณะและหน้าสั่งอาหารของลูกค้า (ขนาด/ตำแหน่งเหมือนกัน) */
 .pub-chip { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: hidden; text-decoration: none; border: 1px solid transparent; transition: background-color .15s ease, border-color .15s ease, transform .15s ease; }
 .pub-chip > span { overflow: hidden; text-overflow: ellipsis; }
 /* ป้ายสั้น/ยาว: จอปกติแสดงข้อความเต็ม · จอแคบแสดงป้ายสั้น (ตั้งค่าใน @media ท้ายไฟล์) */
@@ -291,10 +288,7 @@
 .pub-chip.plain.line { background: #06c755; border-color: #06c755; color: #fff; }
 .pub-chip.plain.line:hover { background: #05b04b; border-color: #05b04b; }
 @media (max-width: 560px) {
-  /* จอมือถือ: ปุ่มกะทัดรัดตามขนาดข้อความ (ไม่ยืดเต็มความกว้าง) ชิดขวา ยังคง 2 แถว: LINE / เบอร์+แผนที่ */
-  .pub-contact { max-width: none; align-items: flex-end; gap: 6px; margin-top: 8px; }
-  .pub-contact-row { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-  .pub-contact-row .pub-chip { flex: 0 1 auto; }
+  /* จอมือถือ: ปุ่มกะทัดรัดตามขนาดข้อความ (ไม่ยืดเต็มความกว้าง) */
   .pub-chip { padding: 7px 11px; font-size: 12px; border-radius: 10px; gap: 6px; }
   .pub-chip svg { width: 12px; height: 12px; }
 }

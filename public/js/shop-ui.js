@@ -21,22 +21,6 @@
 
   const chipHtml = (tone, href, cls, icon, text, blank) => `<a class="pub-chip${tone}${cls}" href="${esc(href)}"${blank ? ' target="_blank" rel="noopener"' : ''}>${icon}<span>${text}</span></a>`;
 
-  // จัดวาง 2 แถวชิดขวา: แถวบน = LINE · แถวล่าง = เบอร์โทรร้าน + แผนที่ (ใช้กับหน้าร้านสาธารณะ)
-  window.pubContactChips = (shop, opts) => {
-    const s = shop || {};
-    const tone = (opts && opts.tone) === 'plain' ? ' plain' : '';
-    const top = s.line_url ? chipHtml(tone, s.line_url, ' line', ICON_CHAT, 'LINE ร้านค้า', true) : '';
-    const lower = [
-      s.phone ? chipHtml(tone, 'tel:' + s.phone, '', ICON_PHONE, esc(s.phone), false) : '',
-      s.maps_url ? chipHtml(tone, s.maps_url, '', ICON_PIN, 'ดูแผนที่', true) : '',
-    ].join('');
-    if (!top && !lower) return '';
-    return `<div class="pub-contact">`
-      + (top ? `<div class="pub-contact-row">${top}</div>` : '')
-      + (lower ? `<div class="pub-contact-row">${lower}</div>` : '')
-      + `</div>`;
-  };
-
   // ชุดปุ่มติดต่อสำหรับหน้าปกแบบตาราง (หน้าสั่งอาหารของลูกค้า) — เรียงเป็นแถวเดียว: LINE · เบอร์โทร · แผนที่
   window.pubContactInfoChips = (shop) => {
     const s = shop || {};

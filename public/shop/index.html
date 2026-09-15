@@ -71,8 +71,8 @@
         if (others) body += `<div class="pub-cat"><h2>เมนูอื่น ๆ</h2>${others}</div>`;
         if (!body) body = '<div class="pub-empty">ร้านนี้ยังไม่มีเมนู</div>';
 
-        // ช่องทางติดต่อร้าน (เบอร์โทรร้าน / LINE / แผนที่) — ปุ่มกลมมีไอคอน
-        const contactHtml = pubContactChips(shop);
+        // ช่องทางติดต่อร้าน (LINE / เบอร์โทรร้าน / แผนที่) — ปุ่มชุดเดียวกับหน้าสั่งอาหารของลูกค้า
+        const contactHtml = pubContactInfoChips(shop);
 
         // ถ้าถูกพามาที่นี่เพราะ "บิลถูกเช็คบิลแล้ว" → อธิบายว่าหน้านี้ดูได้อย่างเดียว สั่งไม่ได้
         const billClosed = new URLSearchParams(location.search).get('bill_closed') === '1';
@@ -85,14 +85,10 @@
 
         document.getElementById('app').innerHTML = `
           <header class="pub-hero">
-            <div class="pub-hero-inner">
-              <div class="pub-info">
-                <div class="pub-head">
-                  ${shop.logo_url ? `<img class="pub-logo" src="${esc(shop.logo_url)}" alt="${esc(shop.name)}">` : '<div class="pub-logo"></div>'}
-                  <h1>${esc(shop.name)}</h1>
-                </div>
-              </div>
-              ${contactHtml}
+            <div class="pub-hero-inner pub-grid">
+              ${shop.logo_url ? `<img class="pub-logo" src="${esc(shop.logo_url)}" alt="${esc(shop.name)}">` : '<div class="pub-logo"></div>'}
+              <h1>${esc(shop.name)}</h1>
+              <div class="pub-chips">${contactHtml}</div>
             </div>
           </header>
           <main class="pub-body">${closedNotice}${body}</main>
