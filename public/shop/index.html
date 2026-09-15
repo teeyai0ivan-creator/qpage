@@ -71,10 +71,8 @@
         if (others) body += `<div class="pub-cat"><h2>เมนูอื่น ๆ</h2>${others}</div>`;
         if (!body) body = '<div class="pub-empty">ร้านนี้ยังไม่มีเมนู</div>';
 
-        const contact = [];
-        if (shop.phone) contact.push(`<a href="tel:${esc(shop.phone)}">📞 ${esc(shop.phone)}</a>`);
-        if (shop.line_url) contact.push(`<a href="${esc(shop.line_url)}" target="_blank" rel="noopener">💬 LINE ร้านค้า</a>`);
-        if (shop.maps_url) contact.push(`<a href="${esc(shop.maps_url)}" target="_blank" rel="noopener">📍 ดูแผนที่</a>`);
+        // ช่องทางติดต่อร้าน (เบอร์โทรร้าน / LINE / แผนที่) — ปุ่มกลมมีไอคอน
+        const contactHtml = pubContactChips(shop);
 
         // ถ้าถูกพามาที่นี่เพราะ "บิลถูกเช็คบิลแล้ว" → อธิบายว่าหน้านี้ดูได้อย่างเดียว สั่งไม่ได้
         const billClosed = new URLSearchParams(location.search).get('bill_closed') === '1';
@@ -91,7 +89,7 @@
               ${shop.logo_url ? `<img class="pub-logo" src="${esc(shop.logo_url)}" alt="${esc(shop.name)}">` : '<div class="pub-logo"></div>'}
               <div style="flex:1;min-width:220px;">
                 <h1>${esc(shop.name)}</h1>
-                <div class="pub-meta">${contact.length ? contact.join(' · ') : ''}</div>
+                ${contactHtml}
               </div>
             </div>
           </header>

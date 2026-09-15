@@ -245,6 +245,21 @@
 .pub-hero h1 { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
 .pub-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; opacity: .95; }
 .pub-meta a { color: #fff; text-decoration: underline; }
+/* แถวช่องทางติดต่อร้าน — ปุ่มกลมมีไอคอน (ใช้ทั้งหน้าร้านสาธารณะและหน้าสั่งอาหารของลูกค้า) */
+.pub-contact { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.pub-chip { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 700; text-decoration: none; border: 1px solid transparent; line-height: 1; transition: background-color .15s ease, border-color .15s ease, transform .15s ease; }
+.pub-chip svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.pub-chip:hover { text-decoration: none; transform: translateY(-1px); }
+/* บนแบนเนอร์สีของร้าน (hero) */
+.pub-hero .pub-chip { background: rgba(255, 255, 255, .18); color: #fff; border-color: rgba(255, 255, 255, .3); }
+.pub-hero .pub-chip:hover { background: rgba(255, 255, 255, .3); border-color: rgba(255, 255, 255, .5); }
+.pub-hero .pub-chip.line { background: #06c755; border-color: #06c755; color: #fff; }
+.pub-hero .pub-chip.line:hover { background: #05b04b; border-color: #05b04b; }
+/* บนพื้นปกติ */
+.pub-chip.plain { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+.pub-chip.plain:hover { background: var(--surface-hover); }
+.pub-chip.plain.line { background: #06c755; border-color: #06c755; color: #fff; }
+.pub-chip.plain.line:hover { background: #05b04b; border-color: #05b04b; }
 .pub-body { max-width: 900px; margin: 0 auto; padding: 26px 20px 72px; }
 .pub-cat { margin-bottom: 28px; }
 .pub-cat > h2 { font-size: 19px; font-weight: 800; margin-bottom: 4px; }

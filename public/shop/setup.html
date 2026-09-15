@@ -135,17 +135,20 @@
           <div class="field-error" id="errName"></div>
         </div>
         <div class="field">
-          <label for="phone">เบอร์ติดต่อร้านค้า *</label>
+          <label for="phone">เบอร์โทรร้าน *</label>
           <div class="input-wrap"><input type="tel" id="phone" maxlength="30" placeholder="เช่น 0812345678" required></div>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.6;">เบอร์นี้จะแสดงให้ <strong>ลูกค้าเห็น</strong> ในหน้าร้านและหน้าสั่งอาหาร (เบอร์ของร้าน ไม่ใช่เบอร์บัญชีของคุณ)</div>
           <div class="field-error" id="errPhone"></div>
         </div>
         <div class="field">
           <label for="lineUrl">ลิงก์ LINE ร้านค้า</label>
           <div class="input-wrap"><input type="text" id="lineUrl" maxlength="255" placeholder="เช่น https://line.me/R/ti/p/@myshop"></div>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;">ถ้าใส่ไว้ ลูกค้าจะเห็นปุ่ม “LINE ร้านค้า” กดแชทได้จากหน้าสั่งอาหาร</div>
         </div>
         <div class="field">
-          <label for="mapsUrl">URL Google Maps (แสดงโลเคชั่น)</label>
+          <label for="mapsUrl">URL Google Maps</label>
           <div class="input-wrap"><input type="text" id="mapsUrl" maxlength="500" placeholder="วางลิงก์แชร์จาก Google Maps"></div>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;">ถ้าใส่ไว้ ลูกค้าจะเห็นปุ่ม “ดูแผนที่” กดเปิดพิกัดร้านได้ทันที</div>
         </div>
         <div class="field">
           <label>โลโก้ร้านค้า</label>
