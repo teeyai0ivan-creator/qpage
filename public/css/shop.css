@@ -243,8 +243,9 @@
 .pub-info { flex: 1 1 320px; min-width: 0; }
 .pub-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .pub-head h1 { margin: 0; min-width: 0; line-height: 1.25; }
-/* ข้อมูลใต้ชื่อ (โต๊ะ/บิล/ปุ่มรายการ) เยื้องให้เริ่มตรงกับชื่อร้าน = ความกว้างโลโก้ + ระยะห่าง */
-.pub-sub { margin-top: 8px; padding-left: 106px; }
+/* ข้อมูลใต้ชื่อ (โต๊ะ/บิล/ปุ่มรายการ) เยื้องให้เริ่มตรงกับชื่อร้าน = ความกว้างโลโก้ + ระยะห่าง
+   หมายเหตุ: อย่าตั้งชื่อคลาสว่า .pub-sub เพราะ .pub-sub ถูกใช้กับ "หมวดย่อยของเมนู" อยู่แล้ว */
+.pub-head-sub { margin-top: 8px; padding-left: 106px; }
 .pub-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; opacity: .95; }
 .pub-meta a { color: #fff; text-decoration: underline; }
 /* ช่องทางติดต่อร้าน — บล็อกปุ่มชิดขวาของแบนเนอร์ (ใช้ทั้งหน้าร้านสาธารณะและหน้าสั่งอาหารของลูกค้า)
@@ -514,7 +515,7 @@ button.cart-info strong { color: var(--text); }
   .pub-hero h1 { font-size: 21px; }
   .pub-logo { width: 68px; height: 68px; border-radius: 16px; }
   .pub-head { gap: 12px; }
-  .pub-sub { margin-top: 6px; padding-left: 80px; }
+  .pub-head-sub { margin-top: 6px; padding-left: 80px; }
   .bill-pill { margin-top: 6px; padding: 6px 11px; font-size: 12px; }
   .pub-menu img { width: 76px; height: 76px; }
 }
