@@ -19,6 +19,7 @@ const shopRoutes = require('./routes/shop');
 const orderRoutes = require('./routes/orders');
 const notifyRoutes = require('./routes/notify');
 const publicRoutes = require('./routes/public');
+const seoRoutes = require('./routes/seo');
 
 const app = express();
 
@@ -63,6 +64,8 @@ app.use(orderRoutes);
 // ตั้งค่าการแจ้งเตือน (LINE / Telegram) ของเจ้าของร้าน
 app.use(notifyRoutes);
 app.use(publicRoutes);
+// robots.txt + sitemap.xml (ให้เสิร์ชเอนจินค้นเจอหน้าเว็บสาธารณะและหน้าร้านแต่ละร้าน)
+app.use(seoRoutes);
 
 // ไฟล์หน้าเว็บ (.html) และไฟล์ CSS/JS บังคับให้ตรวจสอบของใหม่ทุกครั้ง (no-cache) — กันเบราว์เซอร์
 // (โดยเฉพาะมือถือ) ใช้หน้าเก่า/สไตล์เก่าที่ cache ไว้หลัง deploy ทำให้ผู้ใช้เห็นพฤติกรรมเก่า

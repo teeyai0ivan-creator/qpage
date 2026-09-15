@@ -120,15 +120,20 @@
       <div class="shop-wrap">
     <div class="shop-head">
       <h1>ข้อมูลร้านค้า</h1>
-      <p>กรอกข้อมูลเบื้องต้นของร้าน — เมื่อบันทึกครบแล้วจะเริ่มจัดการเมนูได้</p>
-      <div class="shop-actions" id="shopActions" style="display:none;">
-        <a class="btn btn-primary btn-small" href="/shop/menu.html">ไปหน้าจัดการเมนู</a>
-      </div>
     </div>
 
     <div class="shop-card">
       <h2>ข้อมูลร้าน</h2>
       <form class="shop-form" id="shopForm" novalidate>
+        <div class="field">
+          <label>โลโก้ร้านค้า</label>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <img class="logo-preview" id="logoPreview" alt="โลโก้" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84'%3E%3Crect width='84' height='84' fill='%23eef0fa'/%3E%3C/svg%3E">
+            <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/gif" style="font-size:13px;">
+          </div>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.6;">ใช้เป็นรูปหน้าปกในหน้าร้านและ <strong>รูปในการ์ดพรีวิวเวลาแชร์ลิงก์ร้าน</strong> — แนะนำรูปสี่เหลี่ยมจัตุรัส ขนาดตั้งแต่ 400×400 px</div>
+          <div class="field-error" id="errLogo"></div>
+        </div>
         <div class="field">
           <label for="name">ชื่อร้านค้า *</label>
           <div class="input-wrap"><input type="text" id="name" maxlength="120" placeholder="เช่น ร้านป้าแดงโภชนา" required></div>
@@ -150,13 +155,37 @@
           <div class="input-wrap"><input type="text" id="mapsUrl" maxlength="500" placeholder="วางลิงก์แชร์จาก Google Maps"></div>
           <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;">ถ้าใส่ไว้ ลูกค้าจะเห็นปุ่ม “ดูแผนที่” กดเปิดพิกัดร้านได้ทันที</div>
         </div>
-        <div class="field">
-          <label>โลโก้ร้านค้า</label>
-          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-            <img class="logo-preview" id="logoPreview" alt="โลโก้" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84'%3E%3Crect width='84' height='84' fill='%23eef0fa'/%3E%3C/svg%3E">
-            <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/gif" style="font-size:13px;">
+
+        <div style="border-top:1px solid var(--border);margin:20px 0 16px;padding-top:16px;">
+          <div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            เนื้อหา SEO (แสดงบน Google และการ์ดพรีวิวเวลาแชร์ลิงก์ร้าน)
           </div>
-          <div class="field-error" id="errLogo"></div>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.6;">
+            กรอกไว้แล้วเวลาส่งลิงก์ร้านในแชทหรือโพสต์ ลูกค้าจะเห็นชื่อร้าน + ข้อความนี้ + โลโก้ร้าน (ไม่ต้องกรอกก็ได้ ระบบจะใช้ชื่อร้านให้เอง)
+          </div>
+        </div>
+        <div class="field">
+          <label for="seoTitle">หัวข้อ SEO (ชื่อร้านที่อยากให้ขึ้นบน Google/การ์ดแชร์)</label>
+          <div class="input-wrap"><input type="text" id="seoTitle" maxlength="160" placeholder="เช่น ร้านป้าแดงโภชนา — อาหารไทยตามสั่ง เมืองนครปฐม"></div>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;">แนะนำไม่เกิน 60-70 ตัวอักษร · เว้นว่าง = ใช้ “ชื่อร้าน — เมนูและสั่งอาหารออนไลน์”</div>
+        </div>
+        <div class="field">
+          <label for="seoDescription">คำอธิบาย SEO (ข้อความใต้ชื่อเวลาแชร์ลิงก์/ค้นเจอบน Google)</label>
+          <textarea id="seoDescription" maxlength="400" rows="3" placeholder="เช่น อาหารไทยรสจัดจ้าน เปิด 10:00-20:00 ใกล้ตลาดโต้รุ่ง สแกน QR ที่โต๊ะสั่งได้เลย" style="width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;">แนะนำ 120-160 ตัวอักษร · เว้นว่าง = ระบบสร้างให้จากชื่อร้าน/เบอร์โทร</div>
+        </div>
+
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px;">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;">ตัวอย่างการ์ดเวลาแชร์ลิงก์ร้าน</div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <img id="seoPreviewImg" alt="" style="width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--surface-hover);flex:none;">
+            <div style="min-width:0;">
+              <div id="seoPreviewTitle" style="font-weight:700;font-size:14px;line-height:1.5;margin-bottom:3px;">ชื่อร้าน — เมนูและสั่งอาหารออนไลน์</div>
+              <div id="seoPreviewDesc" style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:4px;">คำอธิบายร้าน</div>
+              <div id="seoPreviewUrl" style="font-size:12px;color:var(--accent);">qpage.website/s/…</div>
+            </div>
+          </div>
         </div>
 
         <div class="success-box" id="okBox"></div>
@@ -182,6 +211,20 @@
     }
     function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
 
+    // ตัวอย่างการ์ดเวลาแชร์ลิงก์ — อัปเดตตามที่พิมพ์ (หัวข้อ/คำอธิบาย/โลโก้)
+    function renderSeoPreview() {
+      const name = document.getElementById('name').value.trim();
+      const title = document.getElementById('seoTitle').value.trim() || (name ? name + ' — เมนูและสั่งอาหารออนไลน์' : 'ชื่อร้าน — เมนูและสั่งอาหารออนไลน์');
+      const desc = document.getElementById('seoDescription').value.trim() ||
+        [name ? 'ร้าน ' + name : 'ร้านของคุณ', document.getElementById('phone').value.trim() ? 'โทร ' + document.getElementById('phone').value.trim() : '', 'ดูเมนู สแกน QR ที่โต๊ะแล้วสั่งอาหารออนไลน์ได้ทันที'].filter(Boolean).join(' · ');
+      document.getElementById('seoPreviewTitle').textContent = title;
+      document.getElementById('seoPreviewDesc').textContent = desc;
+      const img = document.getElementById('seoPreviewImg');
+      img.src = logoUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23eef0fa'/%3E%3C/svg%3E";
+      document.getElementById('seoPreviewUrl').textContent = (location.host || 'qpage.website') + '/s/' + (publicCode || '…');
+    }
+    let publicCode = '';
+
     async function loadShop() {
       try {
         const data = await api('/api/shop/me');
@@ -191,11 +234,14 @@
           document.getElementById('phone').value = data.shop.phone || '';
           document.getElementById('lineUrl').value = data.shop.line_url || '';
           document.getElementById('mapsUrl').value = data.shop.maps_url || '';
+          document.getElementById('seoTitle').value = data.shop.seo_title || '';
+          document.getElementById('seoDescription').value = data.shop.seo_description || '';
           logoUrl = data.shop.logo_url || '';
+          publicCode = data.shop.public_code || '';
           if (logoUrl) document.getElementById('logoPreview').src = logoUrl;
-          document.getElementById('shopActions').style.display = '';
           document.getElementById('viewShopLink').href = data.publicUrl || '#';
           document.getElementById('saveBtn').textContent = 'บันทึกการแก้ไข';
+          renderSeoPreview();
         }
       } catch (err) {
         if (err.status === 403) { window.location.href = '/shop'; return; }
@@ -217,7 +263,13 @@
         const up = await api('/api/shop/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl }) });
         logoUrl = up.url;
         document.getElementById('logoPreview').src = logoUrl;
+        renderSeoPreview();
       } catch (err) { showErr('errLogo', err.message); }
+    });
+
+    // ตัวอย่างการ์ดอัปเดตทันทีระหว่างพิมพ์
+    ['name', 'phone', 'seoTitle', 'seoDescription'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', renderSeoPreview);
     });
 
     document.getElementById('shopForm').addEventListener('submit', async (e) => {
@@ -233,6 +285,8 @@
         lineUrl: document.getElementById('lineUrl').value.trim(),
         mapsUrl: document.getElementById('mapsUrl').value.trim(),
         logoUrl,
+        seoTitle: document.getElementById('seoTitle').value.trim(),
+        seoDescription: document.getElementById('seoDescription').value.trim(),
       };
       const btn = document.getElementById('saveBtn');
       btn.disabled = true; btn.classList.add('loading');
@@ -244,11 +298,12 @@
         });
         hasShop = true;
         if (data.shop && data.shop.public_code) {
-          document.getElementById('shopActions').style.display = '';
+          publicCode = data.shop.public_code;
           document.getElementById('viewShopLink').href = '/s/' + data.shop.public_code;
         }
+        renderSeoPreview();
         const ok = document.getElementById('okBox');
-        ok.innerHTML = '<strong>บันทึกข้อมูลร้านแล้ว</strong> — ไปหน้าจัดการเมนูได้เลย';
+        ok.innerHTML = '<strong>บันทึกข้อมูลร้านแล้ว</strong>';
         ok.style.display = 'block';
         document.getElementById('saveBtn').textContent = 'บันทึกการแก้ไข';
       } catch (err) {

@@ -9,6 +9,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 const db = require('../db');
 const { sendShopPage } = require('../lib/shop-page');
+const { sendPublicShopPage } = require('../lib/shop-seo');
 const { getCurrentUser, requireLogin, requireShop } = require('../middleware/auth');
 const { isAdminRole, isShop } = require('../lib/roles');
 const { randomToken } = require('../lib/crypto');
@@ -74,9 +75,11 @@ router.get('/shop/menus.html', requireShopPage, async (req, res) => {
   await sendShopPage(res, 'menus.html', shop);
 });
 
-// หน้าร้านสาธารณะ (ไม่ต้องล็อกอิน) — โหลดข้อมูลผ่าน /api/public/shops/:code
-router.get('/s/:code', (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'index.html'));
+// หน้าร้านสาธารณะ (ไม่ต้องล็อกอิน) — ใส่ชื่อ/คำอธิบาย/โลโก้ ลง <meta> ตั้งแต่ฝั่งเซิร์ฟเวอร์
+// เพื่อให้การ์ดพรีวิวเวลาแชร์ลิงก์ (LINE/Facebook) และเสิร์ชเอนจินเห็นข้อมูลร้านได้ทันที
+router.get('/s/:code', async (req, res) => {
+  const shop = await db.findPublicShopByCode(String(req.params.code || ''));
+  await sendPublicShopPage(req, res, shop);
 });
 
 // ---------------------------------------------------------------------------
@@ -236,6 +239,8 @@ router.post('/api/shop', requireShop, async (req, res) => {
     lineUrl: clip(req.body?.lineUrl, 255),
     logoUrl: clip(req.body?.logoUrl, 255),
     mapsUrl: clip(req.body?.mapsUrl, 500),
+    seoTitle: clip(req.body?.seoTitle, 160),
+    seoDescription: clip(req.body?.seoDescription, 400),
   });
   console.log(`🏪 สร้างร้าน: ${name} (${req.user.email})`);
   res.json({ ok: true, message: 'สร้างร้านสำเร็จ', shop });
@@ -256,6 +261,9 @@ router.put('/api/shop', requireShop, async (req, res) => {
   if (req.body?.lineUrl !== undefined) fields.lineUrl = clip(req.body.lineUrl, 255);
   if (req.body?.logoUrl !== undefined) fields.logoUrl = clip(req.body.logoUrl, 255);
   if (req.body?.mapsUrl !== undefined) fields.mapsUrl = clip(req.body.mapsUrl, 500);
+  // เนื้อหา SEO ที่แสดงบน Google และในการ์ดพรีวิวเวลาแชร์ลิงก์ร้าน
+  if (req.body?.seoTitle !== undefined) fields.seoTitle = clip(req.body.seoTitle, 160);
+  if (req.body?.seoDescription !== undefined) fields.seoDescription = clip(req.body.seoDescription, 400);
 
   await db.updateShop(shop.id, fields);
   const updated = await db.findShopByUserId(req.user.id);

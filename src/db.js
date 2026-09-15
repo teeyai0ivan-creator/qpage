@@ -158,6 +158,8 @@ async function initSchema() {
       line_url    VARCHAR(255) NOT NULL DEFAULT '',
       logo_url    VARCHAR(255) NOT NULL DEFAULT '',
       maps_url    VARCHAR(500) NOT NULL DEFAULT '',
+      seo_title   VARCHAR(160) NOT NULL DEFAULT '',
+      seo_description VARCHAR(400) NOT NULL DEFAULT '',
       status      VARCHAR(10) NOT NULL DEFAULT 'active',
       created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -400,6 +402,10 @@ async function initSchema() {
   // ตัวเลือกลบ QR ของโต๊ะทันทีเมื่อเช็คบิล (ปิดไว้เป็นค่าเริ่มต้น)
   // หมายเหตุ: ตัวเลือกนี้ "ปิดใช้งาน" QR ไม่ได้ลบทิ้ง — โต๊ะยังถูกเก็บไว้ในประวัติ (tables.retired_at)
   await ensureColumn('shops', 'delete_qr_on_checkout', 'delete_qr_on_checkout TINYINT(1) NOT NULL DEFAULT 0');
+  // เนื้อหา SEO ของร้าน (กรอกที่หน้าตั้งค่าข้อมูลร้าน) — ใช้เป็นชื่อ/คำอธิบายในการ์ดพรีวิวเวลาแชร์ลิงก์
+  // และให้เสิร์ชเอนจินอ่าน (หัวข้อที่ตั้งเอง + คำอธิบาย) ถ้าเว้นว่าง ระบบจะใช้ชื่อร้าน/คำอธิบายที่สร้างให้อัตโนมัติ
+  await ensureColumn('shops', 'seo_title', "seo_title VARCHAR(160) NOT NULL DEFAULT ''");
+  await ensureColumn('shops', 'seo_description', "seo_description VARCHAR(400) NOT NULL DEFAULT ''");
   // วันที่ปิดใช้งาน QR ของโต๊ะ (NULL = ยังใช้งานอยู่) — เก็บแถวไว้เป็นประวัติ/หลักฐาน ไม่ลบทิ้ง
   await ensureColumn('tables', 'retired_at', 'retired_at DATETIME NULL');
   // ตัวนับรุ่นของชื่อโต๊ะ: 0 = ยังใช้งานอยู่ · ตอนปิดใช้งานจะตั้งเป็น id ของแถว
@@ -932,10 +938,22 @@ async function findShopByUserId(userId) {
   return rows[0] || null;
 }
 
-async function createShop({ userId, publicCode, name, phone = '', lineUrl = '', logoUrl = '', mapsUrl = '' }) {
+/** ร้านที่เปิดให้สาธารณะเข้าชมได้ (ใช้สร้าง sitemap.xml ให้เสิร์ชเอนจินค้นเจอ) */
+async function listPublicShops() {
+  const [rows] = await pool.execute(
+    `SELECT s.public_code, s.updated_at FROM shops s
+       JOIN users u ON u.id = s.user_id
+      WHERE s.status = 'active' AND u.role = 'shop'
+        AND (u.gift_expires_at IS NULL OR u.gift_expires_at > UTC_TIMESTAMP())
+      ORDER BY s.updated_at DESC`
+  );
+  return rows;
+}
+
+async function createShop({ userId, publicCode, name, phone = '', lineUrl = '', logoUrl = '', mapsUrl = '', seoTitle = '', seoDescription = '' }) {
   const [result] = await pool.execute(
-    'INSERT INTO shops (user_id, public_code, name, phone, line_url, logo_url, maps_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [userId, publicCode, name, phone, lineUrl, logoUrl, mapsUrl]
+    'INSERT INTO shops (user_id, public_code, name, phone, line_url, logo_url, maps_url, seo_title, seo_description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [userId, publicCode, name, phone, lineUrl, logoUrl, mapsUrl, seoTitle, seoDescription]
   );
   const [rows] = await pool.execute('SELECT * FROM shops WHERE id = ?', [result.insertId]);
   return rows[0] || null;
@@ -944,6 +962,7 @@ async function createShop({ userId, publicCode, name, phone = '', lineUrl = '', 
 async function updateShop(id, fields) {
   const map = {
     name: 'name', phone: 'phone', lineUrl: 'line_url', logoUrl: 'logo_url', mapsUrl: 'maps_url',
+    seoTitle: 'seo_title', seoDescription: 'seo_description',
     deleteQrOnCheckout: 'delete_qr_on_checkout',
   };
   const sets = [];
@@ -1979,6 +1998,7 @@ module.exports = {
   expireShopGift,
   clearExpiredGifts,
   findPublicShopByCode,
+  listPublicShops,
   findShopByUserId,
   createShop,
   updateShop,

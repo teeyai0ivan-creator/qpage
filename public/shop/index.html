@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ร้านค้า | ระบบสมาชิก</title>
+  <!--SHOP_SEO-->
+  <title>ร้านค้า | QPage</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
@@ -93,7 +94,8 @@
           </header>
           <main class="pub-body">${closedNotice}${body}</main>
         `;
-        document.title = shop.name + ' | เมนูร้านค้า';
+        // ใช้หัวข้อ SEO ที่ร้านตั้งไว้ (ตรงกับที่ฝั่งเซิร์ฟเวอร์ใส่ใน <title> ตั้งแต่แรก)
+        document.title = shop.seo_title || shop.name + ' | เมนูร้านค้า';
       } catch (err) {
         document.getElementById('app').innerHTML = '<div class="pub-empty" style="padding-top:80px;">' + esc(err.message || 'ไม่พบร้านนี้') + '</div>';
       }
