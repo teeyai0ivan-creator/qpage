@@ -171,6 +171,9 @@
 
       document.querySelectorAll('.order-tap').forEach((el) => el.addEventListener('click', () => openItem(Number(el.dataset.menu))));
       document.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => {
+        // มาร์คปุ่มที่เพิ่งกดทันที (ไม่ต้องรอ scroll-spy) แล้วเลื่อนแถบให้เห็นปุ่มนั้น
+        document.querySelectorAll('#catNav [data-cat]').forEach((x) => x.classList.toggle('active', x === b));
+        revealNavBtn(b);
         const el = document.getElementById('cat-' + b.dataset.cat);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }));
@@ -180,6 +183,7 @@
       if (billBtn) billBtn.addEventListener('click', openBill);
       renderOrderBar();
       renderBill();
+      markActiveCat(); // มาร์คหมวดที่กำลังดูอยู่ตั้งแต่เปิดหน้า (ไม่ต้องรอเลื่อนจอ)
       document.title = shop.name + ' · โต๊ะ ' + S.table.code;
     }
 
@@ -477,17 +481,41 @@
     billModal.addEventListener('click', (e) => { if (e.target === billModal) closeBill(); });
 
     // ไฮไลต์หมวดที่กำลังดูอยู่ (scroll-spy)
-    window.addEventListener('scroll', () => {
+    //  - หมวดสุดท้าย: ถ้าเลื่อนลงสุดแล้ว ต้องไฮไลต์หมวดสุดท้าย (ไม่งั้นจะไม่มีทางถึงเกณฑ์)
+    //  - เลื่อนแถบหมวดแนวนอนให้เห็นปุ่มที่ไฮไลต์เสมอ (แถบเลื่อนซ้าย-ขวาได้)
+    function markActiveCat() {
       const nav = document.getElementById('catNav');
       if (!nav) return;
       const btns = Array.from(nav.querySelectorAll('[data-cat]'));
+      if (!btns.length) return;
+      const doc = document.documentElement;
+      const atBottom = window.innerHeight + window.scrollY >= doc.scrollHeight - 4;
       let current = null;
-      btns.forEach((b) => {
-        const el = document.getElementById('cat-' + b.dataset.cat);
-        if (el && el.getBoundingClientRect().top <= 90) current = b.dataset.cat;
-      });
+      if (atBottom) {
+        current = btns[btns.length - 1].dataset.cat;
+      } else {
+        btns.forEach((b) => {
+          const el = document.getElementById('cat-' + b.dataset.cat);
+          if (el && el.getBoundingClientRect().top <= 90) current = b.dataset.cat;
+        });
+        // ยังไม่ถึงหมวดไหนเลย (เช่นอยู่บนสุดของหน้า) → มาร์คหมวดแรกไว้
+        if (!current) current = btns[0].dataset.cat;
+      }
       btns.forEach((b) => b.classList.toggle('active', b.dataset.cat === current));
-    }, { passive: true });
+      const active = btns.find((b) => b.classList.contains('active'));
+      if (active) revealNavBtn(active);
+    }
+    // เลื่อนแถบหมวดแนวนอนให้นิดเดียวพอให้ปุ่มที่มาร์คอยู่Visible
+    function revealNavBtn(btn) {
+      const nav = document.getElementById('catNav');
+      if (!nav || !btn) return;
+      const r = btn.getBoundingClientRect();
+      const nr = nav.getBoundingClientRect();
+      if (r.left < nr.left + 8) nav.scrollLeft -= (nr.left + 8 - r.left);
+      else if (r.right > nr.right - 8) nav.scrollLeft += (r.right - (nr.right - 8));
+    }
+    window.addEventListener('scroll', markActiveCat, { passive: true });
+    window.addEventListener('resize', markActiveCat);
 
     // ---------- โหลด ----------
     async function load() {
