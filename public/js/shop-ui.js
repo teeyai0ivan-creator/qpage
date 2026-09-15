@@ -19,21 +19,37 @@
   const ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-8.4 8.4 9 9 0 01-3.9-.9L3 21l1.9-5.7a8.4 8.4 0 011.7-10.1A8.4 8.4 0 0121 11.5z"/></svg>';
   const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="2.6"/></svg>';
 
-  // จัดวาง 2 แถวชิดขวา: แถวบน = LINE · แถวล่าง = เบอร์โทรร้าน + แผนที่
+  const chipHtml = (tone, href, cls, icon, text, blank) => `<a class="pub-chip${tone}${cls}" href="${esc(href)}"${blank ? ' target="_blank" rel="noopener"' : ''}>${icon}<span>${text}</span></a>`;
+
+  // จัดวาง 2 แถวชิดขวา: แถวบน = LINE · แถวล่าง = เบอร์โทรร้าน + แผนที่ (ใช้กับหน้าร้านสาธารณะ)
   window.pubContactChips = (shop, opts) => {
     const s = shop || {};
     const tone = (opts && opts.tone) === 'plain' ? ' plain' : '';
-    const chip = (href, cls, icon, text, blank) => `<a class="pub-chip${tone}${cls}" href="${esc(href)}"${blank ? ' target="_blank" rel="noopener"' : ''}>${icon}<span>${text}</span></a>`;
-    const top = s.line_url ? chip(s.line_url, ' line', ICON_CHAT, 'LINE ร้านค้า', true) : '';
+    const top = s.line_url ? chipHtml(tone, s.line_url, ' line', ICON_CHAT, 'LINE ร้านค้า', true) : '';
     const lower = [
-      s.phone ? chip('tel:' + s.phone, '', ICON_PHONE, esc(s.phone), false) : '',
-      s.maps_url ? chip(s.maps_url, '', ICON_PIN, 'ดูแผนที่', true) : '',
+      s.phone ? chipHtml(tone, 'tel:' + s.phone, '', ICON_PHONE, esc(s.phone), false) : '',
+      s.maps_url ? chipHtml(tone, s.maps_url, '', ICON_PIN, 'ดูแผนที่', true) : '',
     ].join('');
     if (!top && !lower) return '';
     return `<div class="pub-contact">`
       + (top ? `<div class="pub-contact-row">${top}</div>` : '')
       + (lower ? `<div class="pub-contact-row">${lower}</div>` : '')
       + `</div>`;
+  };
+
+  // แยกชิ้นปุ่มสำหรับหน้าปกแบบตาราง (หน้าสั่งอาหารของลูกค้า): LINE แถวบน · เบอร์+แผนที่ แถวล่าง ขวาสุด
+  window.pubContactLineChip = (shop) => {
+    const s = shop || {};
+    // จอแคบใช้ป้ายสั้น "LINE" (สลับด้วย CSS .only-wide/.only-narrow) เพื่อไม่ให้ป้ายตกบรรทัดใหม่
+    const lineText = '<span class="only-wide">LINE ร้านค้า</span><span class="only-narrow">LINE</span>';
+    return s.line_url ? chipHtml('', s.line_url, ' line pub-line-chip', ICON_CHAT, lineText, true) : '';
+  };
+  window.pubContactInfoChips = (shop) => {
+    const s = shop || {};
+    return [
+      s.phone ? chipHtml('', 'tel:' + s.phone, '', ICON_PHONE, esc(s.phone), false) : '',
+      s.maps_url ? chipHtml('', s.maps_url, '', ICON_PIN, 'ดูแผนที่', true) : '',
+    ].join('');
   };
 
   // เลขที่บิล #0001
