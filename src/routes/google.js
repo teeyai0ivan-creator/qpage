@@ -14,6 +14,7 @@ const mailer = require('../lib/mailer');
 const { isValidThaiPhone, normalizeThaiPhone, passwordStrengthScore } = require('../lib/validators');
 const { devMode } = require('../lib/settings');
 const { isAdminRole, isShop } = require('../lib/roles');
+const legal = require('../lib/legal');
 const { startSession, requirePendingGoogle } = require('../middleware/auth');
 const { getGoogleConfig } = require('../lib/google-oauth');
 
@@ -119,8 +120,13 @@ router.post('/api/google-setup/send-otp', requirePendingGoogle, async (req, res)
 
 // ตั้งรหัสผ่าน + ยืนยันเบอร์ OTP → สมัครเสร็จสมบูรณ์
 router.post('/api/google-setup/complete', requirePendingGoogle, async (req, res) => {
-  const { password, phone, code } = req.body || {};
+  const { password, phone, code, terms } = req.body || {};
   const normalizedPhone = normalizeThaiPhone(phone);
+
+  // ต้องยอมรับข้อกำหนด/นโยบายความเป็นส่วนตัวก่อนสมัครเสร็จ (เหมือนเส้นทางสมัครด้วยอีเมล)
+  if (terms !== true && terms !== 'on' && terms !== 'true') {
+    return res.status(400).json({ ok: false, field: 'terms', message: 'กรุณายอมรับข้อกำหนดและนโยบายความเป็นส่วนตัวก่อนกดสมัครสมาชิก' });
+  }
 
   if (passwordStrengthScore(String(password || '')) < 3) {
     return res.status(400).json({ ok: false, field: 'password', message: 'รหัสผ่านอ่อนเกินไป ต้องมีอย่างน้อย 8 ตัว และตรงตามเกณฑ์ความแข็งแรง' });
@@ -135,6 +141,8 @@ router.post('/api/google-setup/complete', requirePendingGoogle, async (req, res)
 
   const passwordHash = await bcrypt.hash(String(password), 10);
   await db.completeGoogleSetup(req.user.id, { passwordHash, phone: normalizedPhone });
+  // บันทึกหลักฐานความยินยอม (PDPA) — เหมือนเส้นทางสมัครด้วยอีเมล
+  await db.recordTermsConsent(req.user.id, legal.PRIVACY_VERSION);
   // แจ้งเมล "สมัครสมาชิกสำเร็จ" เหมือนเส้นทางสมัครด้วยอีเมล (ส่งแบบไม่บล็อกคำตอบ)
   mailer.sendWelcomeEmail({ email: req.user.email, baseUrl: `${req.protocol}://${req.get('host')}` });
   console.log(`✅ [Google] สมัครสมาชิกเสร็จสมบูรณ์: ${req.user.email} (เบอร์ ${normalizedPhone}) → ส่งเมลแจ้งผลแล้ว`);

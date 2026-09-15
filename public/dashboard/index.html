@@ -51,6 +51,10 @@
         <svg viewBox="0 0 24 24" fill="none"><path d="M3 12a9 9 0 1015.5-6.2M3 4v4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         ประวัติการชำระเงิน
       </a>
+      <a class="menu-item" href="/settings/privacy">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ข้อมูลส่วนบุคคลของฉัน
+      </a>
       <div class="menu-divider"></div>
       <button class="menu-item" type="button" id="logoutBtn">
         <svg viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -180,6 +184,50 @@
         </div>
       </section>
 
+      <!-- ข้อมูลส่วนบุคคลของฉัน (สิทธิตาม PDPA) -->
+      <section id="panel-privacy" style="display:none;">
+        <div class="panel-head">
+          <div class="panel-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div>
+            <h1>ข้อมูลส่วนบุคคลของฉัน</h1>
+            <p>สิทธิของเจ้าของข้อมูลตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA) — ใช้ได้ด้วยตัวเองที่นี่เลย</p>
+          </div>
+        </div>
+
+        <div class="security-card">
+          <div class="sec-info">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              ข้อกำหนดการใช้บริการและนโยบายความเป็นส่วนตัว
+            </h3>
+            <p id="consentInfo">กำลังโหลดสถานะความยินยอมของคุณ…</p>
+          </div>
+          <a class="btn btn-outline" id="policyLink" href="/privacy.html" target="_blank" rel="noopener">อ่านนโยบาย</a>
+        </div>
+
+        <div class="security-card">
+          <div class="sec-info">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              ขอดูสำเนาข้อมูลของฉัน (สิทธิเข้าถึงข้อมูล)
+            </h3>
+            <p>ดาวน์โหลดข้อมูลที่ระบบเก็บเกี่ยวกับคุณ (บัญชี · ประวัติการซื้อ · ข้อมูลร้านและบิลของคุณ ถ้ามี) เป็นไฟล์ JSON</p>
+          </div>
+          <a class="btn btn-outline" id="exportDataBtn" href="/api/me/export">ดาวน์โหลดสำเนาข้อมูล</a>
+        </div>
+
+        <div class="security-card">
+          <div class="sec-info">
+            <h3 style="color:var(--danger);">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              ลบบัญชีของฉัน (สิทธิขอลบข้อมูล / ถอนความยินยอม)
+            </h3>
+            <p>ลบบัญชีและข้อมูลทั้งหมดที่ผูกกับบัญชีนี้อย่างถาวร (รวมข้อมูลร้าน เมนู โต๊ะ และบิล ถ้ามี) — <strong>กู้คืนไม่ได้</strong></p>
+          </div>
+          <button class="btn btn-outline danger" id="deleteAccountBtn" type="button">ลบบัญชีของฉัน</button>
+        </div>
+      </section>
+
       <!-- ===== ประวัติการชำระเงิน ===== -->
       <section id="panel-history" style="display:none;">
         <div class="panel-head">
@@ -201,10 +249,10 @@
   <script>
     const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" width="14" height="14" style="vertical-align:-2px;margin-right:4px;"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-    // ---------- เลือก panel ตาม URL (profile / security / history) ----------
+    // ---------- เลือก panel ตาม URL (profile / security / privacy / history) ----------
     const section = (window.location.pathname.split('/').filter(Boolean).pop() || 'profile');
-    const activePanel = ['profile', 'security', 'history'].includes(section) ? section : 'profile';
-    ['profile', 'security', 'history'].forEach((name) => {
+    const activePanel = ['profile', 'security', 'privacy', 'history'].includes(section) ? section : 'profile';
+    ['profile', 'security', 'privacy', 'history'].forEach((name) => {
       document.getElementById('panel-' + name).style.display = activePanel === name ? '' : 'none';
     });
     document.querySelectorAll('.settings-menu .menu-item').forEach((el) => {
@@ -610,10 +658,89 @@
 
     loadMe();
     if (activePanel === 'history') loadHistory();
+    // ---------- สิทธิตาม PDPA: สถานะความยินยอม + ลบบัญชีของตัวเอง ----------
+    (function initPrivacy() {
+      (async () => {
+        const el = document.getElementById('consentInfo');
+        if (!el) return;
+        try {
+          const d = await (await fetch('/api/me')).json();
+          const u = (d && d.user) || {};
+          if (u.terms_accepted_at) {
+            const dt = new Date(u.terms_accepted_at);
+            const p = (n) => String(n).padStart(2, '0');
+            el.textContent = 'คุณยอมรับข้อกำหนดและนโยบายความเป็นส่วนตัว เวอร์ชัน ' + (u.terms_version || '—')
+              + ' เมื่อ ' + p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + '/' + dt.getFullYear()
+              + ' ' + p(dt.getHours()) + ':' + p(dt.getMinutes())
+              + ' — ระบบบันทึกไว้เป็นหลักฐานตาม PDPA และคุณถอนความยินยอมได้ตลอดเวลาโดยลบบัญชี';
+          } else {
+            el.textContent = 'ยังไม่มีบันทึกการยอมรับนโยบายของบัญชีนี้ (บัญชีที่สร้างก่อนระบบเริ่มบันทึก) — การใช้บริการต่อถือว่ายอมรับนโยบายฉบับปัจจุบัน และคุณถอนความยินยอมได้ตลอดเวลาโดยลบบัญชี';
+          }
+        } catch (e) { el.textContent = 'อ่านสถานะความยินยอมไม่สำเร็จ — อ่านนโยบายฉบับเต็มได้จากปุ่มด้านขวา'; }
+      })();
+
+      const modal = document.getElementById('delAccountModal');
+      const openBtn = document.getElementById('deleteAccountBtn');
+      if (!modal || !openBtn) return;
+      const errEl = document.getElementById('delErr');
+      const err = (m) => { errEl.textContent = m || ''; errEl.style.display = m ? 'block' : 'none'; };
+      const close = () => { modal.classList.remove('show'); document.getElementById('delPassword').value = ''; document.getElementById('delConfirmText').value = ''; err(''); };
+      openBtn.addEventListener('click', () => { err(''); modal.classList.add('show'); setTimeout(() => document.getElementById('delPassword').focus(), 60); });
+      document.getElementById('delCancel').addEventListener('click', close);
+      modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+      document.getElementById('delSubmit').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const password = document.getElementById('delPassword').value;
+        const confirm = document.getElementById('delConfirmText').value.trim();
+        if (!password) return err('กรุณากรอกรหัสผ่านเพื่อยืนยัน');
+        if (confirm !== 'ลบบัญชี') return err('พิมพ์คำว่า ลบบัญชี ในช่องยืนยันให้ถูกต้อง');
+        btn.disabled = true;
+        try {
+          const d = await (await fetch('/api/me', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password, confirm }) })).json();
+          if (!d.ok) { err(d.message || 'ลบบัญชีไม่สำเร็จ'); return; }
+          alert('ลบบัญชีและข้อมูลของคุณแล้ว');
+          window.location.href = '/';
+        } catch (ex) { err('เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่'); }
+        finally { btn.disabled = false; }
+      });
+    })();
     // กลับมาที่แท็บนี้ข้อมูลอาจเปลี่ยน (เช่น ผู้ดูแลระบบเพิ่งยืนยันยอด) → โหลดประวัติใหม่
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && activePanel === 'history') loadHistory();
     });
   </script>
+
+  <!-- ป๊อปอัปยืนยันการลบบัญชี (สิทธิขอลบข้อมูลตาม PDPA) -->
+  <div class="delx-overlay" id="delAccountModal">
+    <div class="delx" role="dialog" aria-modal="true">
+      <h3>ยืนยันการลบบัญชี</h3>
+      <p>การลบบัญชีจะลบข้อมูลของคุณอย่างถาวร และ<strong>กู้คืนไม่ได้</strong> — รวมถึงข้อมูลร้าน เมนู โต๊ะ บิล และประวัติการซื้อ</p>
+      <div class="field">
+        <label for="delPassword">รหัสผ่านของคุณ</label>
+        <div class="input-wrap"><input type="password" id="delPassword" autocomplete="current-password" placeholder="กรอกรหัสผ่านเพื่อยืนยัน"></div>
+      </div>
+      <div class="field">
+        <label for="delConfirmText">พิมพ์คำว่า <strong>ลบบัญชี</strong> เพื่อยืนยัน</label>
+        <div class="input-wrap"><input type="text" id="delConfirmText" autocomplete="off" placeholder="ลบบัญชี"></div>
+      </div>
+      <div class="error-msg" id="delErr" style="display:none;"></div>
+      <div class="delx-actions">
+        <button class="btn btn-outline" id="delCancel" type="button">ยกเลิก (เก็บบัญชีไว้)</button>
+        <button class="btn btn-primary" id="delSubmit" type="button" style="background:var(--danger);border-color:var(--danger);">ลบบัญชีถาวร</button>
+      </div>
+    </div>
+  </div>
+  <style>
+    .delx-overlay { position: fixed; inset: 0; background: var(--overlay, rgba(16,24,40,.45)); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 80; }
+    .delx-overlay.show { display: flex; }
+    .delx { width: 100%; max-width: 440px; background: var(--modal-bg, var(--surface)); border: 1px solid var(--modal-border, var(--border)); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 22px; max-height: 90vh; overflow: auto; }
+    .delx h3 { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
+    .delx p { font-size: 13.5px; color: var(--muted); line-height: 1.8; margin-bottom: 14px; }
+    .delx .field { margin-bottom: 14px; }
+    .delx label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .delx input { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 14px; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); outline: none; }
+    .delx input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+    .delx-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 8px; }
+  </style>
 </body>
 </html>

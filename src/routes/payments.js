@@ -16,7 +16,7 @@ const express = require('express');
 const QRCode = require('qrcode');
 const generatePromptPayPayload = require('promptpay-qr');
 const db = require('../db');
-const { requireLogin, requireOwner } = require('../middleware/auth');
+const { requireLogin, requireOwner, getCurrentUser } = require('../middleware/auth');
 const { isAdminRole } = require('../lib/roles');
 const { futureMonthsSql, addMonthsSql, toSql, nowSql } = require('../lib/time');
 const { getPaymentSettings, hasAnyChannel, paymentInstructions, emailPackagePurchased, entitlementEndFor } = require('../lib/payments');
@@ -32,9 +32,11 @@ const baseUrlFrom = (req) => `${req.protocol}://${req.get('host')}`;
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // ---------------------------------------------------------------------------
-// สลิปโอนเงิน (เก็บไฟล์ใน public/uploads/slips)
+// สลิปโอนเงิน — เก็บ "นอก" โฟลเดอร์ public เพราะเป็นไฟล์ที่มีข้อมูลส่วนบุคคล
+// เปิดดูได้เฉพาะเจ้าของสลิปนั้นและผู้ดูแลระบบ (ผ่านเส้นทางที่ตรวจสิทธิ์)
 // ---------------------------------------------------------------------------
-const SLIP_DIR = path.join(__dirname, '..', '..', 'public', 'uploads', 'slips');
+const SLIP_DIR = path.join(__dirname, '..', '..', 'private_uploads', 'slips');
+const OLD_SLIP_DIR = path.join(__dirname, '..', '..', 'public', 'uploads', 'slips');
 const SLIP_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
 // เพดาน 2MB (base64 จะบวม ~33% ต้องไม่เกินเพดาน JSON 4mb ของ express)
 const MAX_SLIP_BYTES = 2 * 1024 * 1024;
@@ -53,8 +55,62 @@ function saveSlipBuffer(buf, ext, ref) {
   fs.mkdirSync(SLIP_DIR, { recursive: true });
   const name = String(ref || 'slip') + '-' + Date.now().toString(36) + '.' + ext;
   fs.writeFileSync(path.join(SLIP_DIR, name), buf);
-  return '/uploads/slips/' + name;
+  return '/api/payments/slip/' + name;
 }
+
+/** ดึงชื่อไฟล์จากค่าในฐานข้อมูล — รองรับข้อมูลเก่าที่เคยเก็บเป็น /uploads/slips/<ไฟล์> */
+function slipFileName(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const base = raw.split('?')[0].split('/').pop() || '';
+  return /^[A-Za-z0-9._-]+\.(png|jpg|jpeg|webp)$/i.test(base) ? base : '';
+}
+
+/** ย้ายไฟล์สลิปเก่าที่เคยอยู่ในโฟลเดอร์สาธารณะ → โฟลเดอร์ส่วนตัว (ทำครั้งเดียวตอนบูต) */
+function migrateOldSlips() {
+  try {
+    if (!fs.existsSync(OLD_SLIP_DIR)) return;
+    const files = fs.readdirSync(OLD_SLIP_DIR);
+    if (!files.length) return;
+    fs.mkdirSync(SLIP_DIR, { recursive: true });
+    let moved = 0;
+    for (const f of files) {
+      const from = path.join(OLD_SLIP_DIR, f);
+      const to = path.join(SLIP_DIR, f);
+      try {
+        if (fs.statSync(from).isFile() && !fs.existsSync(to)) { fs.renameSync(from, to); moved++; }
+        else if (fs.existsSync(to)) fs.unlinkSync(from);
+      } catch (e) { /* ข้ามไฟล์ที่ย้ายไม่ได้ */ }
+    }
+    console.log(`🔒 ย้ายสลิปโพยเงินจากโฟลเดอร์สาธารณะไปโฟลเดอร์ส่วนตัวแล้ว ${moved} ไฟล์`);
+  } catch (e) {
+    console.error('⚠️ ย้ายไฟล์สลิปเก่าไม่สำเร็จ:', e.message);
+  }
+}
+migrateOldSlips();
+
+/**
+ * ดูสลิป: เจ้าของสลิป (ผู้ที่แนบ) หรือผู้ดูแลระบบ/เจ้าของระบบเท่านั้น
+ * ตรวจจากระเบียนการชำระเงินว่าไฟล์นี้เป็นของใคร — กันการเดาชื่อไฟล์เพื่อเปิดดูของคนอื่น
+ */
+router.get('/api/payments/slip/:name', async (req, res) => {
+  const user = await getCurrentUser(req);
+  if (!user) return res.status(401).json({ ok: false, message: 'กรุณาเข้าสู่ระบบก่อน' });
+  const name = slipFileName(req.params.name);
+  if (!name) return res.status(400).json({ ok: false, message: 'ชื่อไฟล์ไม่ถูกต้อง' });
+  if (!isAdminRole(user.role)) {
+    const owner = await db.findPaymentBySlipFile(name);
+    if (!owner || Number(owner.user_id) !== Number(user.id)) {
+      return res.status(403).json({ ok: false, message: 'คุณไม่มีสิทธิ์เข้าถึงไฟล์นี้' });
+    }
+  }
+  const file = path.join(SLIP_DIR, name);
+  if (!file.startsWith(SLIP_DIR) || !fs.existsSync(file)) {
+    return res.status(404).json({ ok: false, message: 'ไม่พบไฟล์สลิป' });
+  }
+  res.set('Cache-Control', 'private, no-store');
+  res.sendFile(file);
+});
 
 /** ให้สิทธิ์เจ้าของร้านตามแพ็กเกจ — ใช้ทั้งการกดยืนยันเองและการอนุมัติอัตโนมัติจากสลิป */
 async function grantPackage(rec, confirmedBy = null, baseUrl = '') {

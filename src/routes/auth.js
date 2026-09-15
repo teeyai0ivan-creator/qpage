@@ -17,6 +17,7 @@ const { isRecaptchaValid } = require('../middleware/recaptcha');
 const { getCurrentUser, startSession } = require('../middleware/auth');
 const { COOKIE_NAME, RESEND_COOLDOWN_MS } = require('../config');
 const { isAdminRole, isOwner, isShop } = require('../lib/roles');
+const legal = require('../lib/legal');
 
 // ข้อความต่อท้าย log ตามบทบาท (ใช้แสดงใน console)
 const roleNote = (role) => (isOwner(role) ? ' (เจ้าของระบบ)' : role === 'admin' ? ' (แอดมิน)' : isShop(role) ? ' (เจ้าของร้าน)' : '');
@@ -157,6 +158,8 @@ router.post('/api/register/verify-sms', wrap(async (req, res) => {
   if (terms !== true && terms !== 'on' && terms !== 'true') {
     return res.status(400).json({ ok: false, field: 'terms', message: 'กรุณายอมรับข้อกำหนดและนโยบายความเป็นส่วนตัวก่อนกดสมัครสมาชิก' });
   }
+  // บันทึกหลักฐานความยินยอม (PDPA): วันเวลา + เวอร์ชันนโยบายที่ผู้ใช้ยอมรับ
+  await db.recordTermsConsent(user.id, legal.PRIVACY_VERSION);
 
   if (user.status !== 'active') {
     const result = await otp.verifyOtp(user.id, String(code || ''));
@@ -340,6 +343,9 @@ router.get('/api/me', async (req, res) => {
       created_at: user.created_at,
       is_email_verified: user.is_email_verified === 1,
       gift_expires_at: user.gift_expires_at || null,
+      // หลักฐานความยินยอมตาม PDPA (ให้หน้าโปรไฟล์แสดงว่าเคยยอมรับเวอร์ชันใด เมื่อไร)
+      terms_accepted_at: user.terms_accepted_at || null,
+      terms_version: user.terms_version || null,
     },
   });
 });

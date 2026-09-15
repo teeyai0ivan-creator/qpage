@@ -11,10 +11,93 @@ const { sha256 } = require('../lib/crypto');
 const { isExpired } = require('../lib/time');
 const { buildResultPage } = require('../lib/result-page');
 const { getCurrentUser } = require('../middleware/auth');
-const { isShop } = require('../lib/roles');
+const { isShop, isOwner, isAdminRole } = require('../lib/roles');
+const bcrypt = require('bcryptjs');
+const legal = require('../lib/legal');
+const { COOKIE_NAME } = require('../config');
 
 const router = express.Router();
 const DASHBOARD_FILE = path.join(__dirname, '..', '..', 'public', 'dashboard', 'index.html');
+
+// ---------------------------------------------------------------------------
+// สิทธิของเจ้าของข้อมูลตาม PDPA — ขอดูสำเนาข้อมูลของตัวเอง (JSON) และลบบัญชีของตัวเอง
+// ---------------------------------------------------------------------------
+/** รวบรวมข้อมูลของผู้ใช้รายนี้ (ไม่รวมรหัสผ่าน/โทเคนความลับ) */
+async function collectMyData(user) {
+  const account = {
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    status: user.status,
+    provider: user.provider,
+    is_email_verified: Number(user.is_email_verified) === 1,
+    created_at: user.created_at,
+    terms_accepted_at: user.terms_accepted_at || null,
+    terms_version: user.terms_version || null,
+  };
+  const out = {
+    exported_at: new Date().toISOString(),
+    policy_version: legal.PRIVACY_VERSION,
+    account,
+    purchases: await db.listPurchasesByUser(user.id).catch(() => []),
+    shop: null,
+  };
+  const shop = await db.findShopByUserId(user.id);
+  if (shop) {
+    const [categories, menus, tables, orders] = await Promise.all([
+      db.listCategories(shop.id),
+      db.listMenus(shop.id),
+      db.listTables(shop.id),
+      db.listClosedOrders(shop.id, { limit: 200 }),
+    ]);
+    out.shop = {
+      name: shop.name, phone: shop.phone, line_url: shop.line_url, maps_url: shop.maps_url,
+      public_code: shop.public_code, created_at: shop.created_at,
+      categories: categories.map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
+      menus: menus.map((m) => ({ id: m.id, category_id: m.category_id, name: m.name, price: Number(m.price), available: Number(m.available) === 1 })),
+      tables: tables.map((t) => ({ id: t.id, code: t.code, zone: t.zone_name || null, created_at: t.created_at })),
+      bills: orders.map((o) => ({ id: o.id, bill_no: o.bill_no, table_code: o.table_code, total: Number(o.total), opened_at: o.opened_at, closed_at: o.closed_at })),
+    };
+  }
+  return out;
+}
+
+router.get('/api/me/export', async (req, res) => {
+  const user = await getCurrentUser(req);
+  if (!user) return res.status(401).json({ ok: false, message: 'กรุณาเข้าสู่ระบบก่อน' });
+  try {
+    const data = await collectMyData(user);
+    console.log(`📦 [PDPA] ผู้ใช้ ${user.email} ดาวน์โหลดสำเนาข้อมูลของตนเอง`);
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    res.set('Cache-Control', 'no-store');
+    res.set('Content-Disposition', `attachment; filename="my-data-${user.id}-${Date.now()}.json"`);
+    res.send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('export my data ไม่สำเร็จ:', err.message);
+    res.status(500).json({ ok: false, message: 'สร้างไฟล์ข้อมูลไม่สำเร็จ กรุณาลองใหม่' });
+  }
+});
+
+router.delete('/api/me', async (req, res) => {
+  const user = await getCurrentUser(req);
+  if (!user) return res.status(401).json({ ok: false, message: 'กรุณาเข้าสู่ระบบก่อน' });
+  if (isOwner(user.role) || isAdminRole(user.role)) {
+    return res.status(403).json({ ok: false, message: 'บัญชีผู้ดูแลระบบลบเองไม่ได้ — กรุณาติดต่อผู้ให้บริการ' });
+  }
+  if (String(req.body?.confirm || '').trim() !== 'ลบบัญชี') {
+    return res.status(400).json({ ok: false, field: 'confirm', message: 'พิมพ์คำว่า ลบบัญชี เพื่อยืนยัน' });
+  }
+  const full = await db.findUserById(user.id);
+  if (!full) return res.status(404).json({ ok: false, message: 'ไม่พบบัญชีนี้' });
+  const okPw = await bcrypt.compare(String(req.body?.password || ''), full.password_hash);
+  if (!okPw) return res.status(400).json({ ok: false, field: 'password', message: 'รหัสผ่านไม่ถูกต้อง' });
+  const email = full.email;
+  await db.deleteUser(user.id); // ลบข้อมูลที่ผูกกับบัญชีทั้งหมด (ร้าน/เมนู/โต๊ะ/บิล) ตาม FK CASCADE
+  await db.deleteUserSessions(user.id);
+  try { res.clearCookie(COOKIE_NAME, { path: '/' }); } catch (e) { /* ข้าม */ }
+  console.log(`🗑️ [PDPA] ลบบัญชีผู้ใช้ตามคำขอของเจ้าของข้อมูล: ${email}`);
+  res.json({ ok: true, message: 'ลบบัญชีและข้อมูลของคุณแล้ว', redirect: '/' });
+});
 
 /**
  * เมนู "ร้านค้า" ในแถบข้าง ต่างกันตามบทบาท — เรนเดอร์จากเซิร์ฟเวอร์ตั้งแต่แรก

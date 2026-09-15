@@ -49,7 +49,9 @@ function paymentInstructions(rec) {
       : null,
     note: rec.note || '',      // หมายเหตุของรายการนั้น ๆ (เช่น เหตุผลที่ถูกยกเลิก)
     payNote: s.note || '',     // ข้อความถึงลูกค้าจากการตั้งค่าช่องทางรับเงิน
-    slipUrl: rec.slip_url || null,       // รูปสลิปที่ลูกค้าแนบ
+    // รูปสลิปที่ลูกค้าแนบ — เปิดผ่านเส้นทางที่ตรวจสิทธิ์เท่านั้น
+    // (รองรับข้อมูลเก่าที่เคยเก็บเป็น /uploads/slips/... ซึ่งตอนนี้ย้ายไปโฟลเดอร์ส่วนตัวแล้ว)
+    slipUrl: rec.slip_url ? String(rec.slip_url).replace('/uploads/slips/', '/api/payments/slip/') : null,
     slipStatus: rec.slip_status || '',   // ผลตรวจสลิปอัตโนมัติ
     slipDetail: rec.slip_detail || '',
   };

@@ -8,8 +8,15 @@ const db = require('../db');
 const { buildOrderItems } = require('../lib/order-builder');
 const notify = require('../lib/notify');
 const realtime = require('../lib/realtime');
+const legal = require('../lib/legal');
 
 const router = express.Router();
+
+// ข้อมูลทางกฎหมาย (ชื่อผู้ให้บริการ/อีเมลติดต่อ/เวอร์ชันนโยบาย) — ใช้เติมในหน้าถ้อยแถลง
+router.get('/api/public/legal', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(Object.assign({ ok: true }, legal.publicInfo()));
+});
 
 // ข้อมูลร้าน + เมนูทั้งหมด สำหรับหน้าร้านสาธารณะ /s/:code
 router.get('/api/public/shops/:code', async (req, res) => {

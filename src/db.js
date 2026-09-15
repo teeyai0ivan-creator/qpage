@@ -130,6 +130,9 @@ async function initSchema() {
   await ensureColumn('otp_codes', 'note', 'note VARCHAR(255) NULL');
   await ensureColumn('otp_codes', 'replaced', 'replaced TINYINT(1) NOT NULL DEFAULT 0');
   await ensureColumn('users', 'gift_expires_at', 'gift_expires_at DATETIME NULL');
+  // หลักฐานความยินยอมตาม PDPA: ยอมรับข้อกำหนด/นโยบายเมื่อไร และเวอร์ชันใด
+  await ensureColumn('users', 'terms_accepted_at', 'terms_accepted_at DATETIME NULL');
+  await ensureColumn('users', 'terms_version', "terms_version VARCHAR(20) NULL");
 
   // ประวัติการมอบของขวัญร้านค้า (owner มอบสิทธิ์เจ้าของร้านชั่วคราว)
   await pool.execute(`
@@ -722,6 +725,14 @@ async function updateUserPassword(id, passwordHash) {
   await pool.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, id]);
 }
 
+/** บันทึกหลักฐานความยินยอม (PDPA): วันเวลา + เวอร์ชันนโยบายที่ผู้ใช้ยอมรับ */
+async function recordTermsConsent(userId, version) {
+  await pool.execute(
+    'UPDATE users SET terms_accepted_at = UTC_TIMESTAMP(), terms_version = ? WHERE id = ?',
+    [String(version || ''), Number(userId)]
+  );
+}
+
 async function createPasswordReset({ userId, tokenHash, expiresAt }) {
   await pool.execute('DELETE FROM password_resets WHERE user_id = ?', [userId]);
   const [result] = await pool.execute(
@@ -1198,6 +1209,16 @@ async function findLatestShopPurchase(userId) {
   return rows[0] || null;
 }
 
+/** ประวัติการซื้อแพ็กเกจของผู้ใช้รายหนึ่ง (ใช้ตอนผู้ใช้ขอสำเนาข้อมูลของตัวเองตาม PDPA) */
+async function listPurchasesByUser(userId) {
+  const [rows] = await pool.execute(
+    `SELECT id, package, package_id, amount, status, start_at, expires_at, created_at
+       FROM shop_purchases WHERE user_id = ? ORDER BY id DESC`,
+    [userId]
+  );
+  return rows.map((r) => ({ ...r, amount: Number(r.amount) || 0 }));
+}
+
 /**
  * ประวัติการซื้อแพ็กเกจของลูกค้า (เฉพาะรายการที่ได้สิทธิ์แล้ว)
  * รองรับรายการเก่าที่ซื้อตอนยังไม่เปิดระบบชำระเงิน (ไม่มี payment_id → ถือเป็นโหมดทดลอง)
@@ -1404,8 +1425,18 @@ async function listMyGrants(userId, limit = 50) {
   return rows;
 }
 
-async function markPackagePaymentNotified(id, { slipUrl = '', slipStatus = '', slipDetail = '', slipHash = '' } = {}) {
-  await pool.execute(
+/** หาเจ้าของไฟล์สลิปจากชื่อไฟล์ (รองรับทั้งรูปแบบใหม่ /api/payments/slip/x และข้อมูลเก่า /uploads/slips/x) */
+async function findPaymentBySlipFile(name) {
+  const file = String(name || '').trim();
+  if (!file) return null;
+  const [rows] = await pool.execute(
+    'SELECT id, user_id FROM package_payments WHERE slip_url IN (?, ?) LIMIT 1',
+    ['/api/payments/slip/' + file, '/uploads/slips/' + file]
+  );
+  return rows[0] || null;
+}
+
+async function markPackagePaymentNotified(id, { slipUrl = '', slipStatus = '', slipDetail = '', slipHash = '' } = {}) {  await pool.execute(
     `UPDATE package_payments
         SET notified = 1,
             slip_url = COALESCE(NULLIF(?, ''), slip_url),
@@ -1919,6 +1950,7 @@ module.exports = {
   findEmailTokenByHash,
   markEmailTokenUsed,
   updateUserPassword,
+  recordTermsConsent,
   createPasswordReset,
   findPasswordResetByHash,
   markPasswordResetUsed,
@@ -1967,6 +1999,7 @@ module.exports = {
   setMenuOptionGroups,
   createShopPurchase,
   findLatestShopPurchase,
+  listPurchasesByUser,
   findShopPurchaseById,
   maxActiveEntitlement,
   revokeShopPurchase,
@@ -1985,6 +2018,7 @@ module.exports = {
   listMyPayments,
   listMyGrants,
   markPackagePaymentNotified,
+  findPaymentBySlipFile,
   findPaymentBySlipHash,
   setPackagePaymentSlip,
   setPackagePaymentStatus,
