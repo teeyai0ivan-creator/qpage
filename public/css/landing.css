@@ -124,9 +124,12 @@
   .land-pkg-price .amt { font-size: 32px; }
 }
 
+/* ---------- แถวบนของท้ายเว็บ: โลโก้ซ้าย · ไอคอนโซเชียลชิดขวา (บรรทัดเดียวกัน) ---------- */
+.land-foot-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+.land-footer .land-foot-top .brand-row { margin-bottom: 0; }
 /* ---------- ช่องทางโซเชียลท้ายหน้าเว็บ (แสดงเฉพาะช่องที่กรอกในหลังบ้าน) ---------- */
-.land-social { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 2px 0 16px; }
+.land-social { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 0 auto; }
 .land-social[hidden] { display: none; }
 /* สีไอคอนในปุ่ม — ทับกฎ .land-footer a ด้านบน (รวมตอน hover) ที่ตั้งสีเทา/สีเน้นไว้ */
-.land-footer .social-btn.fb { color: #1877f2; }
+.land-footer .social-btn.fb { color: #fff; }
 .land-footer .social-btn.line { color: #fff; }

@@ -150,8 +150,10 @@
   </section>
 
   <footer class="land-footer">
-    <div class="brand-row"><img src="/img/logo-wordmark.svg" alt="Qpage"></div>
-    <div class="land-social" id="landSocial" hidden></div>
+    <div class="land-foot-top">
+      <div class="brand-row"><img src="/img/logo-wordmark.svg" alt="Qpage"></div>
+      <div class="land-social" id="landSocial" hidden></div>
+    </div>
     <div>
       <a href="privacy.html">นโยบายความเป็นส่วนตัว</a>
       &nbsp;·&nbsp;
@@ -235,7 +237,7 @@
         const data = await (await fetch('/api/public/site')).json();
         const s = (data && data.social) || {};
         const parts = [];
-        if (s.facebook) parts.push('<a class="social-btn fb" href="' + esc(s.facebook) + '" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">' + BRAND_ICON.facebook + '</a>');
+        if (s.facebook) parts.push('<a class="social-btn fb" href="' + esc(s.facebook) + '" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">' + BRAND_ICON.facebookF + '</a>');
         if (s.line) parts.push('<a class="social-btn line" href="' + esc(s.line) + '" target="_blank" rel="noopener" aria-label="LINE" title="LINE">' + BRAND_ICON.line + '</a>');
         if (!parts.length) return; // ยังไม่ได้กรอก → ไม่แสดงไอคอนใด ๆ
         const box = document.getElementById('landSocial');

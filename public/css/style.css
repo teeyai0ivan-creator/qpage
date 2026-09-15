@@ -637,24 +637,24 @@ input.valid { border-color: var(--success); box-shadow: 0 0 0 4px rgba(5, 150, 1
 #emailStep .resend-row { text-align: center; }
 
 /* ---------- ปุ่มโซเชียล (ใช้ร่วม: ท้ายหน้าเว็บหลัก + ตัวอย่างในหลังบ้าน) ----------
-   ไอคอนเป็น "มาร์กมาตรฐานของแบรนด์" (path จาก /js/brand-icons.js) ไม่ได้วาดขึ้นเอง
-   - Facebook: มาร์กเป็นวงกลมทึบในตัว → พื้นปุ่มสีขาว แล้วปล่อยให้ตัว f ทะลุออกมาเป็นสีขาว (แบบเดียวกับโลโก้จริง)
-   - LINE: ตัวมาร์กเป็นกรอบข้อความที่มีตัวอักษรเจาะเป็นรู → พื้นปุ่มสีเขียว ตัวอักษรจึงออกมาเป็นสีเขียว
+   ทรงสี่เหลี่ยมมุมมน · ไอคอนเป็น "มาร์กมาตรฐานของแบรนด์" (path จาก /js/brand-icons.js) ไม่ได้วาดขึ้นเอง
+   - Facebook: พื้นน้ำเงิน + ตัวอักษร f สีขาว (โลโก้ f เดี่ยวจาก Font Awesome Free)
+   - LINE: พื้นเขียว + กรอบข้อความสีขาว ตัวอักษร LINE เจาะเป็นรูเห็นเป็นสีเขียว (แบบไอคอนแอป)
    พื้นสีแบรนด์ถูกเลือกให้ตัดกับพื้นหลังหน้าเว็บ ≥ 3:1 ทั้งโหมดสว่างและมืด (เขียว LINE เข้มกว่า #06c755 เล็กน้อย เพราะสีแบรนด์แท้ ๆ ตัดกับพื้นสว่างเพียง 2:1) */
 .social-btn {
-  width: 42px; height: 42px; border-radius: 50%; flex: none;
+  width: 42px; height: 42px; border-radius: 11px; flex: none;
   display: inline-flex; align-items: center; justify-content: center;
   text-decoration: none; line-height: 0;
   transition: transform .15s ease, box-shadow .15s ease;
 }
-.social-btn svg { width: 34px; height: 34px; }
 .social-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .18); }
 .social-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.social-btn.fb { background: #fff; color: #1877f2; }
-.social-btn.fb svg { width: 42px; height: 42px; } /* มาร์กเป็นวงกลมเต็มปุ่ม */
+.social-btn.fb { background: #1877f2; color: #fff; }
+.social-btn.fb svg { height: 23px; width: auto; } /* ตัวอักษร f (สูงกว่ากว้าง) */
 .social-btn.line { background: #059c45; color: #fff; }
+.social-btn.line svg { width: 25px; height: 25px; }
 @media (max-width: 480px) {
-  .social-btn { width: 40px; height: 40px; }
-  .social-btn svg { width: 32px; height: 32px; }
-  .social-btn.fb svg { width: 40px; height: 40px; }
+  .social-btn { width: 40px; height: 40px; border-radius: 10px; }
+  .social-btn.fb svg { height: 21px; }
+  .social-btn.line svg { width: 23px; height: 23px; }
 }
