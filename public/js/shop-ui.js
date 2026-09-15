@@ -37,16 +37,13 @@
       + `</div>`;
   };
 
-  // แยกชิ้นปุ่มสำหรับหน้าปกแบบตาราง (หน้าสั่งอาหารของลูกค้า): LINE แถวบน · เบอร์+แผนที่ แถวล่าง ขวาสุด
-  window.pubContactLineChip = (shop) => {
-    const s = shop || {};
-    // จอแคบใช้ป้ายสั้น "LINE" (สลับด้วย CSS .only-wide/.only-narrow) เพื่อไม่ให้ป้ายตกบรรทัดใหม่
-    const lineText = '<span class="only-wide">LINE ร้านค้า</span><span class="only-narrow">LINE</span>';
-    return s.line_url ? chipHtml('', s.line_url, ' line pub-line-chip', ICON_CHAT, lineText, true) : '';
-  };
+  // ชุดปุ่มติดต่อสำหรับหน้าปกแบบตาราง (หน้าสั่งอาหารของลูกค้า) — เรียงเป็นแถวเดียว: LINE · เบอร์โทร · แผนที่
   window.pubContactInfoChips = (shop) => {
     const s = shop || {};
+    // จอแคบใช้ป้ายสั้น "LINE" (สลับด้วย CSS .only-wide/.only-narrow) เพื่อให้ปุ่มอยู่ในแถวเดียวได้
+    const lineText = '<span class="only-wide">LINE ร้านค้า</span><span class="only-narrow">LINE</span>';
     return [
+      s.line_url ? chipHtml('', s.line_url, ' line', ICON_CHAT, lineText, true) : '',
       s.phone ? chipHtml('', 'tel:' + s.phone, '', ICON_PHONE, esc(s.phone), false) : '',
       s.maps_url ? chipHtml('', s.maps_url, '', ICON_PIN, 'ดูแผนที่', true) : '',
     ].join('');

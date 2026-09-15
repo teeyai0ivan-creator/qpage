@@ -240,12 +240,12 @@
 /* หน้าที่มีแถวล่าง (โต๊ะ/บิล) → ให้คอลัมน์ซ้าย-ขวาชิดขอบล่าง แถวล่างจึงตรงแนวกัน */
 .pub-hero-inner.pub-end { align-items: flex-end; }
 /* ปกแบบตาราง 2 แถว (หน้าสั่งอาหารลูกค้า) — โลโก้กินสองแถวฝั่งซ้าย
-   แถวล่าง: เลขโต๊ะ/บิล (ซ้าย) · ปุ่มรายการทั้งหมด · ปุ่มเบอร์โทร+แผนที่ (ขวา) อยู่แถวเดียวกัน */
+   แถวล่าง: เลขโต๊ะ/บิล (ซ้าย) · ปุ่มรายการทั้งหมด · แถวปุ่มติดต่อ LINE/เบอร์โทร/แผนที่ (ขวา) อยู่แถวเดียวกัน */
 .pub-hero-inner.pub-grid {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "logo name  line  line"
+    "logo name  name  name"
     "logo meta  bill  chips";
   align-items: center;
   column-gap: 10px;
@@ -253,9 +253,9 @@
 }
 .pub-hero-inner.pub-grid .pub-logo { grid-area: logo; align-self: center; }
 .pub-hero-inner.pub-grid h1 { grid-area: name; margin: 0; min-width: 0; line-height: 1.25; }
-.pub-hero-inner.pub-grid .pub-line-chip { grid-area: line; justify-self: end; }
 .pub-hero-inner.pub-grid .pub-head-sub { grid-area: meta; margin: 0; min-height: 0; }
 .pub-hero-inner.pub-grid .bill-pill { grid-area: bill; justify-self: start; }
+/* แถวปุ่มติดต่อ: LINE · เบอร์โทร · แผนที่ (เรียงซ้าย→ขวา ชิดขวาของปก) */
 .pub-hero-inner.pub-grid .pub-chips { grid-area: chips; justify-self: end; display: flex; gap: 8px; flex-wrap: wrap; }
 .pub-logo { width: 92px; height: 92px; border-radius: 20px; object-fit: cover; background: rgba(255,255,255,.2); flex-shrink: 0; }
 .pub-hero h1 { font-size: 26px; font-weight: 800; }
@@ -542,17 +542,16 @@ button.cart-info strong { color: var(--text); }
   .bill-pill { margin-top: 0; padding: 6px 11px; font-size: 12px; }
   .pub-menu img { width: 76px; height: 76px; }
   /* ปกแบบตารางบนมือถือ: ใช้ flex เรียงใหม่ —
-     แถว 1: โลโก้ + ชื่อร้าน (ซ้าย) · LINE (ขวา) | แถว 2: เลขโต๊ะ/บิล (ซ้าย) · เบอร์+แผนที่ (ขวา) | แถว 3: ปุ่มรายการทั้งหมด */
+     แถว 1: โลโก้ + ชื่อร้าน | แถว 2: เลขโต๊ะ/บิล (ซ้าย) · ปุ่มติดต่อ LINE/เบอร์/แผนที่ (ขวา) | แถว 3: ปุ่มรายการทั้งหมด */
   .pub-hero-inner.pub-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .pub-hero-inner.pub-grid .pub-logo { flex: 0 0 auto; }
   .pub-hero-inner.pub-grid h1 { flex: 1 1 auto; font-size: 20px; }
-  .pub-hero-inner.pub-grid .pub-line-chip { margin-left: auto; padding: 6px 10px; }
   .pub-hero-inner.pub-grid .pub-head-sub { flex: 0 0 auto; }
   .pub-hero-inner.pub-grid .pub-chips { flex: 0 0 auto; margin-left: auto; order: 1; }
   .pub-hero-inner.pub-grid .pub-chips .pub-chip { padding: 6px 10px; }
   .pub-hero-inner.pub-grid .bill-pill { flex: 0 0 auto; margin-left: auto; order: 2; }
   .pub-hero-inner.pub-grid .pub-meta { font-size: 13px; }
-  /* จอแคบ: ใช้ป้ายสั้น เพื่อให้ปุ่ม LINE ยังอยู่แถวเดียวกับชื่อร้าน */
+  /* จอแคบ: ใช้ป้ายสั้น "LINE" เพื่อให้ปุ่มติดต่ออยู่ในแถวเดียวได้ */
   .pub-chip .only-wide { display: none; }
   .pub-chip .only-narrow { display: inline; }
 }
