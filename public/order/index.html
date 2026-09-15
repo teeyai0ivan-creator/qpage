@@ -428,10 +428,10 @@
         S.bill = data.bill;
         if (cartModal.classList.contains('show')) closeCart();
         render();
-        alert('ส่งออเดอร์แล้ว ✓');
+        uiAlert({ title: 'ส่งออเดอร์แล้ว', message: 'ร้านได้รับรายการของคุณแล้ว — สั่งเพิ่มได้เรื่อย ๆ จนกว่าร้านจะเช็คบิล' });
       } catch (err) {
-        if (err.status === 409) { alert(err.message || 'บิลนี้ถูกเช็คบิลแล้ว'); leaveToShop(); return; }
-        alert(err.message || 'ส่งออเดอร์ไม่สำเร็จ');
+        if (err.status === 409) { await uiAlert({ title: 'บิลนี้ถูกเช็คบิลแล้ว', message: err.message || 'ร้านเช็คบิลไปแล้ว กรุณาสแกน QR ใหม่' }); leaveToShop(); return; }
+        uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message || 'ส่งออเดอร์ไม่สำเร็จ' });
         btns.forEach((b) => { b.disabled = false; });
       }
     }
@@ -461,13 +461,14 @@
         </div>`;
       }).join('');
       box.querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ยกเลิกรายการนี้?')) return;
+        const okCancel = await uiConfirm({ title: 'ยกเลิกรายการนี้?', message: 'รายการนี้จะถูกยกเลิกและไม่ถูกคิดเงิน', okText: 'ยกเลิกรายการ', danger: true });
+        if (!okCancel) return;
         b.disabled = true;
         try {
           const data = await api('/api/public/order/' + encodeURIComponent(token) + '/items/' + b.dataset.cancel + '/cancel', { method: 'POST' });
           S.bill = data.bill;
           render();
-        } catch (err) { alert(err.message); b.disabled = false; }
+        } catch (err) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message }); b.disabled = false; }
       }));
     }
     function openBill() { renderBill(); billModal.classList.add('show'); }

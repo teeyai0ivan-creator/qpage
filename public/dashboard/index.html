@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/settings.css">
   <script src="../js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -355,12 +356,12 @@
         } else {
           btn.textContent = 'ส่งลิงก์ยืนยันอีเมล';
           btn.disabled = false;
-          alert(data.message || 'ส่งไม่สำเร็จ');
+          uiAlert({ title: 'ส่งไม่สำเร็จ', message: data.message || 'กรุณาลองใหม่อีกครั้ง' });
         }
       } catch {
         btn.textContent = 'ส่งลิงก์ยืนยันอีเมล';
         btn.disabled = false;
-        alert('ไม่สามารถติดต่อเซิร์ฟเวอร์ได้');
+        uiAlert({ title: 'เชื่อมต่อไม่สำเร็จ', message: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง' });
       }
     });
 
@@ -419,7 +420,7 @@
         if (!data.ok) {
           if (data.field === 'currentPassword') showFieldErr('errCurrent', data.message);
           else if (data.field === 'newPassword') showFieldErr('errNew', data.message);
-          else alert(data.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ');
+          else uiAlert({ title: 'เปลี่ยนรหัสผ่านไม่สำเร็จ', message: data.message || 'กรุณาตรวจสอบรหัสผ่านเดิมแล้วลองใหม่' });
           return;
         }
         const box = document.getElementById('pwSuccess');
@@ -429,7 +430,7 @@
         strengthBars.forEach((bar) => { bar.style.background = 'var(--border)'; });
         strengthLabel.textContent = 'ความแข็งแรงของรหัสผ่าน';
       } catch {
-        alert('ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่');
+        uiAlert({ title: 'เชื่อมต่อไม่สำเร็จ', message: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง' });
       } finally {
         btn.disabled = false;
         btn.classList.remove('loading');
@@ -455,10 +456,10 @@
       try {
         const res = await fetch('/api/logout-all', { method: 'POST' });
         const data = await res.json();
-        if (!data.ok) { alert(data.message || 'ทำไม่สำเร็จ'); return; }
-        alert('ออกจากระบบทุกเครื่องแล้ว (ยกเว้นเครื่องนี้)');
+        if (!data.ok) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: data.message || 'กรุณาลองใหม่อีกครั้ง' }); return; }
+        uiAlert({ title: 'ออกจากระบบทุกเครื่องแล้ว', message: 'เครื่องอื่นทั้งหมดถูกออกจากระบบแล้ว (ยกเว้นเครื่องนี้)' });
       } catch {
-        alert('ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่');
+        uiAlert({ title: 'เชื่อมต่อไม่สำเร็จ', message: 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง' });
       } finally {
         btn.disabled = false;
         btn.classList.remove('loading');

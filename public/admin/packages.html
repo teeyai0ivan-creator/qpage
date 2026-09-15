@@ -244,9 +244,12 @@
       addDetailRow();
     });
 
-    document.getElementById('suggestBtn').addEventListener('click', () => {
+    document.getElementById('suggestBtn').addEventListener('click', async () => {
       const hasContent = collectDetails().some((d) => d.heading || d.text);
-      if (hasContent && !confirm('แทนที่รายละเอียดปัจจุบันด้วยข้อความแนะนำการตลาด?')) return;
+      if (hasContent) {
+        const okFill = await uiConfirm({ title: 'แทนที่รายละเอียดปัจจุบัน?', message: 'ข้อความเดิมในช่องรายละเอียดจะถูกแทนที่ด้วยข้อความแนะนำการตลาด', okText: 'แทนที่' });
+        if (!okFill) return;
+      }
       setDetailRows(SUGGESTIONS);
       showToast(ICON_CHECK + 'ใส่ข้อความแนะนำแล้ว — แก้ไข/ลบหัวข้อได้ตามต้องการ');
     });
@@ -308,7 +311,8 @@
       box.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => startEdit(b.dataset.edit)));
       box.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
         const p = packages.find((x) => Number(x.id) === Number(b.dataset.del));
-        if (!confirm('ลบแพ็กเกจ "' + (p ? p.name : '') + '" ?')) return;
+        const okDelPkg = await uiConfirm({ title: 'ลบแพ็กเกจ "' + (p ? p.name : '') + '" ?', message: 'แพ็กเกจนี้จะถูกซ่อน/ลบออกจากรายการ', okText: 'ลบ', danger: true });
+        if (!okDelPkg) return;
         try {
           await api('/api/owner/packages/' + b.dataset.del, { method: 'DELETE' });
           showToast(ICON_CHECK + 'ลบแพ็กเกจแล้ว');
@@ -350,5 +354,6 @@
     loadPackages().catch((err) => showToast(ICON_ALERT + esc(err.message)));
   </script>
   <script src="/js/side-menu.js" data-key="qpage_admin_menu" data-panel=".admin-sidebar"></script>
+  <script src="/js/shop-ui.js"></script>
 </body>
 </html>

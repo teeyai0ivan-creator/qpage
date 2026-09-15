@@ -423,7 +423,8 @@
       if (delId) {
         const g = groups.find((x) => String(x.id) === delId);
         if (!g) return;
-        if (!confirm(`ลบกลุ่ม "${g.name}" ?`)) return;
+        const okDel = await uiConfirm({ title: `ลบกลุ่ม "${g.name}" ?`, message: 'การแจ้งเตือนของกลุ่มนี้จะหยุดลง', okText: 'ลบ', danger: true });
+        if (!okDel) return;
         try { const r = await postJson('/api/shop/notify-groups/' + delId, {}, 'DELETE'); toast(r.message || 'ลบแล้ว'); await load(); }
         catch (err) { toast(err.message); }
         return;

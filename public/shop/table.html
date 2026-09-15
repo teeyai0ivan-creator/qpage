@@ -200,9 +200,10 @@
       document.getElementById('tdWarn').textContent = uncleared ? `⚠ ยังมีรายการรอทำ/กำลังทำ ${uncleared} รายการ — เช็คบิลไม่ได้` : '';
 
       document.querySelectorAll('[data-delitem]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ลบรายการนี้ออกจากบิล?')) return;
+        const okDel = await uiConfirm({ title: 'ลบรายการนี้ออกจากบิล?', message: 'รายการจะถูกนำออกจากบิลและคิดยอดเงินใหม่', okText: 'ลบ', danger: true });
+        if (!okDel) return;
         try { await api('/api/shop/order-items/' + b.dataset.delitem, { method: 'DELETE' }); toast('ลบรายการแล้ว'); await load(); }
-        catch (e) { alert(e.message); }
+        catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
     }
 
@@ -236,7 +237,7 @@
         await putJson('/api/shop/table-names/' + zoneNameId, { zoneId: Number(sel.value) || 0 });
         toast('ย้ายโซนแล้ว');
         await load();
-      } catch (err) { alert(err.message); } finally { sel.disabled = false; }
+      } catch (err) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message }); } finally { sel.disabled = false; }
     });
 
     document.getElementById('tdPrint').addEventListener('click', () => {
@@ -244,18 +245,19 @@
     });
     document.getElementById('tdRename').addEventListener('click', async () => {
       if (!table) return;
-      const code = prompt('ชื่อโต๊ะใหม่', table.code);
+      const code = await uiPrompt({ title: 'เปลี่ยนชื่อโต๊ะ', label: 'ชื่อโต๊ะใหม่', value: table.code, maxLength: 30, placeholder: 'เช่น 1, A2, โต๊ะริมหน้าต่าง' });
       if (!code || !code.trim()) return;
       try { await putJson('/api/shop/tables/' + table.id, { code: code.trim() }); toast('บันทึกแล้ว'); await load(); }
-      catch (e) { alert(e.message); }
+      catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     });
     document.getElementById('tdDelete').addEventListener('click', async () => {
       if (!table) return;
-      if (!confirm(`ปิดใช้งาน QR ของโต๊ะ "${table.code}" ?\n\nQR นี้จะสแกนไม่ได้อีกและใช้ซ้ำไม่ได้ · โต๊ะจะหายจากหน้าสั่งอาหาร แต่ยังดูย้อนหลังได้ในหน้า "ประวัติ" (แท็บ QR โต๊ะ)`)) return;
+      const okRetire = await uiConfirm({ title: `ปิดใช้งาน QR ของโต๊ะ "${table.code}" ?`, message: 'QR นี้จะสแกนไม่ได้อีกและใช้ซ้ำไม่ได้ · โต๊ะจะหายจากหน้าสั่งอาหาร แต่ยังดูย้อนหลังได้ในหน้า "ประวัติ" (แท็บ QR โต๊ะ)', okText: 'ปิดใช้งาน QR', danger: true });
+      if (!okRetire) return;
       try { await api('/api/shop/tables/' + table.id, { method: 'DELETE' }); toast('ปิดใช้งาน QR แล้ว'); leaveToOrders(); }
-      catch (e) { alert(e.message); }
+      catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     });
-    document.getElementById('tdRefresh').addEventListener('click', async () => { try { await load(); toast('อัปเดตแล้ว'); } catch (e) { alert(e.message); } });
+    document.getElementById('tdRefresh').addEventListener('click', async () => { try { await load(); toast('อัปเดตแล้ว'); } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); } });
 
     // เช็คบิล: ปิดบิล + เปิดใบเสร็จให้พิมพ์ แล้วกลับหน้าสั่งอาหาร
     document.getElementById('tdCheckout').addEventListener('click', async () => {
@@ -263,7 +265,8 @@
       const items = (bill && bill.items) ? bill.items : [];
       if (!items.length) return;
       const total = bill ? bill.total : 0;
-      if (!confirm(`ยืนยันเช็คบิลโต๊ะ "${table.code}" ?\n\nยอดรวม ${money(total)} · ${platesOf(items.filter((i) => i.status !== 'cancelled'))} รายการ\nหลังเช็คบิลจะเปิดหน้าใบเสร็จให้พิมพ์`)) return;
+      const okCheckout = await uiConfirm({ title: `เช็คบิลโต๊ะ "${table.code}" ?`, message: `ยอดรวม ${money(total)} · ${platesOf(items.filter((i) => i.status !== 'cancelled'))} รายการ\nหลังเช็คบิลจะเปิดหน้าใบเสร็จให้พิมพ์`, okText: 'เช็คบิล' });
+      if (!okCheckout) return;
       const win = openBlankTab(); // เปิดแท็บล่วงหน้า กันป๊อปอัปถูกบล็อก
       try {
         const r = await postJson('/api/shop/tables/' + table.id + '/checkout');
@@ -275,7 +278,7 @@
         else location.href = url;                            // ป๊อปอัปถูกบล็อก → แสดงใบเสร็จในแท็บนี้เลย (ไม่ต้องกลับหน้าสั่งอาหาร) 
       } catch (e) {
         if (win) win.close();
-        alert(e.message);
+        uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message });
       }
     });
 

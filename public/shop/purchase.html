@@ -203,7 +203,7 @@
       const btn = document.getElementById('notifyBtn');
       const input = document.getElementById('slipFile');
       const file = input && input.files && input.files[0];
-      if (file && file.size > 2 * 1024 * 1024) { alert('ไฟล์สลิปใหญ่เกิน 2MB กรุณาย่อรูปก่อน'); return; }
+      if (file && file.size > 2 * 1024 * 1024) { uiAlert({ title: 'แจ้งเตือน', message: 'ไฟล์สลิปใหญ่เกิน 2MB กรุณาย่อรูปก่อน' }); return; }
       btn.disabled = true;
       const oriText = btn.textContent;
       // การตรวจสลิปกับ EasySlip อาจใช้เวลาถึง 30 วินาที — แสดงสถานะให้ชัด กันลูกค้ากดซ้ำ
@@ -220,7 +220,7 @@
         payment.notified = true;
         renderPayment(data.message);
       } catch (err) {
-        alert(err.message);
+        uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message });
         btn.disabled = false;
         btn.textContent = oriText; // คืนข้อความปุ่ม ให้กดแจ้งใหม่ได้
         // รายการอาจถูกยกเลิก/หมดเวลาไปแล้ว — ดึงสถานะจริงมาแสดงใหม่ให้ตรง
@@ -256,7 +256,7 @@
       } catch (err) {
         const errEl = document.querySelector('[data-err="' + pkg.id + '"]');
         if (errEl) { errEl.textContent = err.message; errEl.style.display = 'block'; }
-        else alert(err.message);
+        else uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message });
         if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
       }
     }

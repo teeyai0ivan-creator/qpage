@@ -43,4 +43,118 @@
     try { w.location.href = url; } catch (e) { location.href = url; return; }
     setTimeout(() => { try { if (w.location.href === 'about:blank') w.location.href = url; } catch (e) { /* ข้าม */ } }, 800);
   };
+
+  // ---------------------------------------------------------------------------
+  // กล่องยืนยัน / แจ้งเตือน / กรอกข้อความ — หน้าตาเป็น UI ของเว็บ (ไม่ใช้กล่องของเบราว์เซอร์)
+  // ใช้: await uiConfirm({ title, message, ok, cancel, danger }) → true/false
+  //      await uiPrompt({ title, label, value, ok })               → ข้อความ/ null
+  //      await uiAlert({ title, message, ok })                     → true
+  // ---------------------------------------------------------------------------
+  const DIALOG_CSS = [
+    '.uidlg-overlay{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;padding:18px;z-index:300;opacity:0;transition:opacity .15s ease;}',
+    '.uidlg-overlay.show{opacity:1;}',
+    '.uidlg{width:100%;max-width:420px;background:var(--surface,#fff);color:var(--text,#101828);border-radius:16px;box-shadow:0 18px 44px rgba(16,24,40,.22);padding:22px;font-family:var(--font,"Sarabun",Tahoma,Arial,sans-serif);transform:translateY(6px);transition:transform .15s ease;}',
+    '.uidlg-overlay.show .uidlg{transform:translateY(0);}',
+    '.uidlg h3{margin:0;font-size:17px;font-weight:800;letter-spacing:-.2px;}',
+    '.uidlg p{margin:9px 0 0;font-size:13.5px;color:var(--muted,#667085);line-height:1.75;white-space:pre-line;}',
+    '.uidlg-body{margin-top:14px;}',
+    '.uidlg-body label{display:block;font-size:13px;font-weight:600;color:var(--text,#101828);margin-bottom:7px;}',
+    '.uidlg-body input{width:100%;box-sizing:border-box;font-family:inherit;font-size:15px;padding:11px 14px;border-radius:10px;border:1px solid var(--border,#e4e7ec);background:var(--surface,#fff);color:var(--text,#101828);outline:none;}',
+    '.uidlg-body input:focus{border-color:var(--accent,#6366f1);box-shadow:0 0 0 3px var(--ring,rgba(99,102,241,.18));}',
+    '.uidlg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}',
+    '.uidlg-btn{font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:10px;border:1px solid var(--border-strong,#d0d5dd);background:var(--surface,#fff);color:var(--text,#101828);cursor:pointer;}',
+    '.uidlg-btn:hover{background:var(--surface-hover,#f2f4f7);}',
+    '.uidlg-btn.primary{background:var(--accent-gradient,linear-gradient(135deg,#6366f1,#8b5cf6));border:none;color:#fff;}',
+    '.uidlg-btn.danger{background:var(--danger,#d92d20);border:none;color:#fff;}',
+  ].join('');
+
+  function uiDialog(opts) {
+    const o = opts || {};
+    if (!document.getElementById('uidlgStyle')) {
+      const st = document.createElement('style');
+      st.id = 'uidlgStyle';
+      st.textContent = DIALOG_CSS;
+      document.head.appendChild(st);
+    }
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'uidlg-overlay';
+      const box = document.createElement('div');
+      box.className = 'uidlg';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-modal', 'true');
+
+      const h = document.createElement('h3');
+      h.textContent = o.title || (o.input ? 'กรอกข้อมูล' : (o.cancel ? 'ยืนยัน' : 'แจ้งเตือน'));
+      box.appendChild(h);
+
+      if (o.message) {
+        const p = document.createElement('p');
+        p.textContent = o.message;
+        box.appendChild(p);
+      }
+
+      let input = null;
+      if (o.input) {
+        const body = document.createElement('div');
+        body.className = 'uidlg-body';
+        const lb = document.createElement('label');
+        lb.textContent = o.label || '';
+        input = document.createElement('input');
+        input.type = 'text';
+        input.value = o.value == null ? '' : String(o.value);
+        input.maxLength = o.maxLength || 60;
+        input.setAttribute('autocomplete', 'off');
+        if (o.placeholder) input.placeholder = o.placeholder;
+        body.appendChild(lb);
+        body.appendChild(input);
+        box.appendChild(body);
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'uidlg-actions';
+      let cancelBtn = null;
+      if (o.cancel !== false) {
+        cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'uidlg-btn cancel';
+        cancelBtn.textContent = o.cancelText || 'ยกเลิก';
+        actions.appendChild(cancelBtn);
+      }
+      const okBtn = document.createElement('button');
+      okBtn.type = 'button';
+      okBtn.className = 'uidlg-btn ' + (o.danger ? 'danger' : 'primary') + ' ok';
+      okBtn.textContent = o.okText || (o.cancel === false ? 'ตกลง' : 'ยืนยัน');
+      actions.appendChild(okBtn);
+      box.appendChild(actions);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      let done = false;
+      function close(result) {
+        if (done) return;
+        done = true;
+        document.removeEventListener('keydown', onKey);
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 160);
+        resolve(result);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); close(o.input ? null : (o.cancel === false ? true : false)); }
+      }
+      okBtn.addEventListener('click', () => close(o.input ? (input.value.trim() || null) : true));
+      if (cancelBtn) cancelBtn.addEventListener('click', () => close(o.input ? null : false));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(o.input ? null : (o.cancel === false ? true : false)); });
+      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); okBtn.click(); } });
+      document.addEventListener('keydown', onKey);
+
+      requestAnimationFrame(() => overlay.classList.add('show'));
+      if (input) setTimeout(() => { input.focus(); input.select(); }, 60);
+      else setTimeout(() => okBtn.focus(), 60);
+    });
+  }
+
+  window.uiConfirm = (opts) => uiDialog(Object.assign({ cancel: true }, opts));
+  window.uiAlert = (opts) => uiDialog(Object.assign({ cancel: false, okText: 'ตกลง' }, opts));
+  window.uiPrompt = (opts) => uiDialog(Object.assign({ input: true, cancel: true, okText: 'บันทึก' }, opts));
 })();

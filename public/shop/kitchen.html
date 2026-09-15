@@ -284,7 +284,7 @@
           const r = await api('/api/shop/order-items/' + b.dataset.set + '/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: b.dataset.status }) });
           toast(r.message || 'อัปเดตแล้ว');
           await load();
-        } catch (e) { alert(e.message); b.disabled = false; }
+        } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); b.disabled = false; }
       }));
       box.querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', () => openCancel(Number(b.dataset.cancel), b.dataset.name)));
       tickTimers();
@@ -356,7 +356,7 @@
       document.querySelectorAll('[data-group]').forEach((x) => x.classList.toggle('primary', x === b));
       render();
     }));
-    document.getElementById('refreshBtn').addEventListener('click', () => load().catch((e) => alert(e.message)));
+    document.getElementById('refreshBtn').addEventListener('click', () => load().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
 
     // ---------- ยกเลิกรายการ (ครัว) + เลือกสาเหตุ ----------
     const cancelModal = document.getElementById('cancelModal');
@@ -392,7 +392,7 @@
         toast(r.message || 'ยกเลิกแล้ว');
         closeCancel();
         await load();
-      } catch (err) { alert(err.message); }
+      } catch (err) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message }); }
       finally { btn.disabled = false; }
     });
 

@@ -385,7 +385,7 @@
         // ปิดป๊อปอัปยืนยันทุกกรณี ไม่งั้นจะค้างทับหน้าจออยู่
         closeCheckout();
         if (receiptWin) receiptWin.close();
-        alert(err.message);
+        uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message });
       } finally { btn.disabled = false; }
     });
 
@@ -439,10 +439,11 @@
       box.querySelectorAll('[data-checkout]').forEach((b) => b.addEventListener('click', () => openCheckout(Number(b.dataset.checkout))));
       box.querySelectorAll('[data-detail]').forEach((b) => b.addEventListener('click', () => openBillDetail(Number(b.dataset.detail))));
       box.querySelectorAll('[data-delitem]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ลบรายการนี้ออกจากบิล?')) return;
+        const okDel = await uiConfirm({ title: 'ลบรายการนี้ออกจากบิล?', message: 'รายการจะถูกนำออกจากบิลและคิดยอดเงินใหม่', okText: 'ลบ', danger: true });
+        if (!okDel) return;
         b.disabled = true;
         try { await api('/api/shop/order-items/' + b.dataset.delitem, { method: 'DELETE' }); toast('ลบรายการแล้ว'); await loadAll(); }
-        catch (e) { alert(e.message); b.disabled = false; }
+        catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); b.disabled = false; }
       }));
       box.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => openAdd(Number(b.dataset.add))));
       tickTimers();
@@ -528,7 +529,7 @@
         await api('/api/shop/zones/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: arr.map((z) => z.id) }) });
         await loadTableNames();
         renderZones(); renderNameSuggest();
-      } catch (e) { alert(e.message); }
+      } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     }
 
     function renderZones() {
@@ -545,7 +546,7 @@
       box.querySelectorAll('[data-zup]').forEach((b) => b.addEventListener('click', () => moveZone(b.dataset.zup, -1)));
       box.querySelectorAll('[data-zdown]').forEach((b) => b.addEventListener('click', () => moveZone(b.dataset.zdown, 1)));
       box.querySelectorAll('[data-zren]').forEach((b) => b.addEventListener('click', async () => {
-        const name = prompt('ชื่อโซนใหม่', b.dataset.name);
+        const name = await uiPrompt({ title: 'เปลี่ยนชื่อโซน', label: 'ชื่อโซนใหม่', value: b.dataset.name, maxLength: 60 });
         if (!name || !name.trim()) return;
         try {
           const r = await api('/api/shop/zones/' + b.dataset.zren, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }) });
@@ -554,7 +555,8 @@
         } catch (e) { showErr('zoneErr', e.message); }
       }));
       box.querySelectorAll('[data-zdel]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm(`ลบโซน "${b.dataset.name}" ? (โต๊ะในโซนนี้จะกลายเป็นไม่ระบุโซน)`)) return;
+        const okDelZone = await uiConfirm({ title: `ลบโซน "${b.dataset.name}" ?`, message: 'โต๊ะในโซนนี้จะกลายเป็น "ไม่ระบุโซน" (โต๊ะและ QR ไม่หาย)', okText: 'ลบ', danger: true });
+        if (!okDelZone) return;
         try {
           const r = await api('/api/shop/zones/' + b.dataset.zdel, { method: 'DELETE' });
           toast(r.message || 'ลบแล้ว');
@@ -580,8 +582,12 @@
     // สร้าง QR — ถามยืนยันก่อนทุกครั้ง (กันเผลอกดโดนช่อง/ปุ่ม แล้วออก QR ผิดโต๊ะ)
     async function createQr(body, label) {
       const who = label ? `โต๊ะ "${label}"` : 'โต๊ะนี้';
-      const ask = `ยืนยันสร้าง QR ให้ ${who} ?\n\nระบบจะออก QR ใหม่ (ใช้เฉพาะโต๊ะนี้) — ถ้าต้องการยกเลิกภายหลัง กดปิดใช้งาน QR ของโต๊ะนั้นได้ (ยังดูย้อนหลังได้ในหน้า "ประวัติ")`;
-      if (!confirm(ask)) return false;
+      const okCreate = await uiConfirm({
+        title: `สร้าง QR ให้ ${who} ?`,
+        message: 'ระบบจะออก QR ใหม่ (ใช้เฉพาะโต๊ะนี้) — ถ้าต้องการยกเลิกภายหลัง กดปิดใช้งาน QR ของโต๊ะนั้นได้ (ยังดูย้อนหลังได้ในหน้า "ประวัติ")',
+        okText: 'สร้าง QR',
+      });
+      if (!okCreate) return false;
       showErr('newQrErr', '');
       try {
         const r = await api('/api/shop/tables', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -599,7 +605,7 @@
         showErr('newQrErr', '');
         document.getElementById('newQrName').value = '';
         document.getElementById('newQrModal').classList.add('show');
-      } catch (e) { alert(e.message); }
+      } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     });
     document.getElementById('newQrCreate').addEventListener('click', () => {
       const name = document.getElementById('newQrName').value.trim();
@@ -616,7 +622,7 @@
         showErr('zoneErr', '');
         document.getElementById('newZoneInput').value = '';
         document.getElementById('namesModal').classList.add('show');
-      } catch (e) { alert(e.message); }
+      } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     });
     document.getElementById('addZoneBtn').addEventListener('click', async () => {
       const el = document.getElementById('newZoneInput');
@@ -633,7 +639,7 @@
     document.getElementById('namesClose').addEventListener('click', () => document.getElementById('namesModal').classList.remove('show'));
     document.getElementById('namesModal').addEventListener('click', (e) => { if (e.target.id === 'namesModal') e.currentTarget.classList.remove('show'); });
     document.getElementById('refreshBtn').addEventListener('click', async () => {
-      try { await loadAll(); toast('อัปเดตข้อมูลแล้ว'); } catch (e) { alert(e.message); }
+      try { await loadAll(); toast('อัปเดตข้อมูลแล้ว'); } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     });
 
     // โหลดใหม่เป็นระยะ (เห็นออเดอร์ใหม่โดยไม่ต้องกดเอง)
@@ -660,7 +666,7 @@
     }
 
     function openAdd(tableId) {
-      if (!shopData) { alert('ยังโหลดข้อมูลร้านไม่เสร็จ'); return; }
+      if (!shopData) { uiAlert({ title: 'แจ้งเตือน', message: 'ยังโหลดข้อมูลร้านไม่เสร็จ' }); return; }
       addTableId = tableId; addQty = 1;
       document.getElementById('addQtyValue').textContent = '1';
       document.getElementById('addErr').style.display = 'none';
@@ -698,7 +704,7 @@
       finally { btn.disabled = false; }
     });
 
-    loadAll().catch((e) => alert(e.message));
+    loadAll().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }));
     setInterval(() => { loadBills().then(() => renderTableGrid()).catch(() => {}); }, 20000);
   </script>
 </body>

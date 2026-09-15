@@ -229,7 +229,7 @@
         showTab('bills');
         const sel = document.getElementById('fTable');
         sel.value = b.dataset.bills;
-        loadHistory().catch((e) => alert(e.message));
+        loadHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }));
       }));
     }
 
@@ -279,8 +279,8 @@
         </details>`).join('');
     }
 
-    document.getElementById('fTable').addEventListener('change', () => loadHistory().catch((e) => alert(e.message)));
-    document.getElementById('fLimit').addEventListener('change', () => loadHistory().catch((e) => alert(e.message)));
+    document.getElementById('fTable').addEventListener('change', () => loadHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
+    document.getElementById('fLimit').addEventListener('change', () => loadHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
 
     document.getElementById('exportBtn').addEventListener('click', () => {
       if (!lastOrders.length) { toast('ไม่มีข้อมูลให้ออก'); return; }

@@ -278,37 +278,38 @@
           await api('/api/shop/categories/' + sel.dataset.stationcat, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ station: sel.value }) });
           toast(sel.value === 'cashier' ? 'ย้ายหมวดนี้ไปแคชเชียร์แล้ว' : 'ย้ายหมวดนี้ไปครัวแล้ว');
           await refresh();
-        } catch (e) { alert(e.message); await refresh(); }
+        } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); await refresh(); }
       }));
 
       box.querySelectorAll('[data-rencat]').forEach((b) => b.addEventListener('click', async () => {
-        const name = prompt('ชื่อหมวดหมู่ใหม่', b.dataset.name);
+        const name = await uiPrompt({ title: 'เปลี่ยนชื่อหมวดหมู่', label: 'ชื่อหมวดหมู่ใหม่', value: b.dataset.name, maxLength: 120 });
         if (!name || !name.trim()) return;
         try { await api('/api/shop/categories/' + b.dataset.rencat, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }) }); toast('บันทึกแล้ว'); await refresh(); }
-        catch (e) { alert(e.message); }
+        catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
       box.querySelectorAll('[data-delcat]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ลบหมวดหมู่นี้? (หมวดย่อยจะถูกลบด้วย เมนูที่อยู่ในหมวดจะไม่ถูกลบ แต่จะไม่มีหมวด)')) return;
+        const okDel = await uiConfirm({ title: 'ลบหมวดหมู่นี้?', message: 'หมวดย่อยจะถูกลบด้วย · เมนูที่อยู่ในหมวดจะไม่ถูกลบ แต่จะไม่มีหมวด', okText: 'ลบ', danger: true });
+        if (!okDel) return;
         try { await api('/api/shop/categories/' + b.dataset.delcat, { method: 'DELETE' }); toast('ลบแล้ว'); await refresh(); }
-        catch (e) { alert(e.message); }
+        catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
       box.querySelectorAll('[data-addsub]').forEach((b) => b.addEventListener('click', async () => {
-        const name = prompt('ชื่อหมวดหมู่ย่อย');
+        const name = await uiPrompt({ title: 'เพิ่มหมวดหมู่ย่อย', label: 'ชื่อหมวดหมู่ย่อย', placeholder: 'เช่น จานเดียว, ต้ม-แกง', maxLength: 120 });
         if (!name || !name.trim()) return;
         try { await api('/api/shop/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim(), parentId: Number(b.dataset.addsub) }) }); toast('เพิ่มหมวดย่อยแล้ว'); await refresh(); }
-        catch (e) { alert(e.message); }
+        catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
     }
     document.getElementById('addCatBtn').addEventListener('click', async () => {
       const el = document.getElementById('newCatName');
       const name = el.value.trim();
-      if (!name) return alert('กรุณากรอกชื่อหมวดหมู่');
+      if (!name) return uiAlert({ title: 'แจ้งเตือน', message: 'กรุณากรอกชื่อหมวดหมู่' });
       const parentId = document.getElementById('newCatParent').value;
       const station = document.getElementById('newCatStation').value === 'cashier' ? 'cashier' : 'kitchen';
       try {
         await api('/api/shop/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, parentId: parentId ? Number(parentId) : null, station }) });
         el.value = ''; toast('เพิ่มหมวดหมู่แล้ว'); await refresh();
-      } catch (e) { alert(e.message); }
+      } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     });
 
     // ---------- เมนู ----------
@@ -361,13 +362,13 @@
     document.getElementById('menuImgFile').addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
-      if (file.size > 3 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 3MB'); return; }
+      if (file.size > 3 * 1024 * 1024) { uiAlert({ title: 'แจ้งเตือน', message: 'ไฟล์ใหญ่เกิน 3MB' }); return; }
       try {
         const dataUrl = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(file); });
         const up = await api('/api/shop/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl }) });
         menuImageUrl = up.url;
         document.getElementById('menuImgPreview').src = menuImageUrl;
-      } catch (err) { alert(err.message); }
+      } catch (err) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message }); }
     });
     document.getElementById('menuForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -426,13 +427,14 @@
       }).join('');
 
       box.querySelectorAll('[data-delgrp]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ลบกลุ่มตัวเลือกนี้และตัวเลือกทั้งหมดในกลุ่ม?')) return;
+        const okDel = await uiConfirm({ title: 'ลบกลุ่มตัวเลือกนี้?', message: 'ตัวเลือกทั้งหมดในกลุ่มนี้จะถูกลบไปด้วย', okText: 'ลบ', danger: true });
+        if (!okDel) return;
         try { await api('/api/shop/option-groups/' + b.dataset.delgrp, { method: 'DELETE' }); toast('ลบกลุ่มแล้ว'); await refresh(); }
-        catch (e) { alert(e.message); }
+        catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
       box.querySelectorAll('[data-delitem]').forEach((b) => b.addEventListener('click', async () => {
         try { await api('/api/shop/option-items/' + b.dataset.delitem, { method: 'DELETE' }); await refresh(); }
-        catch (e) { alert(e.message); }
+        catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
       // มาร์ค/ยกเลิกค่าเริ่มต้น (ดาว)
       box.querySelectorAll('[data-defitem]').forEach((b) => b.addEventListener('click', async () => {
@@ -441,24 +443,24 @@
           const r = await api('/api/shop/option-items/' + b.dataset.defitem, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isDefault: on }) });
           toast(r.message || 'บันทึกแล้ว');
           await refresh();
-        } catch (e) { alert(e.message); }
+        } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
       box.querySelectorAll('[data-additem]').forEach((b) => b.addEventListener('click', async () => {
         const gid = b.dataset.additem;
         const nameEl = box.querySelector(`[data-itemname="${gid}"]`);
         const priceEl = box.querySelector(`[data-itemprice="${gid}"]`);
         const name = nameEl.value.trim();
-        if (!name) return alert('กรุณากรอกชื่อตัวเลือก');
+        if (!name) return uiAlert({ title: 'แจ้งเตือน', message: 'กรุณากรอกชื่อตัวเลือก' });
         try {
           await api('/api/shop/option-groups/' + gid + '/items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, priceDelta: Number(priceEl.value) || 0 }) });
           await refresh();
-        } catch (e) { alert(e.message); }
+        } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
     }
     document.getElementById('addGrpBtn').addEventListener('click', async () => {
       const el = document.getElementById('newGrpName');
       const name = el.value.trim();
-      if (!name) return alert('กรุณากรอกชื่อกลุ่มตัวเลือก');
+      if (!name) return uiAlert({ title: 'แจ้งเตือน', message: 'กรุณากรอกชื่อกลุ่มตัวเลือก' });
       try {
         await api('/api/shop/option-groups', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -466,7 +468,7 @@
         });
         el.value = ''; document.getElementById('newGrpRequired').checked = false; document.getElementById('newGrpMulti').checked = false;
         toast('เพิ่มกลุ่มตัวเลือกแล้ว'); await refresh();
-      } catch (e) { alert(e.message); }
+      } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     });
 
 
@@ -481,7 +483,7 @@
         document.getElementById('menuForm').scrollIntoView({ block: 'start', behavior: 'smooth' });
       } catch (err) {
         if (err.status === 403) window.location.href = '/shop/setup.html';
-        else alert(err.message);
+        else uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message });
       }
     })();
   </script>

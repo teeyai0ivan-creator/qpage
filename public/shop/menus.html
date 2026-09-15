@@ -419,15 +419,16 @@
           if (m) m.available = cb.checked ? 1 : 0;
           toast(cb.checked ? 'เปิดให้ลูกค้าสั่งแล้ว' : 'ปิดการสั่งของเมนูนี้แล้ว');
           render();
-        } catch (e) { alert(e.message); cb.checked = !cb.checked; }
+        } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); cb.checked = !cb.checked; }
       }));
       tb.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('ลบเมนู "' + b.dataset.name + '" ?')) return;
+        const okDel = await uiConfirm({ title: 'ลบเมนู "' + b.dataset.name + '" ?', message: 'เมนูนี้จะถูกลบออกจากร้าน และหายจากหน้าเมนูทั้งหมด', okText: 'ลบ', danger: true });
+        if (!okDel) return;
         try {
           await api('/api/shop/menus/' + b.dataset.del, { method: 'DELETE' });
           toast('ลบเมนูแล้ว');
           await load();
-        } catch (e) { alert(e.message); }
+        } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
       }));
     }
 
