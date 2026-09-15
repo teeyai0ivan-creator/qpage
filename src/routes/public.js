@@ -7,6 +7,7 @@ const express = require('express');
 const db = require('../db');
 const { buildOrderItems } = require('../lib/order-builder');
 const notify = require('../lib/notify');
+const realtime = require('../lib/realtime');
 
 const router = express.Router();
 
@@ -142,6 +143,9 @@ router.post('/api/public/order/:token/items', async (req, res) => {
     items: billItems.slice(-prepared.length),
     total: Number(fresh.total),
   }));
+
+  // ให้หน้าครัว/แคชเชียร์/หน้าสั่งอาหารของร้านอัปเดตทันที (เรียลไทม์)
+  realtime.publish(table.shop_id, 'order_new', { table_code: table.code, bill_no: fresh.bill_no });
 
   res.json({
     ok: true,

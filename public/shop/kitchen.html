@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
   <script src="/js/shop-ui.js"></script>
+  <script src="/js/realtime.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -235,8 +236,8 @@
     }
 
     function render() {
-      // ป้ายตัวเลขแจ้งเตือนบนปุ่ม "รอทำ/ยังไม่จัด" — นับทุกรายการที่ยังไม่เริ่มทำของจุดนี้
-      const pendingCount = items.filter((i) => i.status === 'pending').length;
+      // ป้ายตัวเลขแจ้งเตือนบนปุ่ม "รอทำ/ยังไม่จัด" — นับเป็น "จำนวนจาน" ให้ตรงกับส่วนอื่นของระบบ
+      const pendingCount = platesOf(items.filter((i) => i.status === 'pending'));
       const badge = document.getElementById('fPendingBadge');
       if (badge) {
         badge.textContent = pendingCount > 99 ? '99+' : String(pendingCount);
@@ -400,7 +401,9 @@
       if (e.status === 403) window.location.href = '/shop';
       else document.getElementById('kitchenList').innerHTML = '<div class="cat-empty">' + esc(e.message) + '</div>';
     });
-    setInterval(() => { load().catch(() => {}); }, 10000);
+    // อัปเดตทันทีเมื่อมีอordeใหม่/เปลี่ยนสถานะ (เรียลไทม์) — ตัวจับเวลาด้านล่างเป็นตัวสำรอง
+    shopLive({ onEvent: () => { load().catch(() => {}); } });
+    setInterval(() => { load().catch(() => {}); }, 30000);
   </script>
 </body>
 </html>

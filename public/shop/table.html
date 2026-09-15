@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
   <script src="/js/shop-ui.js"></script>
+  <script src="/js/realtime.js"></script>
   <style>
     .td-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
     .td-top h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
@@ -281,6 +282,9 @@
         uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message });
       }
     });
+
+    // อัปเดตบิลของโต๊ะนี้ทันทีเมื่อมีการสั่ง/เปลี่ยนสถานะ/เช็คบิล (เรียลไทม์)
+    shopLive({ onEvent: () => { load().catch(() => {}); } });
 
     (async function init() {
       try {

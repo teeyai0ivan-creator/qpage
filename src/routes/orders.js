@@ -11,6 +11,7 @@ const { sendShopPage } = require('../lib/shop-page');
 const { getCurrentUser, requireShop } = require('../middleware/auth');
 const { isShop } = require('../lib/roles');
 const { randomToken } = require('../lib/crypto');
+const realtime = require('../lib/realtime');
 const { buildOrderItems } = require('../lib/order-builder');
 const notify = require('../lib/notify');
 
@@ -42,11 +43,36 @@ async function myShop(req, res) {
     res.status(400).json({ ok: false, message: 'กรุณาตั้งข้อมูลร้านก่อน' });
     return null;
   }
+  res.locals.shopId = shop.id; // ให้ middleware เรียลไทม์รู้ว่ากำลังแก้ข้อมูลของร้านไหน
   return shop;
 }
 
 // ---------------------------------------------------------------------------
 // หน้าเว็บ
+// แจ้งเตือนเรียลไทม์อัตโนมัติเมื่อมีการแก้ "โต๊ะ/โซน/รายชื่อโต๊ะ" สำเร็จ
+// (เส้นทางที่เปลี่ยนข้อมูลบิล/รายการ มีการแจ้งเตือนเฉพาะเจาะจงอยู่แล้วด้านล่าง)
+router.use('/api/shop', (req, res, next) => {
+  if (req.method !== 'POST' && req.method !== 'PUT' && req.method !== 'DELETE') return next();
+  const url = String(req.originalUrl || req.url).split('?')[0];
+  const isTableMeta = /^\/api\/shop\/(table-names|zones|qr-auto-delete)(\/|$)/.test(url)
+    || /^\/api\/shop\/tables(\/\d+)?$/.test(url);
+  if (!isTableMeta) return next();
+  res.on('finish', () => {
+    if (res.statusCode < 400 && res.locals.shopId) realtime.publish(res.locals.shopId, 'tables_changed', {});
+  });
+  next();
+});
+
+// ---------------------------------------------------------------------------
+// อัปเดตเรียลไทม์ (SSE) — ครัว/แคชเชียร์/หน้าสั่งอาหาร เปิดค้างไว้ที่เส้นทางนี้
+// เซิร์ฟเวอร์จะผลักเหตุการณ์ทันทีที่ข้อมูลของร้านเปลี่ยน (ลูกค้าสั่ง / เปลี่ยนสถานะ / เช็คบิล / แก้โต๊ะ)
+// ---------------------------------------------------------------------------
+router.get('/api/shop/events', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  realtime.sseHandler(shop.id, req, res);
+});
+
 // ---------------------------------------------------------------------------
 // หน้าสั่งอาหาร (เจ้าของร้าน) — จัดการโต๊ะ/QR + บิลที่เปิดอยู่
 router.get('/shop/orders.html', requireShopPage, async (req, res) => {
@@ -427,6 +453,7 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
       items: closedItems,
     }));
   }
+  realtime.publish(shop.id, 'checkout', { table_code: table.code });
   res.json({
     ok: true,
     message: qrDeleted
@@ -466,6 +493,7 @@ router.post('/api/shop/tables/:id/items', requireShop, async (req, res) => {
     source: 'แคชเชียร์เพิ่มเอง',
   }));
 
+  realtime.publish(shop.id, 'order_new', { table_code: table.code, bill_no: fresh.bill_no });
   res.json({
     ok: true,
     message: 'เพิ่มอาหารเข้าบิลแล้ว',
@@ -481,6 +509,7 @@ router.delete('/api/shop/order-items/:id', requireShop, async (req, res) => {
   if (item.order_status !== 'open') return res.status(400).json({ ok: false, message: 'บิลนี้ปิดแล้ว' });
   await db.deleteOrderItem(item.id, item.order_id);
   console.log(`🧾 [แคชเชียร์] ลบรายการ #${item.id} (${item.menu_name})`);
+  realtime.publish(shop.id, 'bill_changed', { table_code: item.table_code });
   res.json({ ok: true, message: 'ลบรายการแล้ว' });
 });
 
@@ -513,6 +542,7 @@ router.post('/api/shop/order-items/:id/status', requireShop, async (req, res) =>
   const item = await db.findOrderItemOwned(id, shop.id);
   if (!item) return res.status(404).json({ ok: false, message: 'ไม่พบรายการ' });
   if (item.order_status !== 'open') return res.status(400).json({ ok: false, message: 'บิลนี้ปิดแล้ว' });
+  realtime.publish(shop.id, 'item_status', { table_code: item.table_code, item_id: item.id });
 
   if (status === 'cancelled') {
     const reason = String(req.body?.reason || '').trim().slice(0, 200);

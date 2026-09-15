@@ -245,6 +245,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="/js/shop-ui.js"></script>
+  <script src="/js/realtime.js"></script>
   <script>
     let toastTimer = null;
 
@@ -708,7 +709,14 @@
     });
 
     loadAll().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }));
-    setInterval(() => { loadBills().then(() => renderTableGrid()).catch(() => {}); }, 20000);
+    // อัปเดตทันทีเมื่อมีการสั่ง/เปลี่ยนสถานะ/เช็คบิล/แก้โต๊ะ (เรียลไทม์) — ตัวจับเวลาเป็นตัวสำรอง
+    shopLive({
+      onEvent: (ev) => {
+        if (ev.type === 'tables_changed') refreshNames().then(() => { renderTableGrid(); }).catch(() => {});
+        else loadBills().then(() => renderTableGrid()).catch(() => {});
+      },
+    });
+    setInterval(() => { loadBills().then(() => renderTableGrid()).catch(() => {}); }, 30000);
   </script>
 </body>
 </html>
