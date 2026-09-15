@@ -130,7 +130,7 @@
             <label for="phone">เบอร์โทรศัพท์</label>
             <div class="phone-group">
               <span class="phone-prefix">+66</span>
-              <input type="tel" id="phone" inputmode="tel" autocomplete="tel">
+              <input type="tel" id="phone" placeholder="กรอกเบอร์โทร" inputmode="tel" autocomplete="tel">
             </div>
             <span class="field-error" id="phoneError"></span>
           </div>
@@ -231,8 +231,8 @@
     }
     function normalizeThaiPhone(value) {
       let d = String(value || '').replace(/[^0-9]/g, '');
-      if (d.startsWith('668')) d = d.slice(2);
-      if (/^8\d{8}$/.test(d)) d = '0' + d;
+      if (/^66[689]\d{8}$/.test(d)) d = d.slice(2); // 66812345678 → 812345678 (ตัดรหัสประเทศ)
+      if (/^[689]\d{8}$/.test(d)) d = '0' + d;      // 812345678 → 0812345678 (เติม 0 ที่ลืม)
       return d;
     }
 

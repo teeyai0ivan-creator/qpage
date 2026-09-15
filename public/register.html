@@ -121,7 +121,7 @@
             <div class="check-email-row">
               <div class="phone-group" style="flex:1;min-width:0;">
                 <span class="phone-prefix">+66</span>
-                <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel">
+                <input type="tel" id="phone" name="phone" placeholder="กรอกเบอร์โทร" autocomplete="tel" inputmode="tel">
               </div>
               <button type="button" class="check-email-btn" id="sendOtpBtn">ขอ OTP</button>
             </div>
@@ -229,8 +229,8 @@
     // แปลงให้เป็นรูปแบบมาตรฐาน 08XXXXXXXX (มี 0 นำหน้า 10 หลัก)
     function normalizeThaiPhone(value) {
       let d = String(value || '').replace(/[^0-9]/g, '');
-      if (d.startsWith('668')) d = d.slice(2);  // 66812345678 → 812345678
-      if (/^8\d{8}$/.test(d)) d = '0' + d;      // 812345678 → 0812345678
+      if (/^66[689]\d{8}$/.test(d)) d = d.slice(2); // 66812345678 → 812345678 (ตัดรหัสประเทศ)
+      if (/^[689]\d{8}$/.test(d)) d = '0' + d;      // 812345678 → 0812345678 (เติม 0 ที่ลืม)
       return d;
     }
 

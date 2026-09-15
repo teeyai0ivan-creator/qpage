@@ -546,6 +546,14 @@ async function initDb() {
     await setSetting('otp_contact_widened', 'true');
     console.log('🔧 ขยายคอลัมน์ otp_codes.phone เป็น VARCHAR(255) เพื่อรองรับรหัส OTP ทางอีเมล');
   }
+
+  // เติม 0 นำหน้าเบอร์มือถือเดิมที่บันทึกไว้โดยไม่มี 0 (ครั้งเดียว)
+  // เช่น 812345678 → 0812345678 เพื่อให้หลังบ้านและทุกหน้าแสดงเบอร์ลูกค้าได้ถูกต้อง
+  if (getSetting('legacy_phone_zero_filled') !== 'true') {
+    const [r] = await pool.execute("UPDATE users SET phone = CONCAT('0', phone) WHERE phone REGEXP '^[689][0-9]{8}$'");
+    await setSetting('legacy_phone_zero_filled', 'true');
+    if (r.affectedRows) console.log(`📞 เติม 0 นำหน้าเบอร์โทรศัพท์เดิม ${r.affectedRows} รายการ`);
+  }
 }
 
 function getSetting(key) {

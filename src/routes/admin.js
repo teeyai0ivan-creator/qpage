@@ -11,7 +11,7 @@ const site = require('../lib/site');
 const otp = require('../lib/otp');
 const mailer = require('../lib/mailer');
 const sms = require('../lib/sms');
-const { isValidEmail, isValidThaiPhone, normalizeThaiPhone, passwordStrengthScore } = require('../lib/validators');
+const { isValidEmail, isValidThaiPhone, normalizeThaiPhone, displayThaiPhone, passwordStrengthScore } = require('../lib/validators');
 const { devMode } = require('../lib/settings');
 const { isValidRole, isAdminRole, isOwner } = require('../lib/roles');
 const { requireAdmin, requireOwner } = require('../middleware/auth');
@@ -192,7 +192,9 @@ router.get('/api/admin/users', requireAdmin, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
   const users = (await db.listUsers({ search, limit })).map((u) => ({
     ...u,
-    phone: u.phone || '', // แสดงเบอร์เต็มให้แอดมิน (เครื่องมือภายใน — ต้องใช้เบอร์จริงตอนแก้ไข)
+    // แสดงเบอร์เต็มให้แอดมิน (เครื่องมือภายใน — ต้องใช้เบอร์จริงตอนแก้ไข)
+    // เบอร์เดิมที่บันทึกไว้ไม่มี 0 นำหน้า จะเติมให้อัตโนมัติ เพื่อให้อ่าน/ติดต่อได้ถูกต้อง
+    phone: displayThaiPhone(u.phone),
     is_email_verified: u.is_email_verified === 1,
   }));
   res.json({ ok: true, users, total: await db.countUsers(search) });
@@ -276,7 +278,7 @@ router.put('/api/admin/users/:id', requireAdmin, async (req, res) => {
     message: 'บันทึกข้อมูลผู้ใช้แล้ว',
     user: {
       ...updated,
-      phone: updated.phone || '',
+      phone: displayThaiPhone(updated.phone),
       is_email_verified: updated.is_email_verified === 1,
     },
   });

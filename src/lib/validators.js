@@ -26,19 +26,30 @@ function isValidEmail(value) {
 
 /**
  * ตรวจเบอร์โทรไทย — ยอมรับทั้งแบบมี/ไม่มี 0 นำหน้า และแบบมี 66/+66
- * เช่น 0812345678 | 812345678 | 66812345678 | +66812345678
+ * เช่น 0812345678 | 812345678 | 912345678 | 66812345678 | +66812345678
+ * (มือถือไทยขึ้นต้น 06 / 08 / 09 — เลข 9 หลักที่ขึ้นต้นด้วย 6/8/9 ถือว่าลืม 0)
  */
 function isValidThaiPhone(value) {
   const d = String(value || '').replace(/[^0-9]/g, '');
-  return /^0\d{9}$/.test(d) || /^8\d{8}$/.test(d) || /^668\d{8}$/.test(d);
+  return /^0\d{9}$/.test(d) || /^[689]\d{8}$/.test(d) || /^66[689]\d{8}$/.test(d);
 }
 
-/** แปลงเบอร์ไทยทุกรูปแบบ → มาตรฐาน 08XXXXXXXX (10 หลัก มี 0 นำหน้า) */
+/** แปลงเบอร์ไทยทุกรูปแบบ → มาตรฐาน 0XXXXXXXXX (10 หลัก มี 0 นำหน้า) */
 function normalizeThaiPhone(value) {
   let d = String(value || '').replace(/[^0-9]/g, '');
-  if (d.startsWith('668')) d = d.slice(2); // 66812345678 → 812345678
-  if (/^8\d{8}$/.test(d)) d = '0' + d;      // 812345678 → 0812345678
+  if (/^66[689]\d{8}$/.test(d)) d = d.slice(2); // 66812345678 → 812345678 (ตัดรหัสประเทศ)
+  if (/^[689]\d{8}$/.test(d)) d = '0' + d;      // 812345678 → 0812345678 (เติม 0 ที่ลืม)
   return d;
+}
+
+/**
+ * จัดรูปแบบเบอร์สำหรับ "แสดงผล" — เติม 0 นำหน้าให้เบอร์มือถือไทยที่บันทึกไว้โดยไม่มี 0
+ * ถ้าไม่ใช่รูปแบบที่รู้จัก (เช่น เบอร์ต่างประเทศ) คืนค่าเดิมไปตามที่เก็บไว้ ไม่ตัดทิ้ง
+ */
+function displayThaiPhone(value) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return '';
+  return /^0\d{9}$/.test(normalizeThaiPhone(raw)) ? normalizeThaiPhone(raw) : raw;
 }
 
 /**
@@ -56,4 +67,4 @@ function passwordStrengthScore(pw) {
   return score;
 }
 
-module.exports = { maskPhone, maskEmail, isValidEmail, isValidThaiPhone, normalizeThaiPhone, passwordStrengthScore };
+module.exports = { maskPhone, maskEmail, isValidEmail, isValidThaiPhone, normalizeThaiPhone, displayThaiPhone, passwordStrengthScore };
