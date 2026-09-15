@@ -45,6 +45,8 @@
 .shop-head h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.3px; }
 .shop-head p { color: var(--muted); font-size: 13.5px; margin-top: 6px; line-height: 1.7; }
 .shop-head .shop-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+/* หัวข้อหน้า + ปุ่มชิดขวาบนบรรทัดเดียวกัน (เช่น ปุ่มรีเฟรชในหน้าสั่งอาหาร) */
+.shop-head .head-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 
 /* สวิตช์เปิด/ปิด (ใช้ในหน้าสั่งอาหาร) */
 .switch { position: relative; display: inline-block; width: 46px; height: 26px; flex: 0 0 auto; }
