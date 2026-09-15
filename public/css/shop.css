@@ -76,6 +76,8 @@
   cursor: pointer; transition: transform .12s ease, background .12s ease, border-color .12s ease; word-break: break-word; }
 .tile:hover { background: var(--surface-hover); transform: translateY(-2px); }
 .tile small { font-size: 10.5px; font-weight: 700; color: var(--muted); }
+/* เลขบิลปัจจุบันในช่องโต๊ะ (หน้า /shop/orders.html) */
+.tile .tile-bill { font-size: 11px; color: var(--accent); }
 .tile.busy { cursor: default; opacity: .55; background: var(--surface-2); border-style: dashed; }
 .tile.busy:hover { transform: none; background: var(--surface-2); }
 .tile.busy small { color: var(--success); }
