@@ -1875,9 +1875,57 @@ async function setOrderItemStatus(id, shopId, status) {
   await pool.execute(
     `UPDATE order_items oi JOIN orders o ON o.id = oi.order_id
         SET ${sets.join(', ')}
-      WHERE oi.id = ? AND o.shop_id = ? AND o.status = 'open'`,
+      WHERE oi.id = ? AND oi.shop_id = ? AND o.status = 'open'`,
     [...params, id, shopId]
   );
+}
+
+/**
+ * เริ่มทำหลายรายการพร้อมกัน (ปุ่ม "เริ่มทำ" ของทั้งโต๊ะ) — เฉพาะรายการที่ยัง "รอทำ" ของร้านนี้
+ * @returns {{started:number[], orderIds:number[]}} รายการที่เริ่มจริง (ของใหม่ที่เข้ามาทีหลังจะถูกนับเฉพาะที่ยังรอทำ)
+ */
+async function startPendingOrderItems(shopId, ids) {
+  const list = [...new Set((ids || []).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  if (!list.length) return { started: [], orderIds: [] };
+  const ph = list.map(() => '?').join(',');
+  const [rows] = await pool.execute(
+    `SELECT oi.id, oi.order_id FROM order_items oi
+       JOIN orders o ON o.id = oi.order_id
+      WHERE oi.id IN (${ph}) AND o.shop_id = ? AND o.status = 'open' AND oi.status = 'pending'`,
+    [...list, shopId]
+  );
+  const started = rows.map((r) => Number(r.id));
+  if (!started.length) return { started: [], orderIds: [] };
+  const ph2 = started.map(() => '?').join(',');
+  await pool.execute(
+    `UPDATE order_items SET status = 'cooking', started_at = COALESCE(started_at, UTC_TIMESTAMP()) WHERE id IN (${ph2})`,
+    started
+  );
+  return { started, orderIds: [...new Set(rows.map((r) => Number(r.order_id)))] };
+}
+
+/**
+ * ดึงรายการอาหารสำหรับพิมพ์ "ใบสั่งครัว" ตาม id ที่ระบุ (ต้องเป็นของร้านนี้เท่านั้น)
+ * เรียงตามโต๊ะ → บิล → ลำดับที่สั่ง เพื่อให้อ่านง่ายบนกระดาษ
+ */
+async function listTicketItems(shopId, ids) {
+  const list = [...new Set((ids || []).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  if (!list.length) return [];
+  const ph = list.map(() => '?').join(',');
+  const [rows] = await pool.execute(
+    `SELECT oi.id, oi.order_id, oi.menu_name, oi.quantity, oi.options_json, oi.status, oi.created_at,
+            o.bill_no, COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code,
+            COALESCE(c.station, 'kitchen') AS station
+       FROM order_items oi
+       JOIN orders o ON o.id = oi.order_id
+       LEFT JOIN \`tables\` t ON t.id = o.table_id
+       LEFT JOIN menus m ON m.id = oi.menu_id
+       LEFT JOIN categories c ON c.id = m.category_id
+      WHERE oi.id IN (${ph}) AND o.shop_id = ?
+      ORDER BY table_code ASC, o.bill_no ASC, oi.id ASC`,
+    [...list, shopId]
+  );
+  return rows;
 }
 
 /** ยกเลิกรายการ (ไม่ลบ แต่ทำเครื่องหมาย cancelled + เก็บสาเหตุ) แล้วคิดยอดใหม่ */
@@ -2098,6 +2146,8 @@ module.exports = {
   listKitchenItems,
   findOrderItemOwned,
   setOrderItemStatus,
+  startPendingOrderItems,
+  listTicketItems,
   cancelOrderItem,
   deleteOrderItem,
 };

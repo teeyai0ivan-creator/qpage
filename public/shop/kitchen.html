@@ -177,13 +177,13 @@
     const L = IS_CASHIER
       ? {
         title: 'แคชเชียร์', switchLabel: 'ครัว', switchHref: '/shop/kitchen.html',
-        desc: 'รายการจากหมวดหมู่ที่ตั้งเส้นทางไว้ที่แคชเชียร์ — กด "เริ่มจัด" เมื่อเริ่ม และ "จัดเสร็จ" เมื่อเสร็จ (อัปเดตอัตโนมัติทุก 10 วินาที)',
+        desc: 'รายการจากหมวดหมู่ที่ตั้งเส้นทางไว้ที่แคชเชียร์ — กด "เริ่มจัด" แล้วระบบจะพิมพ์ใบสั่งให้ หรือกดปุ่มเริ่มพร้อมกันทั้งโต๊ะ (อัปเดตอัตโนมัติทุก 10 วินาที)',
         stPending: 'ยังไม่จัด', stCooking: 'กำลังจัด', stDone: 'จัดเสร็จ', actStart: 'เริ่มจัด', actDone: 'จัดเสร็จ',
         outOfStock: 'ของหมด',
       }
       : {
         title: 'ครัว', switchLabel: 'แคชเชียร์', switchHref: '/shop/cashier.html',
-        desc: 'รายการอาหารจากบิลที่เปิดอยู่ — กด "เริ่มทำ" เมื่อเริ่ม และ "เคลียร์อาหาร" เมื่อเสร็จ (อัปเดตอัตโนมัติทุก 10 วินาที)',
+        desc: 'รายการอาหารจากบิลที่เปิดอยู่ — กด "เริ่มทำ" แล้วระบบจะพิมพ์ใบสั่งครัวของรายการนั้น หรือกดปุ่มเริ่มทำทั้งโต๊ะเพื่อเริ่มพร้อมกันทั้งบิล (อัปเดตอัตโนมัติทุก 10 วินาที)',
         stPending: 'รอทำ', stCooking: 'กำลังทำ', stDone: 'เสร็จแล้ว', actStart: 'เริ่มทำ', actDone: 'เคลียร์อาหาร',
         outOfStock: 'วัตถุดิบหมด',
       };
@@ -221,6 +221,8 @@
       const img = i.image_url
         ? '<img class="k-img" src="' + esc(i.image_url) + '" alt="">'
         : '<div class="k-img k-img-empty"></div>';
+      // ปุ่มพิมพ์ใบสั่งครัวของรายการนี้ (ใช้พิมพ์ซ้ำได้ทุกสถานะ เช่น กระดาษติด)
+      const printBtn = '<button class="mini-btn k-print" data-print="' + i.id + '" type="button" title="พิมพ์ใบสั่งครัวของรายการนี้">🖨</button>';
       return `<div class="k-item ${i.status === 'done' ? 'k-done' : ''}">
         ${img}
         <div class="k-qty">${i.quantity}×</div>
@@ -231,7 +233,7 @@
           <div class="k-time">สั่งเมื่อ ${hhmm(i.created_at)} · ⏱ <span class="k-timer" data-created="${esc(i.created_at)}" data-status="${esc(i.status)}" data-done="${esc(i.done_at || '')}">—</span></div>
         </div>
         <span class="st-badge ${STATUS_CLASS[i.status]}">${STATUS_LABEL[i.status]}</span>
-        <div class="k-actions" style="display:flex;gap:6px;flex-wrap:wrap;">${btn}${cancelBtn}</div>
+        <div class="k-actions" style="display:flex;gap:6px;flex-wrap:wrap;">${btn}${printBtn}${cancelBtn}</div>
       </div>`;
     }
 
@@ -273,13 +275,41 @@
         groups = order.map((g) => ({ title: g.title, sub: g.sub, items: g.items, ctx: false }));
       }
 
-      box.innerHTML = groups.map((g) => `
+      box.innerHTML = groups.map((g) => {
+        // ปุ่ม "เริ่มทำทั้งโต๊ะ" — เฉพาะโหมดจัดกลุ่มตามโต๊ะ และมีรายการที่ยังรอทำอยู่
+        const pend = g.items.filter((i) => i.status === 'pending');
+        const startAll = (!g.ctx && pend.length)
+          ? `<button class="mini-btn primary k-start-all" data-start-all="${pend.map((i) => i.id).join(',')}" type="button">🖨 ${L.actStart}ทั้งโต๊ะ (${pend.length})</button>`
+          : '';
+        return `
         <div class="k-bill">
-          <div class="k-bill-head">${esc(g.title)}${g.sub ? ' <span style="font-weight:600;color:var(--muted);font-size:13px;">· ' + esc(g.sub) + '</span>' : ''}</div>
+          <div class="k-bill-head">
+            <span class="k-bill-title">${esc(g.title)}${g.sub ? ' <span style="font-weight:600;color:var(--muted);font-size:13px;">· ' + esc(g.sub) + '</span>' : ''}</span>
+            ${startAll}
+          </div>
           ${g.items.map((i) => itemHtml(i, g.ctx)).join('')}
-        </div>`).join('');
+        </div>`;
+      }).join('');
+
+      // ปุ่มเริ่มทำทั้งโต๊ะ: เริ่มทุกรายการที่ยังรอทำ แล้วพิมพ์ใบสั่งครัวของโต๊ะนั้น
+      box.querySelectorAll('[data-start-all]').forEach((b) => b.addEventListener('click', () => {
+        b.disabled = true;
+        startAndPrint(String(b.dataset.startAll).split(',').map(Number), 'กำลังเตรียมใบสั่งครัว...', () => { b.disabled = false; });
+      }));
+
+      // พิมพ์ซ้ำรายรายการ (ไม่แตะสถานะ)
+      box.querySelectorAll('[data-print]').forEach((b) => b.addEventListener('click', () => {
+        const w = openBlankTab('กำลังเตรียมใบสั่งครัว...');
+        gotoReceipt(w, '/shop/ticket.html?ids=' + b.dataset.print);
+      }));
 
       box.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', async () => {
+        // "เริ่มทำ" รายรายการ → เริ่มแล้วพิมพ์ใบสั่งครัวของรายการนั้น
+        if (b.dataset.status === 'cooking') {
+          b.disabled = true;
+          startAndPrint([Number(b.dataset.set)], 'กำลังเตรียมใบสั่งครัว...', () => { b.disabled = false; });
+          return;
+        }
         b.disabled = true;
         try {
           const r = await api('/api/shop/order-items/' + b.dataset.set + '/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: b.dataset.status }) });
@@ -289,6 +319,32 @@
       }));
       box.querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', () => openCancel(Number(b.dataset.cancel), b.dataset.name)));
       tickTimers();
+    }
+
+    // ---------- เริ่มทำ + พิมพ์ใบสั่งครัว ----------
+    // เปิดแท็บเปล่าก่อน (จากเหตุการณ์คลิกจริง กันป๊อปอัปถูกบล็อก) → สั่งเริ่มทำ → พาไปหน้าใบสั่งครัวที่พิมพ์เองอัตโนมัติ
+    // ระบบเริ่มเฉพาะรายการที่ยัง "รอทำ" เท่านั้น จึงกดปุ่มเดิมซ้ำหลังมีออเดอร์ใหม่ได้ (จะเริ่ม/พิมพ์เฉพาะของใหม่)
+    async function startAndPrint(ids, waitLabel, done) {
+      const w = openBlankTab(waitLabel);
+      try {
+        const r = await api('/api/shop/order-items/start', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }),
+        });
+        const started = r.started || [];
+        if (!started.length) {
+          if (w) { try { w.close(); } catch (e) { /* ข้าม */ } }
+          toast('รายการนี้เริ่มทำไปแล้ว');
+          return;
+        }
+        gotoReceipt(w, '/shop/ticket.html?ids=' + started.join(',') + '&fresh=' + started.join(','));
+        toast(r.message || 'เริ่มทำแล้ว');
+        await load();
+      } catch (e) {
+        if (w) { try { w.close(); } catch (e2) { /* ข้าม */ } }
+        uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message });
+      } finally {
+        if (done) done();
+      }
     }
 
     // ---------- นาฬิกาจับเวลาต่อรายการ (นับจากเวลาที่ลูกค้าสั่ง) ----------

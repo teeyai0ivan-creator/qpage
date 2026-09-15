@@ -48,12 +48,14 @@
   // นับ "รายการ" เป็นจำนวนจาน (ผลรวม quantity) ให้ตรงกันทุกหน้า
   window.platesOf = (items) => (items || []).reduce((n, it) => n + (Number(it.quantity) || 0), 0);
 
-  // เปิดแท็บเปล่าล่วงหน้าพร้อมข้อความ "กำลังเช็คบิล..." (ต้องเรียกจังหวะที่ผู้ใช้กดจริง ไม่งั้นเบราว์เซอร์บล็อกป๊อปอัป)
-  window.openBlankTab = () => {
+  // เปิดแท็บเปล่าล่วงหน้าพร้อมข้อความรอ (ต้องเรียกจังหวะที่ผู้ใช้กดจริง ไม่งั้นเบราว์เซอร์บล็อกป๊อปอัป)
+  // label = ข้อความที่แสดงระหว่างรอ (ค่าเริ่มต้นคือของขั้นตอนเช็คบิล · ครัวส่ง "กำลังเตรียมใบสั่งครัว...")
+  window.openBlankTab = (label) => {
+    const text = label || 'กำลังเช็คบิล...';
     const w = window.open('', '_blank');
     try {
       if (w && w.document) {
-        w.document.write('<!doctype html><meta charset="utf-8"><title>กำลังเช็คบิล...</title><body style="font-family:Sarabun,Tahoma,sans-serif;padding:24px;color:#475467">กำลังเช็คบิล... กรุณารอสักครู่</body>');
+        w.document.write('<!doctype html><meta charset="utf-8"><title>' + text + '</title><body style="font-family:Sarabun,Tahoma,sans-serif;padding:24px;color:#475467">' + text + ' กรุณารอสักครู่</body>');
         w.document.close();
       }
     } catch (e) { /* ข้าม */ }

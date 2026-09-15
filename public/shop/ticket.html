@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ใบสั่งครัว | ระบบสมาชิก</title>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 20px 12px 40px;
+      font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, Arial, sans-serif;
+      color: #111; background: #eff0f5; line-height: 1.5; font-size: 12px;
+    }
+    /* แถบปุ่ม (ไม่พิมพ์) */
+    .actions { max-width: 720px; margin: 0 auto 12px; display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+    .actions .paper-pick { margin-right: auto; font-size: 13px; color: #475467; display: flex; align-items: center; gap: 6px; }
+    .actions select { font-family: inherit; font-size: 13px; padding: 7px 9px; border-radius: 8px; border: 1px solid #c9cdd6; background: #fff; color: #111; }
+    .actions button {
+      font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 15px;
+      border-radius: 9px; border: 1px solid #c9cdd6; background: #fff; color: #111; cursor: pointer;
+    }
+    .actions button.primary { background: #ea580c; border-color: #ea580c; color: #fff; }
+
+    /* ---------- ใบสั่งครัว (ค่าเริ่มต้น = ม้วน 80mm) ---------- */
+    .ticket {
+      max-width: 80mm; margin: 0 auto; background: #fff;
+      box-shadow: 0 8px 24px rgba(16,24,40,.10); padding: 14px 12px 12px;
+    }
+    .t-shop-logo { text-align: center; margin-bottom: 6px; }
+    .t-shop-logo img { max-height: 60px; max-width: 60%; height: auto; object-fit: contain; }
+    .t-shop { text-align: center; font-size: 14px; font-weight: 800; line-height: 1.35; }
+    /* หัวเรื่องบอกชัดว่าเป็นเอกสารของครัว ไม่ใช่ใบเสร็จ */
+    .t-kind {
+      text-align: center; font-size: 15px; font-weight: 800; letter-spacing: .6px;
+      margin: 8px 0 2px; padding: 5px 0; border: 2px solid #ea580c; color: #ea580c; border-radius: 6px;
+    }
+    .t-kind-sub { text-align: center; font-size: 10px; color: #667085; margin-bottom: 9px; }
+    .t-head {
+      margin: 8px 0 9px; padding-top: 8px; border-top: 1px dashed #d0d5dd;
+      display: grid; gap: 2px; font-size: 12px;
+    }
+    .t-head > div { display: flex; justify-content: space-between; gap: 10px; }
+    .t-head span { color: #667085; }
+    .t-head .t-table { font-size: 15px; font-weight: 800; }
+    .t-table-list { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .t-table-list th {
+      text-align: left; font-size: 10.5px; color: #667085; font-weight: 700;
+      padding: 4px 2px; border-bottom: 1px solid #111;
+    }
+    .t-table-list td { padding: 5px 2px; border-bottom: 1px dotted #e4e7ec; vertical-align: top; }
+    .t-table-list .num { text-align: right; white-space: nowrap; font-weight: 800; }
+    .t-item-name { font-weight: 700; font-size: 13px; }
+    .t-item-opt { font-size: 11px; color: #475467; margin-top: 1px; }
+    .t-item-new { display: inline-block; font-size: 9.5px; font-weight: 700; color: #b45309; border: 1px solid #fcd34d; background: #fffbeb; border-radius: 4px; padding: 0 4px; margin-left: 4px; vertical-align: 1px; }
+    .t-sum { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; margin-top: 8px; }
+    .t-foot {
+      display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap;
+      font-size: 10px; color: #98a2b3; margin: 10px 0 0;
+    }
+    .t-foot img { height: 16px; width: auto; opacity: .9; flex-shrink: 0; }
+    .t-loading { text-align: center; color: #667085; padding: 30px 0; }
+
+    /* ---------- กระดาษม้วน 58mm (แคบสุด) ---------- */
+    body.paper-58mm { font-size: 11px; }
+    body.paper-58mm .ticket { max-width: 58mm; padding: 12px 8px 10px; }
+    body.paper-58mm .t-table-list { font-size: 11px; }
+    body.paper-58mm .t-item-name { font-size: 12px; }
+    body.paper-58mm .t-kind { font-size: 13.5px; }
+    body.paper-58mm .t-head .t-table { font-size: 14px; }
+    body.paper-58mm .t-foot img { height: 14px; }
+    /* ---------- กระดาษ A4 ---------- */
+    body.paper-a4 { font-size: 14px; }
+    body.paper-a4 .ticket { max-width: 720px; padding: 34px 38px 26px; border-radius: 14px; }
+    body.paper-a4 .t-table-list { font-size: 14px; }
+    body.paper-a4 .t-item-name { font-size: 15px; }
+    body.paper-a4 .t-kind { font-size: 18px; }
+    body.paper-a4 .t-head { font-size: 14px; }
+    body.paper-a4 .t-head .t-table { font-size: 18px; }
+    body.paper-a4 .t-shop { font-size: 18px; }
+    body.paper-a4 .t-foot { font-size: 11.5px; }
+    body.paper-a4 .t-foot img { height: 18px; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .actions { display: none !important; }
+      .ticket { box-shadow: none; border-radius: 0; max-width: none; padding: 0; }
+      .t-table-list th { border-bottom-color: #000; }
+      .t-kind { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="paper-80mm">
+  <div class="actions">
+    <label class="paper-pick">ขนาดกระดาษ
+      <select id="paperSel">
+        <option value="58mm">ม้วน 58mm</option>
+        <option value="80mm" selected>ม้วน 80mm (ค่าเริ่มต้น)</option>
+        <option value="a4">A4</option>
+      </select>
+    </label>
+    <button class="primary" id="printBtn" type="button">🖨 พิมพ์ใบสั่งครัว</button>
+    <button id="closeBtn" type="button">ปิดหน้านี้</button>
+  </div>
+  <div class="ticket" id="ticket">
+    <div class="t-loading" id="loading">กำลังโหลดรายการ...</div>
+  </div>
+
+  <script src="/js/shop-ui.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const ids = (params.get('ids') || '').split(',').map((s) => s.trim()).filter((s) => /^\d+$/.test(s));
+    const freshIds = (params.get('fresh') || '').split(',').map((s) => s.trim()).filter((s) => /^\d+$/.test(s));
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let data;
+      try { data = await res.json(); } catch { const e = new Error('เซิร์ฟเวอร์ตอบสนองไม่ถูกต้อง (HTTP ' + res.status + ')'); e.status = res.status; throw e; }
+      if (!data.ok) { const e = new Error(data.message || 'เกิดข้อผิดพลาด'); e.status = res.status; throw e; }
+      return data;
+    }
+
+    const pad = (n) => String(n).padStart(2, '0');
+    function fmtTime(iso) {
+      const d = iso ? new Date(iso) : new Date();
+      if (isNaN(d.getTime())) return '—';
+      return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + (d.getFullYear() + 543) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+    // ตัวเลือกของรายการ (เก็บเป็น JSON) → ข้อความสั้น ๆ ต่อท้ายชื่ออาหาร
+    function optionsText(json) {
+      if (!json) return '';
+      try {
+        const v = JSON.parse(json);
+        if (!Array.isArray(v)) return '';
+        return v.map((o) => (typeof o === 'string' ? o : o && o.name ? o.name : '')).filter(Boolean).join(' · ');
+      } catch (e) { return ''; }
+    }
+
+    function render(shop, items) {
+      const plates = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+      const tables = [...new Set(items.map((i) => i.table_code || '-'))];
+      const bills = [...new Set(items.map((i) => i.bill_no).filter((b) => b != null))];
+      const station = items[0] && items[0].station === 'cashier' ? 'แคชเชียร์' : 'ครัว';
+      // หัวเรื่องบอกชัดว่าเป็นเอกสารของครัว (ไม่ใช่ใบเสร็จ) — ของที่ส่งไปแคชเชียร์จะเขียนกำกับไว้ตรง ๆ
+      const kindLabel = station === 'แคชเชียร์' ? 'ใบสั่งแคชเชียร์' : 'ใบสั่งครัว';
+      const fresh = new Set(freshIds.map(Number));
+
+      document.getElementById('ticket').innerHTML = `
+        ${shop.logo_url ? '<div class="t-shop-logo"><img src="' + esc(shop.logo_url) + '" alt=""></div>' : ''}
+        <div class="t-shop">${esc(shop.name || '')}</div>
+        <div class="t-kind">${kindLabel}</div>
+        <div class="t-kind-sub">เอกสารสำหรับ${esc(station)} — ไม่ใช่ใบเสร็จรับเงิน</div>
+        <div class="t-head">
+          <div><span>โต๊ะ</span><strong class="t-table">${esc(tables.join(', '))}</strong></div>
+          <div><span>บิล</span><strong>${bills.map((b) => billNoFmt(b)).join(', ') || '—'}</strong></div>
+          <div><span>จุดที่สั่งทำ</span><strong>${esc(station)}</strong></div>
+          <div><span>เวลาพิมพ์</span><strong>${fmtTime()}</strong></div>
+        </div>
+        <table class="t-table-list">
+          <thead><tr><th>รายการ</th><th style="text-align:right;">จำนวน</th></tr></thead>
+          <tbody>
+            ${items.map((i) => {
+              const opt = optionsText(i.options_json);
+              return '<tr>' +
+                '<td><div class="t-item-name">' + esc(i.menu_name) + (fresh.has(Number(i.id)) ? '<span class="t-item-new">ใหม่</span>' : '') + '</div>' +
+                (opt ? '<div class="t-item-opt">' + esc(opt) + '</div>' : '') + '</td>' +
+                '<td class="num">' + (Number(i.quantity) || 0) + '</td>' +
+                '</tr>';
+            }).join('')}
+          </tbody>
+        </table>
+        <div class="t-sum"><span>รวม ${items.length} รายการ</span><span>${plates} จาน</span></div>
+        <p class="t-foot">พิมพ์โดยระบบ QPage · qpage.website <img src="/img/logo-wordmark.svg" alt="QPage"></p>`;
+    }
+
+    function renderError(message, hint) {
+      const pb = document.getElementById('printBtn');
+      if (pb) pb.style.display = 'none';
+      document.getElementById('ticket').innerHTML = `
+        <div class="t-loading" style="padding:26px 14px;line-height:1.7;">
+          <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:8px;">${esc(message)}</div>
+          <div style="font-size:13px;color:#475467;">${hint || 'เปิดหน้าครัวแล้วกดปุ่ม “เริ่มทำ” อีกครั้งเพื่อพิมพ์ใบสั่งครัว'}</div>
+          <div style="margin-top:16px;">
+            <a href="/shop/kitchen.html" style="display:inline-block;padding:9px 16px;border-radius:9px;background:#ea580c;color:#fff;text-decoration:none;font-weight:700;font-size:13.5px;">ไปหน้าครัว</a>
+          </div>
+        </div>`;
+    }
+
+    // ---------- เลือกขนาดกระดาษ — จำค่าไว้ในเครื่อง (แยกจากใบเสร็จ เพราะครัวมักใช้คนละม้วน) ----------
+    const PAPER_KEY = 'qpage_ticket_paper';
+    function applyPaper(mm) {
+      const size = mm === 'a4' ? 'A4' : mm + ' auto';
+      const margin = mm === 'a4' ? '12mm' : '3mm';
+      let st = document.getElementById('paperStyle');
+      if (!st) { st = document.createElement('style'); st.id = 'paperStyle'; document.head.appendChild(st); }
+      st.textContent = '@page { size: ' + size + '; margin: ' + margin + '; }';
+      document.body.className = 'paper-' + mm;
+    }
+    const paperSel = document.getElementById('paperSel');
+    try { const saved = localStorage.getItem(PAPER_KEY); if (saved) paperSel.value = saved; } catch (e) { /* ข้าม */ }
+    applyPaper(paperSel.value);
+    paperSel.addEventListener('change', () => {
+      try { localStorage.setItem(PAPER_KEY, paperSel.value); } catch (e) { /* ข้าม */ }
+      applyPaper(paperSel.value);
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    function closeSelf() {
+      try { window.close(); } catch (e) { /* ข้าม */ }
+      setTimeout(() => { if (!window.closed) location.replace('/shop/kitchen.html'); }, 350);
+    }
+    document.getElementById('closeBtn').addEventListener('click', closeSelf);
+
+    (async function init() {
+      if (!ids.length) {
+        renderError('ไม่พบรายการที่ต้องพิมพ์', 'หน้านี้ต้องเปิดจากปุ่ม “เริ่มทำ” หรือปุ่มพิมพ์ซ้ำในหน้าครัว');
+        return;
+      }
+      try {
+        const [me, data] = await Promise.all([api('/api/shop/me'), api('/api/shop/tickets?ids=' + ids.join(','))]);
+        render(me.shop || {}, data.items || []);
+        // เปิดหน้าต่างพิมพ์ให้อัตโนมัติหลังเรนเดอร์เสร็จ (ผู้ใช้กดยืนยันพิมพ์บนเครื่องได้เลย)
+        setTimeout(() => { try { window.print(); } catch (e) { /* ผู้ใช้อาจปิดการพิมพ์ */ } }, 500);
+      } catch (err) {
+        if (err && err.status === 403) renderError('กรุณาเข้าสู่ระบบก่อนพิมพ์ใบสั่งครัว', 'ล็อกอินเข้าระบบแล้วเปิดหน้านี้อีกครั้ง');
+        else renderError(err.message || 'โหลดรายการไม่สำเร็จ');
+      }
+    })();
+  </script>
+</body>
+</html>

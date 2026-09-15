@@ -566,6 +566,46 @@ router.post('/api/shop/order-items/:id/status', requireShop, async (req, res) =>
 });
 
 // ---------------------------------------------------------------------------
+// ใบสั่งครัว — กด "เริ่มทำ" ทั้งโต๊ะแล้วพิมพ์ตั๋วครัวออกเครื่องพิมพ์
+// ---------------------------------------------------------------------------
+// เริ่มทำหลายรายการพร้อมกัน (ปุ่มเริ่มทำของทั้งโต๊ะ) — เฉพาะรายการที่ยัง "รอทำ"
+// รายการที่เริ่มไปแล้ว/เสร็จแล้วจะไม่ถูกแตะ จึงกดซ้ำได้หลังมีออเดอร์ใหม่เข้ามา (จะเริ่มเฉพาะของใหม่)
+router.post('/api/shop/order-items/start', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.slice(0, 200) : [];
+  if (!ids.length) return res.status(400).json({ ok: false, message: 'ไม่พบรายการที่ต้องเริ่มทำ' });
+  const r = await db.startPendingOrderItems(shop.id, ids);
+  if (!r.started.length) {
+    return res.json({ ok: true, started: [], message: 'ไม่มีรายการที่ต้องเริ่ม (เริ่มทำไปแล้ว)' });
+  }
+  // แจ้งหน้าจออื่น (ครัว/แคชเชียร์/หน้าสั่งอาหาร) ให้ของใหม่ขึ้นทันที
+  for (const orderId of r.orderIds) realtime.publish(shop.id, 'item_status', { order_id: orderId });
+  console.log(`🍳 [ครัว] เริ่มทำ ${r.started.length} รายการ (ร้าน #${shop.id})`);
+  res.json({ ok: true, started: r.started, message: `เริ่มทำ ${r.started.length} รายการแล้ว` });
+});
+
+// ข้อมูลสำหรับพิมพ์ใบสั่งครัว (ตาม id รายการที่เพิ่งเริ่มทำ หรือกดพิมพ์ซ้ำ)
+router.get('/api/shop/tickets', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const ids = String(req.query.ids || '').split(',').map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
+  if (!ids.length) return res.status(400).json({ ok: false, message: 'ไม่ได้ระบุรายการที่จะพิมพ์' });
+  const items = await db.listTicketItems(shop.id, ids);
+  if (!items.length) return res.status(404).json({ ok: false, message: 'ไม่พบรายการเหล่านี้ (อาจถูกลบหรือเช็คบิลไปแล้ว)' });
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, shop: { name: shop.name, logo_url: shop.logo_url || '' }, items });
+});
+
+// หน้าพิมพ์ใบสั่งครัว (เปิดจากปุ่ม "เริ่มทำ" ในหน้าครัว)
+router.get('/shop/ticket.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIR, 'shop', 'ticket.html'));
+});
+
+// ---------------------------------------------------------------------------
 // ประวัติออเดอร์ (บิลที่ปิดแล้ว) — ดูย้อนหลังเป็นบิล ๆ ต่อโต๊ะ
 // ---------------------------------------------------------------------------
 router.get('/shop/history.html', requireShopPage, async (req, res) => {
