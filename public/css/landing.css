@@ -127,5 +127,6 @@
 /* ---------- ช่องทางโซเชียลท้ายหน้าเว็บ (แสดงเฉพาะช่องที่กรอกในหลังบ้าน) ---------- */
 .land-social { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 2px 0 16px; }
 .land-social[hidden] { display: none; }
-/* ไอคอนในปุ่มต้องเป็นสีขาว — ทับกฎ .land-footer a ด้านบน (รวมตอน hover) ที่ตั้งสีเทา/สีเน้นไว้ */
-.land-footer .social-btn, .land-footer .social-btn:hover { color: #fff; }
+/* สีไอคอนในปุ่ม — ทับกฎ .land-footer a ด้านบน (รวมตอน hover) ที่ตั้งสีเทา/สีเน้นไว้ */
+.land-footer .social-btn.fb { color: #1877f2; }
+.land-footer .social-btn.line { color: #fff; }
