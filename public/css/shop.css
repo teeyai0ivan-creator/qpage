@@ -237,15 +237,18 @@
 /* ---------- หน้าร้านสาธารณะ ---------- */
 .pub-hero { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 40px 24px; }
 .pub-hero-inner { max-width: 900px; margin: 0 auto; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+/* หน้าที่มีแถวล่าง (โต๊ะ/บิล) → ให้คอลัมน์ซ้าย-ขวาชิดขอบล่าง แถวล่างจึงตรงแนวกัน */
+.pub-hero-inner.pub-end { align-items: flex-end; }
 .pub-logo { width: 92px; height: 92px; border-radius: 20px; object-fit: cover; background: rgba(255,255,255,.2); flex-shrink: 0; }
 .pub-hero h1 { font-size: 26px; font-weight: 800; }
 /* โครงหัวปก: คอลัมน์ซ้าย (โลโก้+ชื่อร้าน แล้วข้อมูลใต้ชื่อ) · คอลัมน์ขวา (ปุ่มติดต่อ) */
 .pub-info { flex: 1 1 320px; min-width: 0; }
 .pub-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .pub-head h1 { margin: 0; min-width: 0; line-height: 1.25; }
-/* ข้อมูลใต้ชื่อ (โต๊ะ/บิล/ปุ่มรายการ) เยื้องให้เริ่มตรงกับชื่อร้าน = ความกว้างโลโก้ + ระยะห่าง
+/* แถวล่างของปก: เลขที่โต๊ะ/เลขบิล (+ ปุ่มรายการทั้งหมด) ชิดซ้าย อยู่แถวเดียวกับปุ่มติดต่อฝั่งขวา
+   ใช้ร่วมกับ .pub-hero-inner.pub-end ที่จัดคอลัมน์ซ้าย-ขวาให้ชิดขอบล่างตรงกัน
    หมายเหตุ: อย่าตั้งชื่อคลาสว่า .pub-sub เพราะ .pub-sub ถูกใช้กับ "หมวดย่อยของเมนู" อยู่แล้ว */
-.pub-head-sub { margin-top: 8px; padding-left: 106px; }
+.pub-head-sub { margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 36px; }
 .pub-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 14px; opacity: .95; }
 .pub-meta a { color: #fff; text-decoration: underline; }
 /* ช่องทางติดต่อร้าน — บล็อกปุ่มชิดขวาของแบนเนอร์ (ใช้ทั้งหน้าร้านสาธารณะและหน้าสั่งอาหารของลูกค้า)
@@ -357,7 +360,7 @@ button.cart-info strong { color: var(--text); }
 .menu-chosen { color: var(--accent); font-size: 12.5px; font-weight: 600; margin-top: 2px; }
 
 /* ป้าย "รายการทั้งหมด" ในส่วนหัวร้าน (กะทัดรัด) */
-.bill-pill { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.45); background: rgba(255,255,255,.16); color: #fff; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color .15s ease; }
+.bill-pill { margin-top: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.45); background: rgba(255,255,255,.16); color: #fff; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color .15s ease; }
 .bill-pill:hover { background: rgba(255,255,255,.28); }
 .bill-pill:active { transform: scale(0.98); }
 
@@ -515,7 +518,7 @@ button.cart-info strong { color: var(--text); }
   .pub-hero h1 { font-size: 21px; }
   .pub-logo { width: 68px; height: 68px; border-radius: 16px; }
   .pub-head { gap: 12px; }
-  .pub-head-sub { margin-top: 6px; padding-left: 80px; }
-  .bill-pill { margin-top: 6px; padding: 6px 11px; font-size: 12px; }
+  .pub-head-sub { margin-top: 6px; gap: 8px; min-height: 30px; }
+  .bill-pill { margin-top: 0; padding: 6px 11px; font-size: 12px; }
   .pub-menu img { width: 76px; height: 76px; }
 }
