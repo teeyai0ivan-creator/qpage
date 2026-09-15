@@ -11,21 +11,29 @@
   window.money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
   // ---------------------------------------------------------------------------
-  // ช่องทางติดต่อร้าน (เบอร์โทร / LINE / แผนที่) — ปุ่มกลมมีไอคอน ใช้ทั้งหน้าร้านและหน้าสั่งอาหารของลูกค้า
+  // ช่องทางติดต่อร้าน (LINE / เบอร์โทร / แผนที่) — ปุ่มกลมมีไอคอน ใช้ทั้งหน้าร้านและหน้าสั่งอาหารของลูกค้า
+  // จัดเป็น 2 แถวชิดขวา: แถวบน LINE · แถวล่าง เบอร์โทรร้าน + แผนที่
   // tone: 'hero' = บนแบนเนอร์สีของร้าน · 'plain' = บนพื้นปกติ
   // ---------------------------------------------------------------------------
   const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 2 .7 2.9a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.2-1.2a2 2 0 012.1-.5c.9.3 1.9.6 2.9.7a2 2 0 011.7 2z"/></svg>';
   const ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-8.4 8.4 9 9 0 01-3.9-.9L3 21l1.9-5.7a8.4 8.4 0 011.7-10.1A8.4 8.4 0 0121 11.5z"/></svg>';
   const ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="2.6"/></svg>';
 
+  // จัดวาง 2 แถวชิดขวา: แถวบน = LINE · แถวล่าง = เบอร์โทรร้าน + แผนที่
   window.pubContactChips = (shop, opts) => {
     const s = shop || {};
     const tone = (opts && opts.tone) === 'plain' ? ' plain' : '';
-    const chips = [];
-    if (s.phone) chips.push(`<a class="pub-chip${tone}" href="tel:${esc(s.phone)}">${ICON_PHONE}<span>${esc(s.phone)}</span></a>`);
-    if (s.line_url) chips.push(`<a class="pub-chip${tone} line" href="${esc(s.line_url)}" target="_blank" rel="noopener">${ICON_CHAT}<span>LINE ร้านค้า</span></a>`);
-    if (s.maps_url) chips.push(`<a class="pub-chip${tone}" href="${esc(s.maps_url)}" target="_blank" rel="noopener">${ICON_PIN}<span>ดูแผนที่</span></a>`);
-    return chips.length ? `<div class="pub-contact">${chips.join('')}</div>` : '';
+    const chip = (href, cls, icon, text, blank) => `<a class="pub-chip${tone}${cls}" href="${esc(href)}"${blank ? ' target="_blank" rel="noopener"' : ''}>${icon}<span>${text}</span></a>`;
+    const top = s.line_url ? chip(s.line_url, ' line', ICON_CHAT, 'LINE ร้านค้า', true) : '';
+    const lower = [
+      s.phone ? chip('tel:' + s.phone, '', ICON_PHONE, esc(s.phone), false) : '',
+      s.maps_url ? chip(s.maps_url, '', ICON_PIN, 'ดูแผนที่', true) : '',
+    ].join('');
+    if (!top && !lower) return '';
+    return `<div class="pub-contact">`
+      + (top ? `<div class="pub-contact-row">${top}</div>` : '')
+      + (lower ? `<div class="pub-contact-row">${lower}</div>` : '')
+      + `</div>`;
   };
 
   // เลขที่บิล #0001
