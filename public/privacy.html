@@ -39,7 +39,7 @@
 
       <h2>1. ผู้ให้บริการและผู้ควบคุมข้อมูลส่วนบุคคล</h2>
       <p>
-        บริการนี้ดำเนินการโดย <strong id="operatorName">QPage — ระบบสั่งอาหารและระบบสมาชิกร้านค้า</strong> (“ผู้ให้บริการ” / “เรา”)
+        บริการนี้ดำเนินการโดย <strong id="operatorName">ระบบสั่งอาหารและระบบสมาชิกร้านค้า (QPage)</strong> (“ผู้ให้บริการ” / “เรา”)
         ซึ่งเป็น <strong>ผู้ควบคุมข้อมูลส่วนบุคคล</strong> ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
         สำหรับข้อมูลบัญชีผู้ใช้ ข้อมูลการใช้บริการ และข้อมูลที่เกี่ยวกับระบบ
       </p>
@@ -159,8 +159,9 @@
       <h2>11. ช่องทางติดต่อเรื่องข้อมูลส่วนบุคคล</h2>
       <p>ติดต่อผู้ให้บริการเพื่อใช้สิทธิหรือสอบถามเกี่ยวกับข้อมูลส่วนบุคคลได้ที่:</p>
       <ul>
-        <li>ผู้ให้บริการ: <strong id="contactOperator">QPage — ระบบสั่งอาหารและระบบสมาชิกร้านค้า</strong></li>
-        <li>อีเมล: <strong><a id="contactEmail" href="mailto:support@qpage.website">support@qpage.website</a></strong></li>
+        <li>ผู้ให้บริการ: <strong id="contactOperator">ระบบสั่งอาหารและระบบสมาชิกร้านค้า (QPage)</strong></li>
+        <li id="contactEmailRow" hidden>อีเมล: <strong><a id="contactEmail" href="#"></a></strong></li>
+        <li id="contactFallbackRow">ช่องทางติดต่อของผู้ให้บริการ: ดูได้จากหน้าแรกของเว็บไซต์ หรือหน้า “บัญชีของฉัน” ของคุณ (ในหน้านี้ผู้ให้บริการยังไม่ได้ระบุอีเมลติดต่อ)</li>
       </ul>
       <p>หากไม่ได้รับคำตอบภายในเวลาที่กำหนด คุณมีสิทธิร้องเรียนต่อสำนักงานคณะกรรมการคุ้มครองข้อมูลส่วนบุคคล (สคส.) โทร. 02-142-1033 หรือเว็บไซต์ pdpc.or.th</p>
 
@@ -190,8 +191,18 @@
         set('contactOperator', d.operator);
         set('policyVersion', d.version);
         set('updatedAt', d.updatedAt);
+        // แสดงอีเมลติดต่อเฉพาะเมื่อผู้ให้บริการตั้งไว้จริง (ไม่แสดงอีเมลสมมติ)
         const em = document.getElementById('contactEmail');
-        if (em && d.email) { em.textContent = d.email; em.href = 'mailto:' + d.email; }
+        const row = document.getElementById('contactEmailRow');
+        const fb = document.getElementById('contactFallbackRow');
+        if (d.email) {
+          em.textContent = d.email; em.href = 'mailto:' + d.email;
+          if (row) row.hidden = false;
+          if (fb) fb.hidden = true;
+        } else {
+          if (row) row.hidden = true;
+          if (fb) fb.hidden = false;
+        }
       } catch (e) { /* ใช้ค่าเริ่มต้นในหน้านี้ */ }
     })();
   </script>

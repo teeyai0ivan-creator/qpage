@@ -98,6 +98,34 @@
           </table>
         </div>
       </div>
+      <!-- ข้อมูลทางกฎหมาย/PDPA ที่แสดงในหน้าถ้อยแถลงสาธารณะ -->
+      <div class="admin-card">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ข้อมูลทางกฎหมายและความเป็นส่วนตัว (PDPA)
+          <a class="icon-btn" href="/privacy.html" target="_blank" rel="noopener" style="margin-left:auto;text-decoration:none;padding:7px 14px;">ดูหน้าถ้อยแถลง</a>
+        </h2>
+        <p style="color:var(--muted);font-size:13px;line-height:1.8;margin:6px 0 16px;">
+          ค่าที่กรอกตรงนี้จะแสดงในหน้า <strong>/privacy.html</strong> ที่ผู้ใช้เห็นตอนสมัคร —
+          <strong>อีเมลต้องเป็นกล่องเมลที่คุณเปิดอ่านได้จริง</strong> (เช่น Gmail ของคุณ) เพราะระบบนี้ทำหน้าที่แค่ <em>แสดง</em> ที่อยู่ให้ผู้ใช้ติดต่อ
+          ไม่ได้เป็นกล่องรับเมลเอง ลูกค้าที่ขอใช้สิทธิ PDPA จะส่งเมลมาที่อีเมลนี้ และคุณจะเห็นในกล่องเมลนั้นตามปกติ
+        </p>
+        <div style="display:grid;gap:14px;max-width:560px;">
+          <div>
+            <label for="legalOperator" style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">ชื่อผู้ให้บริการ (ผู้ควบคุมข้อมูลส่วนบุคคล)</label>
+            <input id="legalOperator" type="text" maxlength="160" placeholder="เช่น ร้านป้าแดงโภชนา / บริษัท ... จำกัด" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;">
+          </div>
+          <div>
+            <label for="legalEmail" style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">อีเมลติดต่อเรื่องข้อมูลส่วนบุคคล</label>
+            <input id="legalEmail" type="email" maxlength="160" placeholder="เช่น yourname@gmail.com" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;">
+          </div>
+          <div style="font-size:12.5px;color:var(--muted);">อีเมลที่แสดงอยู่ตอนนี้: <strong id="legalEmailNow">—</strong></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="icon-btn primary" id="saveLegalBtn" type="button" style="padding:9px 16px;">บันทึกข้อมูลทางกฎหมาย</button>
+            <span id="legalMsg" style="font-size:12.5px;color:var(--muted);"></span>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -188,7 +216,7 @@
         document.getElementById('adminEmail').textContent = me.user.email;
         document.getElementById('adminRoleLabel').textContent = me.user.role === 'owner' ? 'เจ้าของระบบ' : 'แอดมิน';
         document.getElementById('adminAvatar').textContent = me.user.email.charAt(0).toUpperCase();
-        await Promise.all([loadStats(), loadRecent()]);
+        await Promise.all([loadStats(), loadRecent(), loadLegal()]);
       } catch (err) {
         // เตะไปหน้า login เฉพาะ session หมดอายุจริง (401) — error อื่น (DB/เครือข่าย) แจ้งเตือนไม่เตะออก
         if (err && err.status === 401) { window.location.href = '/login.html'; return; }
@@ -199,10 +227,35 @@
     document.getElementById('refreshBtn').addEventListener('click', () => {
       const rb = document.getElementById('refreshBtn');
       rb.classList.add('spinning'); rb.disabled = true;
-      Promise.all([loadStats(), loadRecent()])
+      Promise.all([loadStats(), loadRecent(), loadLegal()])
         .then(() => showToast(ICON_CHECK + 'อัปเดตข้อมูลแล้ว'))
         .catch(() => showToast(ICON_ALERT + 'โหลดข้อมูลไม่สำเร็จ'))
         .finally(() => { rb.classList.remove('spinning'); rb.disabled = false; });
+    });
+
+    // ---------- ข้อมูลทางกฎหมาย/PDPA (แสดงในหน้าถ้อยแถลงสาธารณะ) ----------
+    async function loadLegal() {
+      try {
+        const { legal } = await api('/api/admin/stats');
+        if (!legal) return;
+        document.getElementById('legalOperator').value = legal.operator || '';
+        document.getElementById('legalEmail').value = legal.email || '';
+        document.getElementById('legalEmailNow').textContent = legal.email || '(ยังไม่ได้ตั้งค่า — หน้าถ้อยแถลงจะไม่แสดงอีเมล)';
+      } catch (e) { /* ข้าม */ }
+    }
+    document.getElementById('saveLegalBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('saveLegalBtn');
+      const msg = document.getElementById('legalMsg');
+      const legalOperator = document.getElementById('legalOperator').value.trim();
+      const legalEmail = document.getElementById('legalEmail').value.trim();
+      if (legalEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(legalEmail)) { msg.textContent = 'อีเมลไม่ถูกต้อง'; msg.style.color = 'var(--danger)'; return; }
+      btn.disabled = true; msg.style.color = 'var(--muted)'; msg.textContent = 'กำลังบันทึก...';
+      try {
+        const r = await api('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ legalOperator, legalEmail }) });
+        msg.textContent = r.message || 'บันทึกแล้ว';
+        await loadLegal();
+      } catch (e) { msg.style.color = 'var(--danger)'; msg.textContent = e.message; }
+      finally { btn.disabled = false; }
     });
 
     document.getElementById('logoutBtn').addEventListener('click', async (e) => {

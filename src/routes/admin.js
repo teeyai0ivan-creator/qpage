@@ -6,6 +6,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
+const legal = require('../lib/legal');
 const otp = require('../lib/otp');
 const mailer = require('../lib/mailer');
 const sms = require('../lib/sms');
@@ -335,7 +336,7 @@ router.post('/api/admin/shop-gift', requireOwner, async (req, res) => {
 
 // สถิติภาพรวม
 router.get('/api/admin/stats', requireAdmin, async (req, res) => {
-  res.json({ ok: true, stats: await db.countStats() });
+  res.json({ ok: true, stats: await db.countStats(), legal: legal.publicInfo() });
 });
 
 // รายการ OTP ทั้งหมด (สำหรับหน้าจัดการ SMS-OTP)
@@ -496,20 +497,33 @@ router.post('/api/admin/sms-test', requireAdmin, async (req, res) => {
 });
 
 // ตั้งค่า SMS-OTP (แอดมิน)
-router.post('/api/admin/settings', requireAdmin, (req, res) => {
-  const { otpTtlMinutes, otpMaxAttempts, devMode: dev } = req.body || {};
+router.post('/api/admin/settings', requireAdmin, async (req, res) => {
+  const { otpTtlMinutes, otpMaxAttempts, devMode: dev, legalOperator, legalEmail } = req.body || {};
   let changed = 0;
 
   if (otpTtlMinutes !== undefined && Number(otpTtlMinutes) >= 1 && Number(otpTtlMinutes) <= 60) {
-    db.setSetting('otp_ttl_minutes', Number(otpTtlMinutes));
+    await db.setSetting('otp_ttl_minutes', Number(otpTtlMinutes));
     changed++;
   }
   if (otpMaxAttempts !== undefined && Number(otpMaxAttempts) >= 1 && Number(otpMaxAttempts) <= 20) {
-    db.setSetting('otp_max_attempts', Number(otpMaxAttempts));
+    await db.setSetting('otp_max_attempts', Number(otpMaxAttempts));
     changed++;
   }
   if (typeof dev === 'boolean') {
-    db.setSetting('dev_mode', String(dev));
+    await db.setSetting('dev_mode', String(dev));
+    changed++;
+  }
+  // ข้อมูลทางกฎหมาย/PDPA ที่แสดงในหน้าถ้อยแถลงสาธารณะ
+  if (legalOperator !== undefined) {
+    await db.setSetting('legal_operator', String(legalOperator).trim().slice(0, 160));
+    changed++;
+  }
+  if (legalEmail !== undefined) {
+    const v = String(legalEmail).trim().slice(0, 160);
+    if (v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) {
+      return res.status(400).json({ ok: false, field: 'legalEmail', message: 'อีเมลติดต่อไม่ถูกต้อง' });
+    }
+    await db.setSetting('legal_email', v);
     changed++;
   }
 
