@@ -115,7 +115,13 @@ async function sendPublicShopPage(req, res, shop) {
   res.set('Cache-Control', 'no-store');
   try {
     const html = await fs.readFile(full, 'utf8');
-    res.type('html').send(html.replace(MARKER_RE, metaHtml(shop, origin) + '\n'));
+    const meta = metaHtml(shop, origin);
+    let out = html.replace(MARKER_RE, meta + '\n');
+    // กันเหนียว: ถ้าไฟล์ไม่มีจุดแทนที่ (หรือถูกแก้จนหาย) ต้องยังมี <title> เสมอ
+    if (!/<title>/i.test(out)) {
+      out = out.replace(/<head>/i, `<head>\n    <title>${esc(seoTitle(shop || { name: '' }))}</title>`);
+    }
+    res.type('html').send(out);
   } catch (err) {
     console.error('⚠️ อ่านหน้าร้านสาธารณะไม่สำเร็จ:', err.message);
     res.sendFile(full);
