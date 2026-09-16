@@ -145,7 +145,7 @@ async function printContents(kind, contents, silentOverride) {
 // key = path ของเว็บ, value = ไฟล์ในโปรแกรม + query ที่ต้องส่งต่อ
 const NATIVE_PAGES = {
   '/shop/kitchen.html': { file: 'app/kitchen.html', query: { station: 'kitchen' } },
-  '/shop/cashier.html': { file: 'app/cashier.html' },
+  '/shop/cashier.html': { file: 'app/kitchen.html', query: { station: 'cashier' } },
   '/shop/orders.html': { file: 'app/orders.html' },
 };
 
@@ -560,11 +560,6 @@ ipcMain.on('kitchen:print-round', async (event, payload) => {
 });
 
 // ---------------------------------------------------------------------------
-// IPC — หน้าจอ "แคชเชียร์" ของโปรแกรม (คิวจัดเตรียม + เก็บเงิน + พิมพ์ใบเสร็จซ้ำ)
-// ---------------------------------------------------------------------------
-ipcMain.handle('cashier:history', (event, limit) => api.history(limit));
-
-// ---------------------------------------------------------------------------
 // IPC — หน้าจอ "สั่งอาหาร" ของโปรแกรม (ผังโต๊ะ + บิล)
 // ---------------------------------------------------------------------------
 ipcMain.handle('orders:tables', () => api.tables());
@@ -738,6 +733,64 @@ function wireDeviceHeader() {
     } catch (e) { /* ข้าม */ }
     callback({ requestHeaders: details.requestHeaders });
   });
+  // คำตอบที่มี header ไม่ใช่ ASCII (เช่น Date ที่จัดรูปแบบตาม locale ไทย) ทำให้ Electron โยน error
+  // ตอนแปลงเป็น Headers — บันทึกไว้ให้ตามสาเหตุได้ (ไม่ให้บันทึกรัว ๆ)
+  let lastNote = 0;
+  sess.webRequest.onHeadersReceived((details, callback) => {
+    try {
+      const bad = Object.entries(details.responseHeaders || {}).filter(([k, v]) => !HEADER_OK.test(String(v == null ? '' : v)) || !HEADER_OK.test(k));
+      if (bad.length && Date.now() - lastNote > 60000) {
+        lastNote = Date.now();
+        startupLog(`⚠️ เซิร์ฟเวอร์ตอบ header ที่มีอักษรพิเศษ (${bad.map(([k, v]) => k + '=' + String(v).slice(0, 30)).join(', ')}) จาก ${String(details.url).slice(0, 90)} — มักเกิดจากตั้ง "ที่อยู่เซิร์ฟเวอร์" ไม่ถูกต้อง`);
+      }
+    } catch (e) { /* ข้าม */ }
+    callback({ responseHeaders: details.responseHeaders });
+  });
+  guardSessionFetch(sess);
+}
+
+/**
+ * กันโปรแกรม "พังทั้งตัว" จาก header ที่มีอักษรไทย
+ * HTTP header ส่งได้เฉพาะ Latin-1 — คำขอที่มีอักษรอื่นจะโยน error ใน main process แล้วเด้งกล่อง
+ * "A JavaScript error occurred in the main process" (เจอจริงจากหน้างาน) จึงตัด header นั้นทิ้งและบันทึกไว้
+ * รองรับทั้ง object ธรรมดา, Headers และ array ของคู่ [ชื่อ, ค่า]
+ */
+const HEADER_OK = /^[\x20-\x7E]*$/;
+function headerPairs(src) {
+  if (!src) return [];
+  if (typeof Headers !== 'undefined' && src instanceof Headers) return [...src.entries()];
+  if (Array.isArray(src)) return src.map((p) => [p[0], p[1]]);
+  if (typeof src === 'object') return Object.entries(src);
+  return [];
+}
+function cleanHeaders(src, url) {
+  const pairs = headerPairs(src);
+  if (!pairs.length) return null;
+  const out = {};
+  let changed = false;
+  for (const [name, value] of pairs) {
+    const n = String(name == null ? '' : name);
+    const v = value == null ? '' : String(value);
+    if (!HEADER_OK.test(n) || !HEADER_OK.test(v)) {
+      changed = true;
+      startupLog(`⚠️ ตัด header ที่มีอักษรพิเศษออก: ${n} = "${v.slice(0, 60)}" (${Buffer.from(v).toString('hex').slice(0, 24)}…) → ${String(url).slice(0, 90)}`);
+      continue;
+    }
+    out[n] = v;
+  }
+  return changed ? out : null;
+}
+function guardSessionFetch(sess) {
+  if (sess.__qpageGuarded) return;
+  const original = sess.fetch.bind(sess);
+  sess.__qpageGuarded = true;
+  sess.fetch = (url, opts) => {
+    try {
+      const clean = cleanHeaders(opts && opts.headers, url);
+      if (clean) return original(url, Object.assign({}, opts, { headers: clean }));
+    } catch (e) { startupLog('⚠️ ตรวจ header ไม่สำเร็จ: ' + e.message); }
+    return original(url, opts);
+  };
 }
 
 function applyAutoStart(s) {
@@ -839,6 +892,24 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     startupLog('โปรแกรมเริ่มทำงาน (เวอร์ชัน ' + app.getVersion() + ')');
+    // ห้ามให้โปรแกรม "ล้มทั้งตัว" จาก error ที่เกิดในไลบรารีของ Electron (เช่น แปลง header ที่มีอักษรไทย
+    // จากเซิร์ฟเวอร์/พร็อกซีที่ไม่มาตรฐาน) — เจอจริงจากหน้างาน: โปรแกรมเด้งกล่อง error แล้วปิดไปทั้งตัว
+    let errCount = 0;
+    process.on('uncaughtException', (err) => {
+      errCount++;
+      const msg = String((err && err.message) || err);
+      const hint = /ByteString/.test(msg + String(err && err.stack))
+        ? ' → สาเหตุ: เซิร์ฟเวอร์ตอบ header ที่มีอักษรพิเศษ (ตรวจ "ที่อยู่เซิร์ฟเวอร์" ในหน้าตั้งค่าโปรแกรม)'
+        : '';
+      // บันทึกไม่ให้ท่วม: 3 ครั้งแรก แล้วเว้นไปทุก ๆ 30 ครั้ง
+      if (errCount <= 3 || errCount % 30 === 0) {
+        startupLog(`💥 พบข้อผิดพลาดที่ไม่คาดคิด (ครั้งที่ ${errCount} — โปรแกรมทำงานต่อ): ` + (err && err.stack || msg) + hint);
+      }
+      try { console.error('💥 uncaughtException:', msg.slice(0, 200)); } catch (e) { /* ข้าม */ }
+    });
+    process.on('unhandledRejection', (err) => {
+      startupLog('💥 พบ promise ที่ไม่สำเร็จ (โปรแกรมทำงานต่อ): ' + ((err && err.message) || err));
+    });
     try {
       wireDeviceHeader();
     } catch (err) { startupLog('ตั้งค่า header ไม่สำเร็จ: ' + err.message); }

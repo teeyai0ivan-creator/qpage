@@ -45,17 +45,3 @@ contextBridge.exposeInMainWorld('qpageOrders', {
   onEvent: (cb) => ipcRenderer.on('kitchen:event', (event, evt) => cb(evt)),
 });
 
-// หน้าจอ "แคชเชียร์" ของโปรแกรม (คิวเครื่องดื่ม/ของว่าง + เก็บเงิน + พิมพ์ใบเสร็จ)
-contextBridge.exposeInMainWorld('qpageCashier', {
-  items: () => ipcRenderer.invoke('kitchen:list', 'cashier'),
-  start: (ids) => ipcRenderer.invoke('kitchen:start', ids),
-  status: (id, status) => ipcRenderer.invoke('kitchen:status', { id, status }),
-  cancel: (id, reason) => ipcRenderer.invoke('kitchen:cancel', { id, reason }),
-  printRound: (payload) => ipcRenderer.send('kitchen:print-round', payload || {}),
-  bills: () => ipcRenderer.invoke('orders:open-bills'),
-  history: (limit) => ipcRenderer.invoke('cashier:history', limit),
-  checkout: (tableId) => ipcRenderer.invoke('orders:checkout', tableId),
-  printReceipt: (payload) => ipcRenderer.send('orders:print-receipt', payload || {}),
-  onLive: (cb) => ipcRenderer.on('kitchen:live', (event, state) => cb(state)),
-  onEvent: (cb) => ipcRenderer.on('kitchen:event', (event, evt) => cb(evt)),
-});

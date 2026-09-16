@@ -108,6 +108,13 @@ function render() {
   $('cDone').textContent = nDone ? '(' + nDone + ')' : '';
   $('pgTitle').textContent = L.title;
   $('pgSub').textContent = L.sub;
+  // คำเรียกของจุดที่ทำ (ครัว = รอทำ/กำลังทำ/เสร็จแล้ว · แคชเชียร์ = ยังไม่จัด/กำลังจัด/จัดเสร็จ)
+  $('lbWait').textContent = L.wait;
+  $('lbCook').textContent = L.cooking;
+  $('lbDone').textContent = L.finished;
+  $('lbChipWait').textContent = L.wait;
+  $('lbChipCook').textContent = L.cooking;
+  $('lbChipDone').textContent = L.finished;
 
   const box = $('list');
   const gs = groups();

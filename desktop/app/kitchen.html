@@ -97,16 +97,16 @@
       <h1 id="pgTitle">ครัว</h1>
       <span class="sub" id="pgSub">รายการอาหารจากบิลที่เปิดอยู่</span>
       <span class="spacer"></span>
-      <span class="stat wait">รอทำ <span class="n" id="nWait">0</span></span>
-      <span class="stat cook">กำลังทำ <span class="n" id="nCook">0</span></span>
-      <span class="stat done">เสร็จแล้ว <span class="n" id="nDone">0</span></span>
+      <span class="stat wait"><span id="lbWait">รอทำ</span> <span class="n" id="nWait">0</span></span>
+      <span class="stat cook"><span id="lbCook">กำลังทำ</span> <span class="n" id="nCook">0</span></span>
+      <span class="stat done"><span id="lbDone">เสร็จแล้ว</span> <span class="n" id="nDone">0</span></span>
       <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
     </div>
     <div class="filters">
       <button class="chip active" data-filter="all" type="button">ทั้งหมด <span class="c" id="cAll"></span></button>
-      <button class="chip" data-filter="pending" type="button">รอทำ <span class="c" id="cWait"></span></button>
-      <button class="chip" data-filter="cooking" type="button">กำลังทำ <span class="c" id="cCook"></span></button>
-      <button class="chip" data-filter="done" type="button">เสร็จแล้ว <span class="c" id="cDone"></span></button>
+      <button class="chip" data-filter="pending" type="button"><span id="lbChipWait">รอทำ</span> <span class="c" id="cWait"></span></button>
+      <button class="chip" data-filter="cooking" type="button"><span id="lbChipCook">กำลังทำ</span> <span class="c" id="cCook"></span></button>
+      <button class="chip" data-filter="done" type="button"><span id="lbChipDone">เสร็จแล้ว</span> <span class="c" id="cDone"></span></button>
       <span class="spacer" style="flex:1;"></span>
       <span class="seg">
         <button data-group="bill" class="active" type="button">ตามโต๊ะ</button>
