@@ -80,6 +80,21 @@ async function tables() {
   return call('/api/shop/tables');
 }
 
+/**
+ * รายชื่อโต๊ะ + โซน (แหล่งหลักของ "ผังโต๊ะ")
+ * ⚠️ /api/shop/tables ให้เฉพาะโต๊ะที่ "ออก QR แล้ว" — โต๊ะที่ตั้งชื่อ/จัดโซนไว้แต่ยังไม่ออก QR
+ *    อยู่ในรายการนี้เท่านั้น ผังจึงต้องสร้างจากรายการนี้แล้วค่อยผูกกับข้อมูล QR/บิล
+ */
+async function tableNames() {
+  const data = await call('/api/shop/table-names');
+  return { names: data.names || [], zones: data.zones || [] };
+}
+
+/** ออก QR ให้ชื่อโต๊ะที่ยังไม่มี (สร้างโต๊ะ+โทเคนจากชื่อนั้น) */
+async function createQrForName(code, zoneId) {
+  return call('/api/shop/tables', { method: 'POST', body: { code, zoneId: Number(zoneId) || 0 } });
+}
+
 /** โซนทั้งหมด */
 async function zones() {
   const data = await call('/api/shop/zones');
@@ -181,5 +196,5 @@ function openEvents(onEvent, onState) {
 module.exports = {
   call, openEvents, shopInfo,
   kitchenItems, startItems, setItemStatus, cancelItem,
-  tables, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
+  tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
 };

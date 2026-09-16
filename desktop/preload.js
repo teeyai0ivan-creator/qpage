@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('qpageKitchen', {
 // หน้าจอ "สั่งอาหาร" ของโปรแกรม (ผังโต๊ะ + บิล + เพิ่มอาหาร + เช็คบิล)
 contextBridge.exposeInMainWorld('qpageOrders', {
   tables: () => ipcRenderer.invoke('orders:tables'),
+  tableNames: () => ipcRenderer.invoke('orders:table-names'),
+  createQrForName: (code, zoneId) => ipcRenderer.invoke('orders:create-qr', { code, zoneId }),
   zones: () => ipcRenderer.invoke('orders:zones'),
   openBills: () => ipcRenderer.invoke('orders:open-bills'),
   catalog: () => ipcRenderer.invoke('orders:catalog'),

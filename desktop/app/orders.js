@@ -14,6 +14,7 @@ const plates = (items) => (items || []).reduce((s, i) => s + (Number(i.quantity)
 
 let tables = [];
 let zones = [];
+let names = [];               // รายชื่อโต๊ะ (แหล่งหลักของผัง — รวมชื่อที่ยังไม่ออก QR)
 let openBills = [];
 let catalog = { menus: [], categories: [], optionGroups: [], optionItems: [], menuGroups: [] };
 let zoneFilter = '';
@@ -38,46 +39,71 @@ const optsText = (json) => {
 // ผังโต๊ะ
 // ---------------------------------------------------------------------------
 function renderPlan() {
-  const list = zoneFilter ? tables.filter((t) => (t.zone_name || '') === zoneFilter) : tables;
-  $('nTables').textContent = list.length;
-  // นับ "มีบิล" เฉพาะบิลที่มีรายการแล้ว (หลังเช็คบิล ระบบจะเปิดบิลว่างใหม่ให้โต๊ะเดิม → ไม่ควรนับเป็นมีบิล)
-  const hasItems = (t) => !!(t.open_order && (t.open_order.items || []).length);
-  const withBill = list.filter(hasItems);
-  $('nBills').textContent = withBill.length;
-  $('nOpenTotal').textContent = money(withBill.reduce((s, t) => s + Number(t.open_order.total || 0), 0));
+  // ผังสร้างจาก "รายชื่อโต๊ะ" (รวมชื่อที่ยังไม่ออก QR) แล้วผูกกับข้อมูล QR/บิล
+  const tablesById = {};
+  for (const t of tables) tablesById[t.id] = t;
+  const zoneKeyOf = (n) => (n.zone_id ? String(n.zone_id) : '');
 
-  // ปุ่มกรองตามโซน
-  const zoneNames = [...new Set(tables.map((t) => t.zone_name || ''))];
-  const chips = [`<button class="chip ${zoneFilter === '' ? 'active' : ''}" data-zone="" type="button">ทั้งหมด <span class="c">(${tables.length})</span></button>`];
-  for (const z of zoneNames) {
-    const label = z || 'ไม่ระบุโซน';
-    const n = tables.filter((t) => (t.zone_name || '') === z).length;
-    chips.push(`<button class="chip ${zoneFilter === z ? 'active' : ''}" data-zone="${esc(z)}" type="button">${esc(label)} <span class="c">(${n})</span></button>`);
+  // zoneFilter: '' = ทั้งหมด · '__none__' = ไม่ระบุโซน · อื่น ๆ = รหัสโซน
+  const NO_ZONE = '__none__';
+  const visible = zoneFilter === ''
+    ? names
+    : names.filter((n) => (zoneFilter === NO_ZONE ? !n.zone_id : String(n.zone_id || '') === zoneFilter));
+  $('nTables').textContent = visible.length;
+  // นับ "มีบิล" เฉพาะบิลที่มีรายการแล้ว (หลังเช็คบิล ระบบเปิดบิลว่างใหม่ให้โต๊ะเดิม → ไม่นับเป็นมีบิล)
+  const billOf = (n) => (n.has_qr && tablesById[n.table_id] ? tablesById[n.table_id].open_order : null);
+  const withBill = visible.filter((n) => {
+    const o = billOf(n);
+    return !!(o && (o.items || []).length);
+  });
+  $('nBills').textContent = withBill.length;
+  $('nOpenTotal').textContent = money(withBill.reduce((s, n) => s + Number(billOf(n).total || 0), 0));
+
+  // ปุ่มกรองตามโซน (ใช้โซนจากรายการโซนจริง + "ไม่ระบุโซน" ถ้ามี)
+  const chips = [`<button class="chip ${zoneFilter === '' ? 'active' : ''}" data-zone="" type="button">ทั้งหมด <span class="c">(${names.length})</span></button>`];
+  for (const z of zones) {
+    const n = names.filter((x) => String(x.zone_id || '') === String(z.id)).length;
+    chips.push(`<button class="chip ${zoneFilter === String(z.id) ? 'active' : ''}" data-zone="${z.id}" type="button">${esc(z.name)} <span class="c">(${n})</span></button>`);
   }
+  const noZone = names.filter((x) => !x.zone_id).length;
+  if (noZone) chips.push(`<button class="chip ${zoneFilter === NO_ZONE ? 'active' : ''}" data-zone="${NO_ZONE}" type="button">ไม่ระบุโซน <span class="c">(${noZone})</span></button>`);
   $('zoneChips').innerHTML = chips.join('');
   $('zoneChips').querySelectorAll('[data-zone]').forEach((b) => b.addEventListener('click', () => { zoneFilter = b.dataset.zone; renderPlan(); }));
 
   const box = $('plan');
-  if (!list.length) {
+  if (!visible.length) {
     box.innerHTML = '<div class="empty-state">ยังไม่มีโต๊ะ — กด "＋ เพิ่มโต๊ะใหม่" เพื่อเริ่ม</div>';
     return;
   }
-  // จัดกลุ่มตามโซน (โซนว่าง = ต่อท้าย)
+  // จัดกลุ่มตามโซน (เรียงตามรายการโซน แล้วปิดท้ายด้วย "ไม่ระบุโซน")
   const grouped = new Map();
-  for (const t of list) {
-    const key = t.zone_name || '';
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key).push(t);
+  for (const z of zones) grouped.set(String(z.id), []);
+  grouped.set('', []);
+  for (const n of visible) {
+    const key = grouped.has(zoneKeyOf(n)) ? zoneKeyOf(n) : '';
+    grouped.get(key).push(n);
   }
   let html = '';
-  for (const [zone, items] of grouped) {
-    html += `<div class="zone-title">${zone ? esc(zone) : 'ไม่ระบุโซน'} <span class="line"></span></div>`;
-    html += '<div class="grid">' + items.map((t) => {
-      const o = t.open_order;
+  for (const [key, items] of grouped) {
+    if (!items.length) continue;
+    const zone = zones.find((z) => String(z.id) === key);
+    html += `<div class="zone-title">${zone ? esc(zone.name) : 'ไม่ระบุโซน'} <span class="line"></span></div>`;
+    html += '<div class="grid">' + items.map((n) => {
+      const tb = n.has_qr ? tablesById[n.table_id] : null;
+      if (!tb) {
+        // ตั้งชื่อ/จัดโซนไว้แล้วแต่ยังไม่ออก QR → กดเพื่อออก QR ให้โต๊ะนี้
+        const zone = zones.find((z) => String(z.id) === key);
+        return `<button class="tile free" data-newqr="${n.id}" data-name="${esc(n.name)}" data-zone-id="${zone ? zone.id : ''}" type="button">
+          <span class="dot"></span>
+          <span class="code">${esc(n.name)}</span>
+          <span class="empty">ยังไม่ออก QR · กดเพื่อออก QR</span>
+        </button>`;
+      }
+      const o = tb.open_order;
       const withItems = !!(o && (o.items || []).length);
-      return `<button class="tile ${withItems ? 'has-bill' : ''}" data-table="${t.id}" type="button">
+      return `<button class="tile ${withItems ? 'has-bill' : ''}" data-table="${tb.id}" type="button">
         <span class="dot"></span>
-        <span class="code">${esc(t.code)}</span>
+        <span class="code">${esc(n.name)}</span>
         ${withItems ? `<span class="line1">บิล ${billNo(o.bill_no)} · ${plates(o.items)} จาน</span>
                <span class="line2">เปิด ${o.opened_at ? new Date(o.opened_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                <span class="amt">${money(o.total)}</span>`
@@ -87,6 +113,21 @@ function renderPlan() {
   }
   box.innerHTML = html;
   box.querySelectorAll('[data-table]').forEach((b) => b.addEventListener('click', () => openDrawer(Number(b.dataset.table))));
+  // โต๊ะที่ยังไม่ออก QR → กดแล้วออก QR ให้ทันที
+  box.querySelectorAll('[data-newqr]').forEach((b) => b.addEventListener('click', () => issueQr(b.dataset.name, b.dataset.zoneId, b)));
+}
+
+/** ออก QR ให้ชื่อโต๊ะที่ยังไม่มี (สร้างโต๊ะ+โทเคนจากชื่อนั้น) */
+async function issueQr(name, zoneId, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    await API.createQrForName(name, zoneId);
+    toast('ออก QR ให้โต๊ะ "' + name + '" แล้ว — สแกนได้เลย');
+    await loadAll();
+  } catch (err) {
+    toast('ออก QR ไม่สำเร็จ: ' + err.message);
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -328,9 +369,15 @@ async function submitForm() {
 // ---------------------------------------------------------------------------
 async function loadAll() {
   try {
-    const [t, z, bills, cat] = await Promise.all([API.tables(), API.zones(), API.openBills(), catalog.menus.length ? Promise.resolve(null) : API.catalog()]);
+    const [tn, t, bills, cat] = await Promise.all([
+      API.tableNames(),                                        // รายชื่อโต๊ะ+โซน = แหล่งหลักของผัง
+      API.tables(),                                            // โต๊ะที่ออก QR แล้ว (มีข้อมูลบิล)
+      API.openBills(),                                         // บิลที่เปิดอยู่ (มีรายการอาหาร)
+      catalog.menus.length ? Promise.resolve(null) : API.catalog(),
+    ]);
+    names = tn.names || [];
+    zones = tn.zones || [];
     tables = t.tables || [];
-    zones = z || [];
     openBills = bills || [];
     // ⚠️ /api/shop/tables ส่งบิลมาแบบ "ไม่มีรายการอาหาร" — ต้องใช้ข้อมูลจาก /orders/open (ที่มี items) ทับเสมอ
     const byTable = {};

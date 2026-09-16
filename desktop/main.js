@@ -551,6 +551,8 @@ ipcMain.on('kitchen:print-round', async (event, payload) => {
 // IPC — หน้าจอ "สั่งอาหาร" ของโปรแกรม (ผังโต๊ะ + บิล)
 // ---------------------------------------------------------------------------
 ipcMain.handle('orders:tables', () => api.tables());
+ipcMain.handle('orders:table-names', () => api.tableNames());
+ipcMain.handle('orders:create-qr', (event, payload) => api.createQrForName(payload && payload.code, payload && payload.zoneId));
 ipcMain.handle('orders:zones', () => api.zones());
 ipcMain.handle('orders:open-bills', () => api.openBills());
 ipcMain.handle('orders:catalog', () => api.catalog());
