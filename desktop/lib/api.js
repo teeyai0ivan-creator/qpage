@@ -73,6 +73,64 @@ async function shopInfo() {
 }
 
 // ---------------------------------------------------------------------------
+// งานของหน้าจอ "สั่งอาหาร" (ผังโต๊ะ + บิล)
+// ---------------------------------------------------------------------------
+/** โต๊ะทั้งหมด (พร้อมบิลที่เปิดอยู่ + ชื่อโซน) + ค่าตั้งปิด QR อัตโนมัติ */
+async function tables() {
+  return call('/api/shop/tables');
+}
+
+/** โซนทั้งหมด */
+async function zones() {
+  const data = await call('/api/shop/zones');
+  return data.zones || [];
+}
+
+/** บิลที่เปิดอยู่ทั้งหมด (มีรายการอาหารในบิล) */
+async function openBills() {
+  const data = await call('/api/shop/orders/open');
+  return data.orders || [];
+}
+
+/** เมนู + กลุ่มตัวเลือก (สำหรับหน้าต่างเลือกอาหาร) */
+async function catalog() {
+  const data = await call('/api/shop/me');
+  return {
+    menus: data.menus || [],
+    categories: data.categories || [],
+    optionGroups: data.optionGroups || [],
+    optionItems: data.optionItems || [],
+    menuGroups: data.menuGroups || [],
+  };
+}
+
+/** เพิ่มอาหารเข้าบิลของโต๊ะ */
+async function addItems(tableId, items) {
+  return call('/api/shop/tables/' + Number(tableId) + '/items', { method: 'POST', body: { items } });
+}
+
+/** ลบรายการอาหารออกจากบิล */
+async function deleteItem(itemId) {
+  return call('/api/shop/order-items/' + Number(itemId), { method: 'DELETE' });
+}
+
+/** เช็คบิลโต๊ะ (คืน { closed, qr_deleted }) */
+async function checkout(tableId) {
+  const data = await call('/api/shop/tables/' + Number(tableId) + '/checkout', { method: 'POST', body: {} });
+  return { closed: data.closed || null, qrDeleted: !!data.qr_deleted, message: data.message || '' };
+}
+
+/** เพิ่มโต๊ะใหม่ (ชื่อ + โซนถ้าเลือก) */
+async function addTable(code, zoneId) {
+  return call('/api/shop/tables', { method: 'POST', body: { code, zoneId: Number(zoneId) || 0 } });
+}
+
+/** เพิ่มโซนใหม่ */
+async function addZone(name) {
+  return call('/api/shop/zones', { method: 'POST', body: { name } });
+}
+
+// ---------------------------------------------------------------------------
 // เหตุการณ์เรียลไทม์ (SSE) — ให้หน้าจอครัวอัปเดตเองเมื่อมีออเดอร์ใหม่
 // ---------------------------------------------------------------------------
 /**
@@ -120,4 +178,8 @@ function openEvents(onEvent, onState) {
   return { abort: () => { closed = true; try { ctrl.abort(); } catch (e) { /* ข้าม */ } } };
 }
 
-module.exports = { call, kitchenItems, startItems, setItemStatus, cancelItem, shopInfo, openEvents };
+module.exports = {
+  call, openEvents, shopInfo,
+  kitchenItems, startItems, setItemStatus, cancelItem,
+  tables, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
+};

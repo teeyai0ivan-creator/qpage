@@ -26,3 +26,19 @@ contextBridge.exposeInMainWorld('qpageKitchen', {
   onLive: (cb) => ipcRenderer.on('kitchen:live', (event, state) => cb(state)),
   onEvent: (cb) => ipcRenderer.on('kitchen:event', (event, evt) => cb(evt)),
 });
+
+// หน้าจอ "สั่งอาหาร" ของโปรแกรม (ผังโต๊ะ + บิล + เพิ่มอาหาร + เช็คบิล)
+contextBridge.exposeInMainWorld('qpageOrders', {
+  tables: () => ipcRenderer.invoke('orders:tables'),
+  zones: () => ipcRenderer.invoke('orders:zones'),
+  openBills: () => ipcRenderer.invoke('orders:open-bills'),
+  catalog: () => ipcRenderer.invoke('orders:catalog'),
+  addItems: (tableId, items) => ipcRenderer.invoke('orders:add-items', { tableId, items }),
+  deleteItem: (itemId) => ipcRenderer.invoke('orders:delete-item', itemId),
+  checkout: (tableId) => ipcRenderer.invoke('orders:checkout', tableId),
+  addTable: (code, zoneId) => ipcRenderer.invoke('orders:add-table', { code, zoneId }),
+  addZone: (name) => ipcRenderer.invoke('orders:add-zone', name),
+  printReceipt: (payload) => ipcRenderer.send('orders:print-receipt', payload || {}),
+  onLive: (cb) => ipcRenderer.on('kitchen:live', (event, state) => cb(state)),
+  onEvent: (cb) => ipcRenderer.on('kitchen:event', (event, evt) => cb(evt)),
+});

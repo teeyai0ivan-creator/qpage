@@ -141,8 +141,9 @@ async function printContents(kind, contents, silentOverride) {
 // หน้าจอที่โปรแกรมวาดเอง (ไม่โหลดหน้าเว็บ) — ค่อย ๆ ย้ายทีละหน้า
 // key = path ของเว็บ, value = ไฟล์ในโปรแกรม + query ที่ต้องส่งต่อ
 const NATIVE_PAGES = {
-  '/shop/kitchen.html': { file: 'app/kitchen.html', query: { station: 'kitchen' }, preload: 'kitchen-preload.js' },
-  '/shop/cashier.html': { file: 'app/kitchen.html', query: { station: 'cashier' }, preload: 'kitchen-preload.js' },
+  '/shop/kitchen.html': { file: 'app/kitchen.html', query: { station: 'kitchen' } },
+  '/shop/cashier.html': { file: 'app/kitchen.html', query: { station: 'cashier' } },
+  '/shop/orders.html': { file: 'app/orders.html' },
 };
 
 const SHELL_WIDTH = 226;          // ความกว้างแถบเมนูด้านซ้าย (px)
@@ -544,6 +545,25 @@ ipcMain.on('kitchen:print-round', async (event, payload) => {
   const r = await printRoundTicket(urlPath);
   if (r.success) console.log(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) → ${r.device} (${r.paper})`);
   else console.error(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) ไม่สำเร็จ: ${r.reason}`);
+});
+
+// ---------------------------------------------------------------------------
+// IPC — หน้าจอ "สั่งอาหาร" ของโปรแกรม (ผังโต๊ะ + บิล)
+// ---------------------------------------------------------------------------
+ipcMain.handle('orders:tables', () => api.tables());
+ipcMain.handle('orders:zones', () => api.zones());
+ipcMain.handle('orders:open-bills', () => api.openBills());
+ipcMain.handle('orders:catalog', () => api.catalog());
+ipcMain.handle('orders:add-items', (event, payload) => api.addItems(payload && payload.tableId, payload && payload.items));
+ipcMain.handle('orders:delete-item', (event, itemId) => api.deleteItem(itemId));
+ipcMain.handle('orders:checkout', (event, tableId) => api.checkout(tableId));
+ipcMain.handle('orders:add-table', (event, payload) => api.addTable(payload && payload.code, payload && payload.zoneId));
+ipcMain.handle('orders:add-zone', (event, name) => api.addZone(name));
+ipcMain.on('orders:print-receipt', async (event, payload) => {
+  const urlPath = (payload && payload.url_path) || ('/shop/receipt.html?order=' + Number(payload && payload.orderId));
+  const r = await printRoundTicket(urlPath);   // ใช้กลไกเดียวกับใบสั่งครัว (หน้าต่างซ่อน + ดักพิมพ์)
+  if (r.success) console.log(`🖨 พิมพ์ใบเสร็จ (บิล #${payload && payload.orderId}) → ${r.device} (${r.paper})`);
+  else console.error(`🖨 พิมพ์ใบเสร็จ (บิล #${payload && payload.orderId}) ไม่สำเร็จ: ${r.reason}`);
 });
 ipcMain.on('shell:collapse-toggle', () => {
   const collapsed = !settingsLib.get().sidebarCollapsed;

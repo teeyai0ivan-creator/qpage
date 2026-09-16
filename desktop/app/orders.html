@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>สั่งอาหาร</title>
+  <style>
+    /* หน้าจอ "สั่งอาหาร" ของโปรแกรม (ผังโต๊ะ + บิล) — ดีไซน์ชุดเดียวกับหน้าจอครัว */
+    :root {
+      --bg: #f4f5fb; --card: #ffffff; --card-2: #f8f9fd; --border: #e4e7ec; --text: #101828; --muted: #667085;
+      --accent: #4f46e5; --accent-2: #8b5cf6; --ok: #059669; --ok-bg: #ecfdf5; --wait: #b45309; --wait-bg: #fffbeb;
+      --orange: #c2410c; --orange-bg: #fff1e6; --orange-border: #ffd6b0; --danger: #dc2626; --danger-bg: #fef2f2;
+      --bill: #eef2ff; --bill-border: #c7d2fe;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; font-size: 14px; line-height: 1.5; }
+
+    header.pg-head { position: sticky; top: 0; z-index: 5; background: rgba(244,245,251,.93); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); padding: 14px 18px 12px; }
+    .pg-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .pg-title h1 { font-size: 20px; margin: 0; font-weight: 800; }
+    .pg-title .sub { color: var(--muted); font-size: 12.5px; }
+    .pg-title .spacer { flex: 1; min-width: 0; }
+    .stat { display: inline-flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; }
+    .stat .n { font-size: 15px; font-weight: 800; }
+    .stat.bill { background: var(--bill); border-color: var(--bill-border); color: #3730a3; }
+    .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .live .dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+    .live.open .dot { background: #34d399; } .live.error .dot { background: #f87171; }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+    .chip { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+    .chip.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .chip .c { opacity: .8; margin-left: 5px; }
+    .btn { font-family: inherit; font-size: 13px; font-weight: 700; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+    .btn:hover { background: var(--card-2); }
+    .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .btn.danger { color: var(--danger); border-color: #fecaca; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    main { padding: 16px 18px 40px; }
+    .zone-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--muted); margin: 18px 0 10px; }
+    .zone-title:first-child { margin-top: 0; }
+    .zone-title .line { flex: 1; height: 1px; background: var(--border); }
+
+    /* ผังโต๊ะ */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+    .tile { text-align: left; font-family: inherit; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 13px 14px; cursor: pointer; position: relative; min-height: 108px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+    .tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .tile.has-bill { background: var(--bill); border-color: var(--bill-border); }
+    .tile .code { font-size: 22px; font-weight: 800; letter-spacing: .3px; }
+    .tile .line1 { font-size: 12.5px; font-weight: 700; color: #3730a3; }
+    .tile .line2 { font-size: 12px; color: var(--muted); }
+    .tile .amt { margin-top: auto; font-size: 17px; font-weight: 800; }
+    .tile .empty { color: var(--muted); font-size: 12.5px; margin-top: auto; }
+    .tile .dot { position: absolute; top: 11px; right: 12px; width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; }
+    .tile.has-bill .dot { background: #4f46e5; }
+    .empty-state { text-align: center; color: var(--muted); padding: 48px 20px; }
+
+    /* แผงบิลด้านขวา */
+    .drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(460px, 92vw); background: var(--card); border-left: 1px solid var(--border); box-shadow: -14px 0 40px rgba(16,24,40,.14); transform: translateX(102%); transition: transform .18s ease; display: flex; flex-direction: column; z-index: 12; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-head { padding: 16px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .drawer-head .t { font-size: 19px; font-weight: 800; }
+    .drawer-head .b { font-size: 12.5px; color: var(--muted); font-weight: 700; }
+    .drawer-head .spacer { flex: 1; }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .drawer-foot { border-top: 1px solid var(--border); padding: 14px 18px; }
+    .bill-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--border); }
+    .bill-row:last-child { border-bottom: none; }
+    .bill-row .qty { font-weight: 800; min-width: 34px; }
+    .bill-row .info { flex: 1; min-width: 0; }
+    .bill-row .name { font-weight: 700; }
+    .bill-row .opts { font-size: 12.5px; color: var(--muted); }
+    .bill-row .st { font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; }
+    .bill-row .st.pending { background: var(--wait-bg); color: var(--wait); }
+    .bill-row .st.cooking { background: var(--bill); color: #3730a3; }
+    .bill-row .st.done { background: var(--ok-bg); color: var(--ok); }
+    .bill-row .st.cancelled { background: #f3f4f6; color: var(--muted); text-decoration: line-through; }
+    .bill-row .price { font-weight: 700; white-space: nowrap; }
+    .bill-row .del { font-family: inherit; font-size: 12px; font-weight: 700; color: var(--danger); background: transparent; border: 1px solid #fecaca; border-radius: 8px; padding: 3px 8px; cursor: pointer; }
+    .total-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .total-row .lbl { color: var(--muted); font-size: 13px; }
+    .total-row .amt { font-size: 24px; font-weight: 800; }
+    .foot-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+    .foot-acts .btn { flex: 1; min-width: 130px; text-align: center; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+    /* ป๊อปอัป (ของโปรแกรม) */
+    .overlay { position: fixed; inset: 0; background: rgba(16,24,40,.45); display: none; align-items: center; justify-content: center; z-index: 20; }
+    .overlay.show { display: flex; }
+    .modal { background: var(--card); border-radius: 16px; padding: 20px; width: min(560px, 94vw); max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(16,24,40,.25); }
+    .modal h3 { margin: 0 0 6px; font-size: 17px; }
+    .modal p.sub { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+    .modal .field { margin-bottom: 12px; }
+    .modal label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .modal input[type="text"], .modal select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-family: inherit; font-size: 14px; }
+    .modal .foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+    .menu-list { max-height: 38vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; }
+    .menu-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .menu-item:last-child { border-bottom: none; }
+    .menu-item:hover { background: var(--card-2); }
+    .menu-item.sel { background: var(--bill); }
+    .menu-item .nm { flex: 1; font-weight: 700; }
+    .menu-item .pr { color: var(--muted); font-weight: 700; }
+    .opt-group { border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .opt-group .gh { font-weight: 800; font-size: 13.5px; margin-bottom: 8px; }
+    .opt-group .req { font-size: 11.5px; font-weight: 800; color: var(--orange); background: var(--orange-bg); border: 1px solid var(--orange-border); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+    .opt-item { display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 13.5px; }
+    .opt-item input { width: 17px; height: 17px; }
+    .opt-item .extra { color: var(--muted); font-size: 12.5px; }
+    .qty-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; }
+    .qty-row button { width: 38px; height: 38px; font-size: 18px; font-weight: 800; border-radius: 10px; border: 1px solid var(--border); background: var(--card); cursor: pointer; }
+    .qty-row .v { min-width: 44px; text-align: center; font-size: 19px; font-weight: 800; }
+    .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); background: #101828; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; opacity: 0; transition: .18s; pointer-events: none; z-index: 30; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>สั่งอาหาร</h1>
+      <span class="sub">ผังโต๊ะ &amp; บิลที่เปิดอยู่ — กดที่โต๊ะเพื่อดูบิล/เพิ่มอาหาร/เช็คบิล</span>
+      <span class="spacer"></span>
+      <span class="stat">โต๊ะ <span class="n" id="nTables">0</span></span>
+      <span class="stat bill">มีบิล <span class="n" id="nBills">0</span></span>
+      <span class="stat">ยอดเปิดอยู่ <span class="n" id="nOpenTotal">฿0</span></span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="toolbar">
+      <span id="zoneChips"></span>
+      <span class="spacer" style="flex:1;"></span>
+      <button class="btn" id="btnAddTable" type="button">＋ เพิ่มโต๊ะใหม่</button>
+      <button class="btn" id="btnAddZone" type="button">＋ เพิ่มโซน</button>
+      <button class="btn" id="btnReload" type="button">⟳ รีเฟรช</button>
+    </div>
+  </header>
+
+  <main id="plan"><div class="empty-state">กำลังโหลดผังโต๊ะ…</div></main>
+
+  <!-- แผงบิลด้านขวา -->
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div>
+        <div class="t" id="dTitle">โต๊ะ —</div>
+        <div class="b" id="dSub">—</div>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn" id="dClose" type="button">ปิด</button>
+    </div>
+    <div class="drawer-body" id="dBody"></div>
+    <div class="drawer-foot">
+      <div class="total-row"><span class="lbl">ยอดรวมบิลนี้</span><span class="amt" id="dTotal">฿0</span></div>
+      <div class="foot-acts">
+        <button class="btn primary" id="dAdd" type="button">＋ เพิ่มอาหาร</button>
+        <button class="btn" id="dCheckout" type="button">🖨 เช็คบิล &amp; พิมพ์ใบเสร็จ</button>
+      </div>
+      <div class="hint" id="dHint"></div>
+    </div>
+  </aside>
+
+  <!-- เพิ่มอาหาร -->
+  <div class="overlay" id="addOverlay">
+    <div class="modal">
+      <h3>เพิ่มอาหารเข้าบิล</h3>
+      <p class="sub" id="addSub">—</p>
+      <div class="field">
+        <label for="addSearch">ค้นหาเมนู</label>
+        <input type="text" id="addSearch" placeholder="พิมพ์ชื่อเมนู…" autocomplete="off">
+      </div>
+      <div class="menu-list" id="addMenuList"></div>
+      <div id="addGroups"></div>
+      <div class="qty-row">
+        <button id="qtyMinus" type="button">−</button>
+        <span class="v" id="qtyValue">1</span>
+        <button id="qtyPlus" type="button">＋</button>
+        <span class="hint" style="margin:0;">จำนวน</span>
+      </div>
+      <div class="hint" id="addErr" style="color:var(--danger);"></div>
+      <div class="foot">
+        <button class="btn" id="addClose" type="button">ปิด</button>
+        <button class="btn primary" id="addConfirm" type="button">เพิ่มลงบิล</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- เพิ่มโต๊ะ / เพิ่มโซน / ยืนยันเช็คบิล -->
+  <div class="overlay" id="formOverlay">
+    <div class="modal">
+      <h3 id="formTitle">เพิ่มโต๊ะใหม่</h3>
+      <p class="sub" id="formSub">—</p>
+      <div class="field" id="formCodeField">
+        <label for="formCode">ชื่อ/เลขโต๊ะ</label>
+        <input type="text" id="formCode" maxlength="30" placeholder="เช่น 1, A2, โต๊ะริมหน้าต่าง" autocomplete="off">
+      </div>
+      <div class="field" id="formZoneField">
+        <label for="formZone">โซน</label>
+        <select id="formZone"><option value="">ไม่ระบุโซน</option></select>
+      </div>
+      <div class="hint" id="formErr" style="color:var(--danger);"></div>
+      <div class="foot">
+        <button class="btn" id="formClose" type="button">ปิด</button>
+        <button class="btn primary" id="formOk" type="button">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="coOverlay">
+    <div class="modal">
+      <h3>ยืนยันเช็คบิล</h3>
+      <p class="sub" id="coSub">—</p>
+      <div class="total-row"><span class="lbl">ยอดที่ต้องเก็บ</span><span class="amt" id="coTotal">฿0</span></div>
+      <div class="hint" id="coHint"></div>
+      <div class="foot">
+        <button class="btn" id="coCancel" type="button">ไม่เช็คบิล</button>
+        <button class="btn primary" id="coOk" type="button">ยืนยันเช็คบิล &amp; พิมพ์ใบเสร็จ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="orders.js"></script>
+</body>
+</html>
