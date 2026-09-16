@@ -180,7 +180,12 @@ function createMainWindow() {
   mainWindow.contentView.addChildView(contentView);
   layoutViews();
   mainWindow.on('resize', layoutViews);
-  mainWindow.once('ready-to-show', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show(); });
+  // ⚠️ หน้าต่างแบบ "เปลือก + เนื้อหา" (WebContentsView) ไม่มีหน้าเว็บของตัวเอง
+  //    → เหตุการณ์ ready-to-show อาจไม่เกิด ทำให้หน้าต่างค้างซ่อนอยู่ (เจอปัญหาจริงตอนทดสอบ)
+  //    จึงแสดงเมื่อ "แถบเครื่องมือโหลดเสร็จ" และมีตัวจับเวลาสำรองอีกชั้น
+  mainWindow.once('ready-to-show', showMainWindow);
+  shellView.webContents.once('did-finish-load', showMainWindow);
+  setTimeout(showMainWindow, 2500);
 
   // เปิดโปรแกรมแล้วเข้าหน้าล็อกอินทันที (ถ้าล็อกอินอยู่แล้วเข้าหน้าครัวเลย) — ไม่ผ่านหน้าเว็บไซต์สาธารณะ
   loadAppPage(null);
@@ -221,6 +226,18 @@ function createMainWindow() {
   mainWindow.on('closed', () => { mainWindow = null; shellView = null; contentView = null; });
   if (statusTimer) clearInterval(statusTimer);
   statusTimer = setInterval(() => pushStatus(), 5000);
+}
+
+/** แสดงหน้าต่างโปรแกรม (เรียกซ้ำได้ ไม่พังถ้าถูกเรียกหลายครั้ง) */
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    if (!mainWindow.isVisible()) mainWindow.show();
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  } catch (err) {
+    console.error('แสดงหน้าต่างไม่สำเร็จ:', err.message);
+  }
 }
 
 /** จัดตำแหน่ง: แถบเครื่องมือบนสุด + เนื้อหาใต้ลงมา */
@@ -630,26 +647,56 @@ async function runSelfTest() {
   // แอปที่ build แล้วเป็นโปรแกรม GUI — ข้อความในคอนโซลไม่แสดง จึงเขียนผลลงไฟล์ให้ตรวจสอบได้
   try { fs.writeFileSync(path.join(settingsLib.dir(), 'selftest-result.json'), JSON.stringify(out, null, 2), 'utf8'); } catch (e) { /* ข้าม */ }
   console.log(line);
+  try { for (const w of BrowserWindow.getAllWindows()) { if (!w.isDestroyed()) w.destroy(); } } catch (e) { /* ข้าม */ }
   app.exit(out.ok ? 0 : 2);
 }
 
 // ---------------------------------------------------------------------------
 // เริ่มโปรแกรม
 // ---------------------------------------------------------------------------
+/** เขียนบันทึกการเริ่มโปรแกรมลงไฟล์ (ไว้ตามปัญหากรณีเปิดแล้วไม่มีอะไรขึ้น) */
+function startupLog(msg) {
+  const line = new Date().toISOString() + '  ' + msg + '\n';
+  try {
+    fs.mkdirSync(settingsLib.dir(), { recursive: true });
+    fs.appendFileSync(path.join(settingsLib.dir(), 'startup.log'), line, 'utf8');
+  } catch (e) { /* ข้าม */ }
+  console.log('[start] ' + msg);
+}
+
+// ถ้ามีโปรแกรมเปิดอยู่แล้ว: อินสแตนซ์ใหม่จะปิดตัวเอง — แต่จะบอกอินสแตนซ์เดิมให้ "แสดงหน้าต่าง" ทันที
+// (กันกรณีหน้าต่างเดิมถูกซ่อนอยู่แล้วผู้ใช้คิดว่าโปรแกรมไม่ขึ้น)
 if (!app.requestSingleInstanceLock()) {
+  startupLog('มีโปรแกรมเปิดอยู่แล้ว → ปิดอินสแตนซ์ใหม่ (สั่งให้ตัวเดิมแสดงหน้าต่าง)');
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); }
+    startupLog('มีคนเปิดโปรแกรมซ้ำ → แสดงหน้าต่างเดิม');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      showMainWindow();
+    }
   });
 
   app.whenReady().then(() => {
-    wireDeviceHeader();
+    startupLog('โปรแกรมเริ่มทำงาน (เวอร์ชัน ' + app.getVersion() + ')');
+    try {
+      wireDeviceHeader();
+    } catch (err) { startupLog('ตั้งค่า header ไม่สำเร็จ: ' + err.message); }
     if (SELFTEST) { runSelfTest().catch((err) => { console.log('SELFTEST_RESULT ' + JSON.stringify({ ok: false, error: err.message })); app.exit(3); }); return; }
-    buildMenu();
-    createMainWindow();
-    startAgent();
-    applyAutoStart(settingsLib.get());
+    try {
+      buildMenu();
+      createMainWindow();
+      startAgent();
+      applyAutoStart(settingsLib.get());
+      startupLog('เปิดหน้าต่างโปรแกรมแล้ว');
+    } catch (err) {
+      startupLog('เปิดโปรแกรมไม่สำเร็จ: ' + (err && err.stack || err));
+      try {
+        dialog.showErrorBox('เปิดโปรแกรมไม่สำเร็จ', String(err && err.message || err)
+          + '\n\nไฟล์บันทึก: ' + path.join(settingsLib.dir(), 'startup.log'));
+      } catch (e) { /* ข้าม */ }
+    }
   });
 
   app.on('window-all-closed', () => {
