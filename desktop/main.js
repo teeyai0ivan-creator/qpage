@@ -309,6 +309,8 @@ function loadAppPage(p) {
     // หน้าจอที่โปรแกรมวาดเอง (ไฟล์ในเครื่อง) — รับข้อมูลผ่าน IPC จาก main
     contentView.webContents.loadFile(path.join(__dirname, native.file), native.query ? { query: native.query } : undefined);
     startKitchenLive();
+    // ส่งสถานะสายอัปเดตสดให้หน้าจอใหม่ (ไม่งั้นป้ายค้างที่ "กำลังเชื่อมต่อ…")
+    contentView.webContents.once('did-finish-load', pushLiveState);
     return;
   }
   stopKitchenLive();
@@ -325,15 +327,29 @@ function loadAppPage(p) {
 
 /** เปิด/ปิดสายอัปเดตสด (SSE) ให้หน้าจอครัวของโปรแกรม */
 let kitchenLive = null;
+let kitchenLiveState = 'connecting';     // สถานะล่าสุดของสาย (ไว้บอกหน้าจอที่เพิ่งเปิด)
 function startKitchenLive() {
-  if (kitchenLive) return;
+  if (kitchenLive) { pushLiveState(); return; }
+  kitchenLiveState = 'connecting';
   kitchenLive = api.openEvents(
     (evt) => { if (contentView && !contentView.webContents.isDestroyed()) contentView.webContents.send('kitchen:event', evt); },
-    (state) => { if (contentView && !contentView.webContents.isDestroyed()) contentView.webContents.send('kitchen:live', state); }
+    (state) => {
+      kitchenLiveState = state;
+      if (contentView && !contentView.webContents.isDestroyed()) contentView.webContents.send('kitchen:live', state);
+    }
   );
 }
 function stopKitchenLive() {
   if (kitchenLive) { kitchenLive.abort(); kitchenLive = null; }
+  kitchenLiveState = 'connecting';
+}
+/**
+ * บอกสถานะสายอัปเดตสดให้หน้าจอที่เพิ่งโหลดเสร็จ
+ * ⚠️ ถ้าไม่ทำ ป้ายมุมขวาบนจะค้างที่ "กำลังเชื่อมต่อ…" ตลอด เพราะสายเปิดไว้ก่อนหน้าแล้ว
+ *    และสถานะจะถูกส่งเฉพาะตอน "เปลี่ยนสถานะ" เท่านั้น (เจอจริงจากหน้างาน)
+ */
+function pushLiveState() {
+  if (contentView && !contentView.webContents.isDestroyed()) contentView.webContents.send('kitchen:live', kitchenLiveState);
 }
 
 /** พิมพ์ใบสั่งครัวของ "รอบพิมพ์" หนึ่งรอบ (เปิดหน้าพิมพ์ในหน้าต่างซ่อน แล้วดักพิมพ์เงียบ) */
