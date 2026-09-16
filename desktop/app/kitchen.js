@@ -160,10 +160,18 @@ async function load() {
   }
 }
 
-/** เริ่มทำรายการเดียวแล้วพิมพ์ใบสั่งครัวของรายการนั้น */
+/** เริ่มทำรายการเดียวแล้วพิมพ์ใบสั่งครัวของรายการนั้น (เหมือนหน้าเว็บ: กดเริ่มทำ = พิมพ์) */
 async function doStatus(id, status, btn) {
   if (btn) btn.disabled = true;
   try {
+    if (status === 'cooking') {
+      const r = await API.start([id]);
+      if (!r.started.length) { toast('รายการนี้เริ่มทำไปแล้ว'); await load(); return; }
+      await load();
+      toast('เริ่มทำแล้ว — กำลังพิมพ์ใบสั่งครัว');
+      for (const round of (r.rounds || [])) API.printRound({ roundId: round.print_id, url_path: round.url_path });
+      return;
+    }
     await API.status(id, status);
     toast(status === 'done' ? 'เคลียร์อาหารแล้ว' : 'อัปเดตแล้ว');
     await load();

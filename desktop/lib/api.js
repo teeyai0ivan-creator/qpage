@@ -119,6 +119,12 @@ async function catalog() {
   };
 }
 
+/** ประวัติบิลที่ปิดแล้ว (ใหม่สุดก่อน) — แคชเชียร์ใช้พิมพ์ใบเสร็จซ้ำ */
+async function history(limit) {
+  const data = await call('/api/shop/orders/history?limit=' + (Number(limit) || 20));
+  return data.orders || [];
+}
+
 /** เพิ่มอาหารเข้าบิลของโต๊ะ */
 async function addItems(tableId, items) {
   return call('/api/shop/tables/' + Number(tableId) + '/items', { method: 'POST', body: { items } });
@@ -196,5 +202,5 @@ function openEvents(onEvent, onState) {
 module.exports = {
   call, openEvents, shopInfo,
   kitchenItems, startItems, setItemStatus, cancelItem,
-  tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
+  tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone, history,
 };

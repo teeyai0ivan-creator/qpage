@@ -126,9 +126,12 @@ function addPrintLog(entry) {
 async function printContents(kind, contents, silentOverride) {
   const settings = settingsLib.get();
   const result = await printLib.printContents(contents, kind, settings, silentOverride);
+  // หน้าต่างพิมพ์อาจถูกปิดไปแล้วระหว่างรอผล (เช่น พิมพ์จากหน้าต่างซ่อน) → อย่าให้ throw จนเสีย log
+  let url = '';
+  try { if (!contents.isDestroyed()) url = contents.getURL(); } catch (e) { url = ''; }
   addPrintLog({
     kind, ok: result.success, reason: result.reason || '',
-    device: result.device, paper: result.paper, url: contents.getURL(),
+    device: result.device, paper: result.paper, url,
   });
   if (!result.success) console.error(`🖨 พิมพ์${printLib.KIND_LABEL[kind] || ''}ไม่สำเร็จ: ${result.reason}`);
   else console.log(`🖨 พิมพ์${printLib.KIND_LABEL[kind] || ''} → ${result.device} (${result.paper})`);
@@ -142,7 +145,7 @@ async function printContents(kind, contents, silentOverride) {
 // key = path ของเว็บ, value = ไฟล์ในโปรแกรม + query ที่ต้องส่งต่อ
 const NATIVE_PAGES = {
   '/shop/kitchen.html': { file: 'app/kitchen.html', query: { station: 'kitchen' } },
-  '/shop/cashier.html': { file: 'app/kitchen.html', query: { station: 'cashier' } },
+  '/shop/cashier.html': { file: 'app/cashier.html' },
   '/shop/orders.html': { file: 'app/orders.html' },
 };
 
@@ -203,11 +206,20 @@ function createMainWindow() {
 
   const cc = contentView.webContents;
   cc.on('dom-ready', () => { installHook(cc); applyAppLook(cc); });
-  cc.on('did-navigate', () => { pushStatus(); setTimeout(() => pushStatus(), 1200); });
+  // หน้าที่โปรแกรมวาดเอง — ถ้าหน้าเว็บพาไปเส้นทางเหล่านี้ (เช่น ล็อกอินเสร็จแล้วเด้งไป /shop/kitchen.html)
+  // ต้องเปลี่ยนเป็นหน้าจอของโปรแกรมทันที ไม่ใช่โหลดหน้าเว็บมาแสดง
+  const nativePathOf = (url) => { try { const p = new URL(url).pathname; return NATIVE_PAGES[p] ? p : ''; } catch (e) { return ''; } };
+  cc.on('did-navigate', (e, url) => {
+    const np = nativePathOf(url);
+    if (np) { loadAppPage(np); return; }
+    pushStatus(); setTimeout(() => pushStatus(), 1200);
+  });
   cc.on('did-navigate-in-page', () => pushStatus());
   // กันไม่ให้หลุดไปหน้าเว็บไซต์สาธารณะในหน้าต่างโปรแกรม (ถ้ามีลิงก์ชี้ไปหน้าแรก → พากลับเข้าหน้าของโปรแกรม)
   cc.on('will-navigate', (e, url) => {
     const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+    const np = nativePathOf(url);
+    if (np) { e.preventDefault(); loadAppPage(np); return; }
     if (url === base || url === base + '/' || /^https?:\/\/[^/]+\/?$/.test(url)) {
       e.preventDefault();
       loadAppPage(null);
@@ -546,6 +558,11 @@ ipcMain.on('kitchen:print-round', async (event, payload) => {
   if (r.success) console.log(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) → ${r.device} (${r.paper})`);
   else console.error(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) ไม่สำเร็จ: ${r.reason}`);
 });
+
+// ---------------------------------------------------------------------------
+// IPC — หน้าจอ "แคชเชียร์" ของโปรแกรม (คิวจัดเตรียม + เก็บเงิน + พิมพ์ใบเสร็จซ้ำ)
+// ---------------------------------------------------------------------------
+ipcMain.handle('cashier:history', (event, limit) => api.history(limit));
 
 // ---------------------------------------------------------------------------
 // IPC — หน้าจอ "สั่งอาหาร" ของโปรแกรม (ผังโต๊ะ + บิล)

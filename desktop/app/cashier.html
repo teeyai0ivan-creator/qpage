@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>แคชเชียร์</title>
+  <style>
+    /* หน้าจอแคชเชียร์ของ "โปรแกรม" (ไม่ใช่หน้าเว็บ) — ดีไซน์ชุดเดียวกับครัวและแถบด้านซ้าย */
+    :root {
+      --bg: #f4f5fb; --card: #ffffff; --card-2: #f8f9fd; --border: #e4e7ec; --text: #101828; --muted: #667085;
+      --accent: #4f46e5; --accent-2: #8b5cf6;
+      --ok: #059669; --ok-bg: #ecfdf5; --wait: #b45309; --wait-bg: #fffbeb; --cook: #1d4ed8; --cook-bg: #eef2ff;
+      --orange: #c2410c; --orange-bg: #fff1e6; --orange-border: #ffd6b0; --danger: #dc2626; --danger-bg: #fef2f2;
+      --money: #0f766e; --money-bg: #ecfdf5;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; font-size: 14px; line-height: 1.5; overflow-y: auto; }
+
+    /* แถบหัวของหน้าจอ (ของโปรแกรมเอง) */
+    header.pg-head {
+      position: sticky; top: 0; z-index: 5; background: rgba(244,245,251,.92); backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--border); padding: 14px 18px 12px;
+    }
+    .pg-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .pg-title h1 { font-size: 20px; margin: 0; font-weight: 800; letter-spacing: .2px; }
+    .pg-title .sub { color: var(--muted); font-size: 12.5px; }
+    .pg-title .spacer { flex: 1; min-width: 0; }
+    .stat { display: flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; }
+    .stat .n { font-size: 15px; font-weight: 800; }
+    .stat.money { background: var(--money-bg); border-color: #a7f3d0; color: var(--money); }
+    .stat.wait { background: var(--wait-bg); border-color: #fde68a; color: var(--wait); }
+    .stat.cook { background: var(--cook-bg); border-color: #c7d2fe; color: var(--cook); }
+    .stat.done { background: var(--ok-bg); border-color: #a7f3d0; color: var(--ok); }
+    .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .live .dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+    .live.open .dot { background: #34d399; } .live.error .dot { background: #f87171; }
+
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+    .chip { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+    .chip:hover { background: var(--card-2); }
+    .chip.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .chip .c { opacity: .75; margin-left: 4px; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; background: var(--card); }
+    .seg button { font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 8px 14px; border: none; background: transparent; color: var(--muted); cursor: pointer; }
+    .seg button.active { background: var(--accent); color: #fff; }
+    .btn { font-family: inherit; font-size: 13px; font-weight: 700; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+    .btn:hover { background: var(--card-2); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-sm { padding: 6px 11px; font-size: 12.5px; }
+
+    /* สองคอลัมน์: บิล (ซ้าย) + คิวจัดเตรียม (ขวา) */
+    main { padding: 16px 18px 40px; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    @media (max-width: 1100px) { main { grid-template-columns: minmax(0, 1fr); } }
+    .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .sec-title { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: var(--muted); text-transform: none; margin: 4px 0 0; }
+    .sec-title .line { flex: 1; height: 1px; background: var(--border); }
+    .empty { text-align: center; color: var(--muted); padding: 26px 20px; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); font-size: 14px; }
+
+    /* การ์ด = 1 บิล */
+    .bill { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+    .bill.ready { border-color: #a7f3d0; }
+    .bill-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--card-2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .bill.ready .bill-head { background: var(--ok-bg); }
+    .bill-head .t { font-size: 17px; font-weight: 800; }
+    .bill-head .b { font-size: 13px; font-weight: 700; color: var(--muted); }
+    .bill-head .age { font-size: 12.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .bill-head .age.old { color: var(--danger); }
+    .bill-head .spacer { flex: 1; min-width: 0; }
+    .btn-pay { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .sum { display: flex; align-items: center; gap: 12px; padding: 11px 14px; flex-wrap: wrap; }
+    .sum .amt { font-size: 18px; font-weight: 800; color: var(--money); font-variant-numeric: tabular-nums; }
+    .sum .plates { font-size: 13px; color: var(--muted); font-weight: 700; }
+    .sum .spacer { flex: 1; min-width: 0; }
+
+    .row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--border); }
+    .row.done { opacity: .55; }
+    .qty { font-size: 17px; font-weight: 800; min-width: 38px; text-align: center; background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px 6px; }
+    .info { flex: 1; min-width: 0; }
+    .name { font-weight: 700; font-size: 14.5px; }
+    .opts { font-size: 12.5px; color: var(--muted); }
+    .meta { font-size: 12px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .badge { font-size: 11.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+    .badge.wait { background: var(--wait-bg); color: var(--wait); }
+    .badge.cook { background: var(--cook-bg); color: var(--cook); }
+    .badge.done { background: var(--ok-bg); color: var(--ok); }
+    .badge.paid { background: var(--money-bg); color: var(--money); }
+    .acts { display: flex; gap: 7px; flex-wrap: wrap; }
+    .btn-cook { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .btn-clear { background: var(--orange-bg); border-color: var(--orange-border); color: var(--orange); }
+    .btn-cancel { color: var(--danger); border-color: #fecaca; background: transparent; }
+    .btn-start-all { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; padding: 7px 12px; font-size: 12.5px; }
+
+    /* กล่องยืนยัน/ยกเลิก (ของโปรแกรม) */
+    .overlay { position: fixed; inset: 0; background: rgba(16,24,40,.45); display: none; align-items: center; justify-content: center; z-index: 20; }
+    .overlay.show { display: flex; }
+    .modal { background: var(--card); border-radius: 16px; padding: 20px; width: min(440px, 92vw); box-shadow: 0 20px 50px rgba(16,24,40,.25); }
+    .modal h3 { margin: 0 0 6px; font-size: 16px; }
+    .modal p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+    .modal .reasons { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .modal .reasons button { text-align: left; }
+    .modal input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); font-family: inherit; font-size: 14px; margin-bottom: 12px; }
+    .modal .foot { display: flex; gap: 8px; justify-content: flex-end; }
+    .pay-box { background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+    .pay-box .l { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13.5px; }
+    .pay-box .l.big { font-size: 17px; font-weight: 800; color: var(--money); border-top: 1px dashed var(--border); margin-top: 6px; padding-top: 8px; }
+    .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); background: #101828; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; opacity: 0; transition: .18s; pointer-events: none; z-index: 30; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>แคชเชียร์</h1>
+      <span class="sub">เครื่องดื่ม/ของว่างที่ต้องจัด · เก็บเงิน · พิมพ์ใบเสร็จ</span>
+      <span class="spacer"></span>
+      <span class="stat wait">บิลรอเก็บเงิน <span class="n" id="nBills">0</span></span>
+      <span class="stat money">ยอดรอเก็บ <span class="n" id="amtDue">฿0</span></span>
+      <span class="stat done">เก็บแล้ววันนี้ <span class="n" id="amtToday">฿0</span></span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="filters">
+      <button class="chip active" data-filter="all" type="button">ทั้งหมด <span class="c" id="cAll"></span></button>
+      <button class="chip" data-filter="pending" type="button">ยังไม่จัด <span class="c" id="cWait"></span></button>
+      <button class="chip" data-filter="cooking" type="button">กำลังจัด <span class="c" id="cCook"></span></button>
+      <button class="chip" data-filter="done" type="button">จัดเสร็จ <span class="c" id="cDone"></span></button>
+      <span class="spacer" style="flex:1;"></span>
+      <span class="seg">
+        <button data-group="bill" class="active" type="button">ตามโต๊ะ</button>
+        <button data-group="menu" type="button">ตามเมนู</button>
+      </span>
+      <button class="btn" id="btnReload" type="button">⟳ รีเฟรช</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="col">
+      <h2 class="sec-title">บิลที่เปิดอยู่ — รอเก็บเงิน <span class="line"></span></h2>
+      <div class="col" id="bills"><div class="empty">กำลังโหลดบิล…</div></div>
+
+      <h2 class="sec-title">เก็บเงินแล้ววันนี้ <span class="c" id="todayCount"></span> <span class="line"></span></h2>
+      <div class="col" id="today"><div class="empty">กำลังโหลดประวัติ…</div></div>
+    </div>
+
+    <div class="col">
+      <h2 class="sec-title">รายการที่ต้องจัด (แคชเชียร์) <span class="line"></span></h2>
+      <div class="col" id="queue"><div class="empty">กำลังโหลดรายการ…</div></div>
+    </div>
+  </main>
+
+  <div class="overlay" id="payOverlay">
+    <div class="modal">
+      <h3>เก็บเงิน</h3>
+      <p>ตรวจยอดให้ลูกค้าก่อนกดยืนยัน — ระบบจะปิดบิลและพิมพ์ใบเสร็จให้ทันที</p>
+      <div class="pay-box">
+        <div class="l"><span>โต๊ะ</span><span id="payTable">—</span></div>
+        <div class="l"><span>บิล</span><span id="payBill">—</span></div>
+        <div class="l"><span>จำนวน</span><span id="payPlates">—</span></div>
+        <div class="l big"><span>ยอดที่ต้องเก็บ</span><span id="payTotal">฿0</span></div>
+      </div>
+      <div class="foot">
+        <button class="btn" id="payClose" type="button">ยกเลิก</button>
+        <button class="btn btn-pay" id="payConfirm" type="button">ยืนยันเก็บเงิน + พิมพ์ใบเสร็จ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="cancelOverlay">
+    <div class="modal">
+      <h3>ยกเลิกรายการ</h3>
+      <p id="cancelItemName">—</p>
+      <div class="reasons" id="reasonList"></div>
+      <input type="text" id="cancelReason" placeholder="หรือพิมพ์สาเหตุเอง…" maxlength="120">
+      <div class="foot">
+        <button class="btn" id="cancelClose" type="button">ไม่ยกเลิก</button>
+        <button class="btn btn-cancel" id="cancelConfirm" type="button">ยืนยันยกเลิก</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="cashier.js"></script>
+</body>
+</html>
