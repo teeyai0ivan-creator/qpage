@@ -49,12 +49,19 @@ $('toast').addEventListener('click', () => { const p = $('toast')._path; if (p) 
 // ---------------------------------------------------------------------------
 // แท็บ
 // ---------------------------------------------------------------------------
+// ⚠️ ต้องสั่ง display ตรง ๆ ด้วย เพราะ pane มี inline style="display:flex" ซึ่งทับ attribute [hidden] ของเบราว์เซอร์
+//    (ถ้าตั้งแค่ .hidden = true ทั้งสามแท็บจะแสดงพร้อมกัน — เจอปัญหาจริงจากหน้างาน)
+function setPane(el, on) {
+  el.hidden = !on;
+  el.style.display = on ? 'flex' : 'none';
+}
+
 function showTab(which) {
   tab = which;
   document.querySelectorAll('.chip[data-tab]').forEach((c) => c.classList.toggle('active', c.dataset.tab === which));
-  $('paneBills').hidden = which !== 'bills';
-  $('paneQr').hidden = which !== 'qr';
-  $('panePrints').hidden = which !== 'prints';
+  setPane($('paneBills'), which === 'bills');
+  setPane($('paneQr'), which === 'qr');
+  setPane($('panePrints'), which === 'prints');
   $('btnExport').textContent = which === 'qr' ? '⬇ ออกรายการ QR (CSV)'
     : which === 'prints' ? '⬇ ออกรายการรอบพิมพ์ (CSV)'
       : '⬇ ออกรายการ (CSV)';
