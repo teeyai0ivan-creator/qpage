@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>พิมพ์ทดสอบ | QPage Shop</title>
+  <style>
+    /* หน้าตาเลียนแบบใบสั่งครัวของระบบจริง เพื่อทดสอบเครื่องพิมพ์/ขนาดกระดาษ */
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 10px; font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; color: #111; font-size: 12px; line-height: 1.5; }
+    .ticket { max-width: 80mm; margin: 0 auto; }
+    .kind { text-align: center; font-size: 15px; font-weight: 800; letter-spacing: .6px; margin: 6px 0 2px; padding: 5px 0; border: 2px solid #ea580c; color: #ea580c; border-radius: 6px; }
+    .sub { text-align: center; font-size: 10px; color: #667085; margin-bottom: 9px; }
+    .head { border-top: 1px dashed #d0d5dd; padding-top: 8px; display: grid; gap: 2px; font-size: 12px; margin-bottom: 9px; }
+    .head > div { display: flex; justify-content: space-between; gap: 10px; }
+    .head span { color: #667085; }
+    .head .table { font-size: 15px; font-weight: 800; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; font-size: 10.5px; color: #667085; font-weight: 700; padding: 4px 2px; border-bottom: 1px solid #111; }
+    td { padding: 5px 2px; border-bottom: 1px dotted #e4e7ec; vertical-align: top; }
+    .num { text-align: right; font-weight: 800; white-space: nowrap; }
+    .name { font-weight: 700; font-size: 13px; }
+    .opt { font-size: 11px; color: #475467; }
+    .sum { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; margin-top: 8px; }
+    .foot { text-align: center; font-size: 10px; color: #98a2b3; margin-top: 10px; }
+    body.paper-58mm { font-size: 11px; } body.paper-58mm .ticket { max-width: 58mm; }
+    body.paper-58mm .name { font-size: 12px; } body.paper-58mm .kind { font-size: 13.5px; }
+    body.paper-a4 { font-size: 14px; } body.paper-a4 .ticket { max-width: 720px; }
+    body.paper-a4 .name { font-size: 15px; } body.paper-a4 .kind { font-size: 18px; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div style="text-align:center;font-weight:800;font-size:14px;">ร้านตัวอย่างของระบบ</div>
+    <div class="kind">ใบสั่งครัว</div>
+    <div class="sub">เอกสารสำหรับครัว — ไม่ใช่ใบเสร็จรับเงิน</div>
+    <div class="head">
+      <div><span>โต๊ะ</span><strong class="table">TEST</strong></div>
+      <div><span>บิล</span><strong>#0001</strong></div>
+      <div><span>จุดที่สั่งทำ</span><strong>ครัว</strong></div>
+      <div><span>เวลาพิมพ์</span><strong id="now">—</strong></div>
+      <div><span>ชนิดที่ทดสอบ</span><strong id="kindName">—</strong></div>
+    </div>
+    <table>
+      <thead><tr><th>รายการ</th><th style="text-align:right;">จำนวน</th></tr></thead>
+      <tbody>
+        <tr><td><div class="name">ผัดไทยกุ้งสด</div><div class="opt">ไม่ใส่ถั่วงอก · เผ็ดน้อย</div></td><td class="num">2</td></tr>
+        <tr><td><div class="name">ต้มยำกุ้งน้ำข้น</div><div class="opt">น้ำข้น</div></td><td class="num">1</td></tr>
+        <tr><td><div class="name">ส้มตำไทย</div></td><td class="num">3</td></tr>
+        <tr><td><div class="name">ข้าวเหนียว</div></td><td class="num">2</td></tr>
+      </tbody>
+    </table>
+    <div class="sum"><span>รวม 4 รายการ</span><span>8 จาน</span></div>
+    <div class="foot">ทดสอบการพิมพ์จากโปรแกรม QPage Shop</div>
+  </div>
+  <script src="test-ticket.js"></script>
+</body>
+</html>

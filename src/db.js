@@ -461,6 +461,40 @@ async function initSchema() {
       KEY idx_kprint_shop_time (shop_id, printed_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  // โปรแกรมพิมพ์ที่ติดตั้งอยู่ในร้าน (ตัวช่วยพิมพ์บนคอม Windows) — ใช้ตัดสินว่าจะส่งงานพิมพ์ไปให้ใคร
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS print_agents (
+      id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+      shop_id    BIGINT NOT NULL,
+      device_id  VARCHAR(64) NOT NULL,
+      label      VARCHAR(80) NOT NULL DEFAULT '',
+      kinds      VARCHAR(64) NOT NULL DEFAULT 'ticket',
+      last_seen  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_pagent_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
+      UNIQUE KEY uq_pagent (shop_id, device_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+  // คิวงานพิมพ์ — เกิดเฉพาะเมื่อมี "ตัวช่วยพิมพ์ออนไลน์" ที่รับงานชนิดนั้นได้ (ไม่ค้างเป็นขยะ)
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS print_jobs (
+      id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+      shop_id       BIGINT NOT NULL,
+      kind          VARCHAR(12) NOT NULL,
+      ref_id        BIGINT NULL,
+      url_path      VARCHAR(500) NOT NULL,
+      table_code    VARCHAR(30) NOT NULL DEFAULT '',
+      bill_no       INT NULL,
+      source_device VARCHAR(64) NOT NULL DEFAULT '',
+      agent_device  VARCHAR(64) NOT NULL DEFAULT '',
+      status        VARCHAR(12) NOT NULL DEFAULT 'pending',
+      error         VARCHAR(255) NOT NULL DEFAULT '',
+      created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      printed_at    DATETIME NULL,
+      CONSTRAINT fk_pjob_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
+      KEY idx_pjob_shop_status (shop_id, status, id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 }
 
 // เพิ่มคอลัมน์ถ้ายังไม่มี (ใช้กับตารางที่สร้างจาก schema เก่า)
@@ -1989,6 +2023,81 @@ async function findKitchenPrint(id, shopId) {
   return Object.assign({}, r, { items });
 }
 
+// ---------------------------------------------------------------------------
+// คิวงานพิมพ์ + ตัวช่วยพิมพ์ (โปรแกรมบนคอมร้าน)
+// ---------------------------------------------------------------------------
+const PRINT_KINDS = ['ticket', 'receipt', 'label'];
+
+/** ลงทะเบียน/อัปเดตตัวช่วยพิมพ์ (เรียกซ้ำเป็นระยะจากโปรแกรม = สัญญาณว่ายังออนไลน์) */
+async function upsertPrintAgent({ shopId, deviceId, kinds = ['ticket'], label = '' }) {
+  const list = (Array.isArray(kinds) ? kinds : []).map((k) => String(k)).filter((k) => PRINT_KINDS.includes(k));
+  const kindsStr = [...new Set(list)].join(',') || 'ticket';
+  await pool.execute(
+    `INSERT INTO print_agents (shop_id, device_id, label, kinds, last_seen)
+     VALUES (?, ?, ?, ?, UTC_TIMESTAMP())
+     ON DUPLICATE KEY UPDATE kinds = VALUES(kinds), label = VALUES(label), last_seen = UTC_TIMESTAMP()`,
+    [shopId, String(deviceId || '').slice(0, 64), String(label || '').slice(0, 80), kindsStr]
+  );
+}
+
+/** ตัวช่วยพิมพ์ที่ยังออนไลน์ (เห็นล่าสุดภายใน 2 นาที) */
+async function listActivePrintAgents(shopId) {
+  const [rows] = await pool.execute(
+    'SELECT * FROM print_agents WHERE shop_id = ? AND last_seen > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 120 SECOND)',
+    [shopId]
+  );
+  return rows.map((r) => Object.assign({}, r, { kinds: String(r.kinds || '').split(',').filter(Boolean) }));
+}
+
+/** สร้างงานพิมพ์ (ใช้เฉพาะเมื่อมีตัวช่วยพิมพ์ที่รับงานชนิดนั้นได้) */
+async function createPrintJob({ shopId, kind, refId = null, urlPath, tableCode = '', billNo = null, sourceDevice = '', agentDevice = '' }) {
+  // งานเก่าที่พิมพ์แล้ว/ล้มเหลว เก็บไว้ดูย้อนหลัง 30 วัน ก็พอ (กันตารางบวม)
+  await pool.execute(
+    "DELETE FROM print_jobs WHERE shop_id = ? AND status <> 'pending' AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)",
+    [shopId]
+  );
+  const [r] = await pool.execute(
+    `INSERT INTO print_jobs (shop_id, kind, ref_id, url_path, table_code, bill_no, source_device, agent_device)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shopId, kind, refId, String(urlPath || '').slice(0, 500), String(tableCode || '').slice(0, 30), billNo,
+      String(sourceDevice || '').slice(0, 64), String(agentDevice || '').slice(0, 64)]
+  );
+  return Number(r.insertId);
+}
+
+/** งานที่ตัวช่วยพิมพ์เครื่องนี้ต้องพิมพ์ (งานที่ยังไม่ถูกมอบหมายให้ใคร รับได้ด้วย) */
+async function listPrintJobsForAgent(shopId, deviceId) {
+  const [rows] = await pool.execute(
+    `SELECT * FROM print_jobs
+      WHERE shop_id = ? AND status = 'pending' AND (agent_device = ? OR agent_device = '')
+      ORDER BY id ASC LIMIT 50`,
+    [shopId, String(deviceId || '').slice(0, 64)]
+  );
+  return rows;
+}
+
+async function findPrintJob(id, shopId) {
+  const [rows] = await pool.execute('SELECT * FROM print_jobs WHERE id = ? AND shop_id = ? LIMIT 1', [Number(id), shopId]);
+  return rows[0] || null;
+}
+
+/** รายงานผลการพิมพ์ (สำเร็จ/ล้มเหลว) — เก็บไว้เป็นประวัติ */
+async function markPrintJob(id, shopId, status, error = '') {
+  const st = ['printed', 'failed', 'cancelled'].includes(status) ? status : 'pending';
+  await pool.execute(
+    `UPDATE print_jobs SET status = ?, error = ?, printed_at = CASE WHEN ? = 'printed' THEN UTC_TIMESTAMP() ELSE printed_at END
+      WHERE id = ? AND shop_id = ?`,
+    [st, String(error || '').slice(0, 255), st, Number(id), shopId]
+  );
+}
+
+/** งานพิมพ์ล่าสุดของร้าน (ให้หน้าตั้งค่าโปรแกรมแสดงว่าพิมพ์อะไรไปแล้วบ้าง) */
+async function listPrintJobs(shopId, { limit = 20 } = {}) {
+  const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
+  const [rows] = await pool.execute('SELECT * FROM print_jobs WHERE shop_id = ? ORDER BY id DESC LIMIT ' + lim, [shopId]);
+  return rows;
+}
+
 /** ยกเลิกรายการ (ไม่ลบ แต่ทำเครื่องหมาย cancelled + เก็บสาเหตุ) แล้วคิดยอดใหม่ */
 async function cancelOrderItem(id, orderId, reason) {
   await pool.execute(
@@ -2210,6 +2319,14 @@ module.exports = {
   startPendingOrderItems,
   listTicketItems,
   recordKitchenPrint,
+  PRINT_KINDS,
+  upsertPrintAgent,
+  listActivePrintAgents,
+  createPrintJob,
+  listPrintJobsForAgent,
+  findPrintJob,
+  markPrintJob,
+  listPrintJobs,
   listKitchenPrints,
   findKitchenPrint,
   cancelOrderItem,

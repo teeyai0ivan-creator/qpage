@@ -38,6 +38,9 @@ app.use((req, res, next) => {
     const idx = part.indexOf('=');
     if (idx > -1) req.cookies[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
   }
+  // รหัสเครื่องของ "โปรแกรมพิมพ์" (Windows) — โปรแกรมแนบ header นี้ทุกคำขอ
+  // ใช้ตัดสินใจว่าจะส่งงานพิมพ์ไปให้เครื่องไหน และกันพิมพ์ซ้ำเมื่อสั่งจากเครื่องที่พิมพ์เอง
+  req.deviceId = String(req.headers['x-qpage-device'] || '').slice(0, 64);
   next();
 });
 

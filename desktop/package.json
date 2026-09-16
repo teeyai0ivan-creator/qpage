@@ -1,0 +1,62 @@
+{
+  "name": "qpage-desktop",
+  "productName": "QPage Shop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "โปรแกรมร้านค้า QPage สำหรับ Windows — หน้าจอครัว/แคชเชียร์ + พิมพ์ใบสั่งครัวและใบเสร็จแบบไม่ขึ้นกล่องยืนยัน",
+  "main": "main.js",
+  "author": "QPage",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "selftest": "electron . --selftest",
+    "dist": "electron-builder --win nsis portable"
+  },
+  "devDependencies": {
+    "electron": "^44.4.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "website.qpage.shop",
+    "productName": "QPage Shop",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "settings-preload.js",
+      "settings.html",
+      "settings.js",
+      "test-ticket.html",
+      "test-ticket.js",
+      "lib/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "QPage Shop"
+    }
+  }
+}

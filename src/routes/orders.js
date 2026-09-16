@@ -14,6 +14,7 @@ const { randomToken } = require('../lib/crypto');
 const realtime = require('../lib/realtime');
 const { buildOrderItems } = require('../lib/order-builder');
 const notify = require('../lib/notify');
+const printJobs = require('../lib/print-jobs');
 
 const router = express.Router();
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
@@ -454,6 +455,15 @@ router.post('/api/shop/tables/:id/checkout', requireShop, async (req, res) => {
     }));
   }
   realtime.publish(shop.id, 'checkout', { table_code: table.code });
+  // ถ้ามี "ตัวช่วยพิมพ์" ออนไลน์ → เข้าคิวพิมพ์ใบเสร็จให้ด้วย (มือถือ/แท็บเล็ตพิมพ์เงียบเองไม่ได้)
+  if (closed) {
+    await printJobs.enqueue(req, shop, 'receipt', {
+      refId: closed.order_id,
+      urlPath: `/shop/receipt.html?order=${closed.order_id}`,
+      tableCode: closed.table_code,
+      billNo: closed.bill_no,
+    });
+  }
   res.json({
     ok: true,
     message: qrDeleted
@@ -587,12 +597,19 @@ router.post('/api/shop/order-items/start', requireShop, async (req, res) => {
     const byOrder = {};
     for (const it of items) (byOrder[it.order_id] || (byOrder[it.order_id] = [])).push(it);
     for (const [orderId, list] of Object.entries(byOrder)) {
-      await db.recordKitchenPrint({
+      const printId = await db.recordKitchenPrint({
         shopId: shop.id,
         orderId: Number(orderId),
         tableCode: list[0].table_code || '',
         billNo: list[0].bill_no != null ? Number(list[0].bill_no) : null,
         items: list,
+      });
+      // ถ้ามี "ตัวช่วยพิมพ์" (โปรแกรมบนคอมร้าน) ออนไลน์อยู่ → เข้าคิวให้พิมพ์ที่ครัวด้วย
+      await printJobs.enqueue(req, shop, 'ticket', {
+        refId: printId,
+        urlPath: `/shop/ticket.html?round=${printId}`,
+        tableCode: list[0].table_code || '',
+        billNo: list[0].bill_no != null ? Number(list[0].bill_no) : null,
       });
     }
   } catch (e) {
@@ -650,6 +667,52 @@ router.get('/api/shop/kitchen-prints/:id', requireShop, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// ตัวช่วยพิมพ์ (โปรแกรมบนคอมร้าน) — ลงทะเบียน + รับงานพิมพ์ + รายงานผล
+// ---------------------------------------------------------------------------
+// โปรแกรมเรียกซ้ำเป็นระยะ (ทุก ~30 วิ) เพื่อบอกว่ายังออนไลน์และรับงานชนิดไหนได้
+router.post('/api/shop/print-agent', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const deviceId = String(req.body?.deviceId || req.deviceId || '').trim();
+  if (!deviceId) return res.status(400).json({ ok: false, message: 'ไม่พบรหัสเครื่องของโปรแกรมพิมพ์' });
+  await db.upsertPrintAgent({
+    shopId: shop.id,
+    deviceId,
+    label: String(req.body?.label || '').slice(0, 80),
+    kinds: Array.isArray(req.body?.kinds) ? req.body.kinds : [],
+  });
+  res.json({ ok: true, message: 'ลงทะเบียนโปรแกรมพิมพ์แล้ว' });
+});
+
+// งานที่รอพิมพ์ (โปรแกรมดึงไปพิมพ์) + ประวัติล่าสุดให้หน้าตั้งค่าแสดง
+router.get('/api/shop/print-jobs', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const deviceId = String(req.query.deviceId || req.deviceId || '').trim();
+  res.set('Cache-Control', 'no-store');
+  if (req.query.history === '1') {
+    return res.json({ ok: true, jobs: await db.listPrintJobs(shop.id, { limit: req.query.limit }) });
+  }
+  res.json({ ok: true, jobs: await db.listPrintJobsForAgent(shop.id, deviceId) });
+});
+
+// รายงานผลการพิมพ์ของงานหนึ่ง ๆ (สำเร็จ/ล้มเหลว) — โปรแกรมเรียกหลังพิมพ์จบ
+router.post('/api/shop/print-jobs/:id/status', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const job = await db.findPrintJob(Number(req.params.id), shop.id);
+  if (!job) return res.status(404).json({ ok: false, message: 'ไม่พบงานพิมพ์นี้' });
+  const status = String(req.body?.status || '');
+  if (!['printed', 'failed', 'cancelled'].includes(status)) {
+    return res.status(400).json({ ok: false, message: 'สถานะไม่ถูกต้อง' });
+  }
+  await db.markPrintJob(job.id, shop.id, status, req.body?.error);
+  if (status === 'failed') console.error(`🖨 [พิมพ์] งาน #${job.id} (${job.kind}) ล้มเหลว: ${String(req.body?.error || '').slice(0, 120)}`);
+  else console.log(`🖨 [พิมพ์] งาน #${job.id} (${job.kind}) ${status === 'printed' ? 'พิมพ์สำเร็จ' : 'ถูกยกเลิก'}`);
+  res.json({ ok: true, message: 'บันทึกผลการพิมพ์แล้ว' });
+});
+
+// ---------------------------------------------------------------------------
 // ประวัติออเดอร์ (บิลที่ปิดแล้ว) — ดูย้อนหลังเป็นบิล ๆ ต่อโต๊ะ
 // ---------------------------------------------------------------------------
 router.get('/shop/history.html', requireShopPage, async (req, res) => {
@@ -681,6 +744,18 @@ router.get('/shop/receipt.html', requireShopPage, async (req, res) => {
 router.get('/shop/label.html', requireShopPage, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
   if (!shop) return res.redirect('/shop/setup.html');
+  // ถ้าเปิดจากมือถือ/แท็บเล็ต (ซึ่งพิมพ์เงียบไม่ได้) และมี "ตัวช่วยพิมพ์" ออนไลน์ → เข้าคิวพิมพ์ป้ายให้
+  const tableId = Number(req.query.table) || null;
+  if (tableId) {
+    const table = await db.findTableById(tableId, shop.id);
+    if (table) {
+      await printJobs.enqueue(req, shop, 'label', {
+        refId: table.id,
+        urlPath: `/shop/label.html?table=${table.id}`,
+        tableCode: table.code,
+      });
+    }
+  }
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(PUBLIC_DIR, 'shop', 'label.html'));
 });

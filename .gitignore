@@ -24,3 +24,8 @@ Thumbs.db
 
 # test artifacts
 .zcode/
+
+# โปรแกรม Windows (Electron) — ติดตั้ง/ไฟล์ที่ build เองไม่ต้องเข้า git
+desktop/node_modules/
+desktop/dist/
+desktop/.data/

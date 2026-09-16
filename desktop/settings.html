@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>ตั้งค่าโปรแกรมพิมพ์ | QPage Shop</title>
+  <style>
+    :root {
+      --bg: #f4f5fb; --surface: #fff; --surface-2: #f7f8fd; --border: #e4e7ec; --text: #101828;
+      --muted: #667085; --accent: #4f46e5; --ok: #059669; --bad: #dc2626; --warn: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 22px 24px 40px; font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; color: var(--text); background: var(--bg); font-size: 14px; line-height: 1.6; }
+    h1 { font-size: 19px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+    p.sub { color: var(--muted); margin: 0 0 18px; font-size: 13px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+    .row { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; }
+    .row > .grow { flex: 1; min-width: 220px; }
+    label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    input[type="text"], input[type="url"], select {
+      width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+    .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+    .btn { font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .switch-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .switch-row:last-child { border-bottom: none; }
+    .switch-row .grow { flex: 1; min-width: 0; }
+    .switch-row .name { font-weight: 700; }
+    .switch-row .desc { font-size: 12.5px; color: var(--muted); }
+    .sw { position: relative; width: 46px; height: 26px; flex: none; }
+    .sw input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+    .sw span { position: absolute; inset: 0; background: #cbd5e1; border-radius: 999px; transition: .18s; pointer-events: none; }
+    .sw span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: .18s; }
+    .sw input:checked + span { background: var(--accent); }
+    .sw input:checked + span::after { transform: translateX(20px); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--border); }
+    th { font-size: 12px; color: var(--muted); }
+    .pill { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+    .pill.ok { background: #ecfdf5; color: var(--ok); }
+    .pill.bad { background: #fef2f2; color: var(--bad); }
+    .pill.wait { background: #fffbeb; color: var(--warn); }
+    .pill.info { background: #eef2ff; color: #3730a3; }
+    .notice { border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-bottom: 14px; border: 1px solid var(--border); background: var(--surface-2); }
+    .notice.ok { border-color: #a7f3d0; background: #ecfdf5; }
+    .notice.bad { border-color: #fecaca; background: #fef2f2; }
+    .notice.warn { border-color: #fde68a; background: #fffbeb; }
+    .grid4 { display: grid; grid-template-columns: 150px 1fr 130px 90px; gap: 10px; align-items: center; }
+    .grid4 .head { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; }
+    @media (max-width: 720px) { .grid4 { grid-template-columns: 1fr; } .grid4 .head { display: none; } }
+  </style>
+</head>
+<body>
+  <h1>ตั้งค่าโปรแกรมพิมพ์</h1>
+  <p class="sub">โปรแกรมนี้ใช้เป็นหน้าจอระบบร้านและเป็นตัวช่วยพิมพ์ให้มือถือ/แท็บเล็ต — ตั้งค่าครั้งเดียวแล้วใช้ได้เลย</p>
+
+  <div class="notice" id="statusBox">กำลังตรวจสอบ…</div>
+
+  <div class="card">
+    <h2>การเชื่อมต่อ</h2>
+    <div class="row">
+      <div class="grow">
+        <label for="serverUrl">ที่อยู่เซิร์ฟเวอร์</label>
+        <input type="url" id="serverUrl" placeholder="https://qpage.website" spellcheck="false">
+        <div class="hint">ปกติใช้ค่าเริ่มต้น <b>https://qpage.website</b> — เปลี่ยนเฉพาะเมื่อใช้เซิร์ฟเวอร์อื่น</div>
+      </div>
+      <div class="grow">
+        <label for="label">ชื่อเครื่องนี้</label>
+        <input type="text" id="label" maxlength="80" placeholder="เช่น คอมครัว / เครื่องแคชเชียร์">
+        <div class="hint">ใช้ให้เห็นในหน้าตั้งค่าและประวัติการพิมพ์</div>
+      </div>
+    </div>
+    <div class="row" style="margin-bottom:0;">
+      <button class="btn" id="saveServerBtn" type="button">บันทึกที่อยู่เซิร์ฟเวอร์</button>
+      <button class="btn" id="reloadBtn" type="button">โหลดหน้าเว็บใหม่</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>เครื่องพิมพ์และขนาดกระดาษ (แยกตามชนิดเอกสาร)</h2>
+    <div class="grid4" style="margin-bottom:6px;">
+      <div class="head">เอกสาร</div>
+      <div class="head">เครื่องพิมพ์</div>
+      <div class="head">ขนาดกระดาษ</div>
+      <div class="head">ทดสอบ</div>
+    </div>
+    <div class="grid4" style="margin-bottom:10px;">
+      <div>ใบสั่งครัว</div>
+      <select id="printer-ticket"></select>
+      <select id="paper-ticket"></select>
+      <button class="btn" data-test="ticket" type="button">พิมพ์ทดสอบ</button>
+    </div>
+    <div class="grid4" style="margin-bottom:10px;">
+      <div>ใบเสร็จ</div>
+      <select id="printer-receipt"></select>
+      <select id="paper-receipt"></select>
+      <button class="btn" data-test="receipt" type="button">พิมพ์ทดสอบ</button>
+    </div>
+    <div class="grid4" style="margin-bottom:10px;">
+      <div>ป้าย QR โต๊ะ</div>
+      <select id="printer-label"></select>
+      <select id="paper-label"></select>
+      <button class="btn" data-test="label" type="button">พิมพ์ทดสอบ</button>
+    </div>
+    <div class="grid4">
+      <div>เอกสารอื่น ๆ</div>
+      <select id="printer-other"></select>
+      <select id="paper-other"></select>
+      <button class="btn" data-test="other" type="button">พิมพ์ทดสอบ</button>
+    </div>
+    <div class="hint">
+      เครื่องพิมพ์ที่เลือกต้องเป็นรุ่นที่ติดตั้งไดรเวอร์ใน Windows แล้ว · ถ้าเลือก “เครื่องพิมพ์เริ่มต้นของ Windows” ระบบจะใช้เครื่องที่ตั้งเป็นค่าเริ่มต้น
+      <br><b>ม้วน 58/80mm:</b> ให้ตั้งขนาดกระดาษในการตั้งค่าเครื่องพิมพ์ของ Windows ครั้งเดียว (Printer properties → Preferences → Paper size) แล้วเลือก “ตามที่ตั้งไว้ในเครื่องพิมพ์” — Windows จะไม่รับขนาดกระดาษที่โปรแกรมกำหนดเอง
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>การทำงาน</h2>
+    <div class="switch-row">
+      <div class="grow">
+        <div class="name">พิมพ์เงียบ (ไม่ขึ้นกล่องยืนยัน)</div>
+        <div class="desc">เปิด = กดเริ่มทำ/เช็คบิลแล้วพิมพ์ออกทันที · ปิด = แสดงกล่องพิมพ์ให้เลือกเอง (เหมือนใช้เว็บในเบราว์เซอร์)</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="sw-silent"><span></span></label>
+    </div>
+    <div class="switch-row">
+      <div class="grow">
+        <div class="name">รับงานพิมพ์ “ใบสั่งครัว” จากมือถือ/แท็บเล็ต</div>
+        <div class="desc">พนักงานกดเริ่มทำบนแท็บเล็ต → เครื่องนี้พิมพ์ให้ทันที (ต้องเปิดโปรแกรมค้างไว้และล็อกอินแล้ว)</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="sw-kind-ticket"><span></span></label>
+    </div>
+    <div class="switch-row">
+      <div class="grow">
+        <div class="name">รับงานพิมพ์ “ใบเสร็จ” จากมือถือ/แท็บเล็ต</div>
+        <div class="desc">กดเช็คบิลจากเครื่องอื่น → เครื่องนี้พิมพ์ใบเสร็จให้</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="sw-kind-receipt"><span></span></label>
+    </div>
+    <div class="switch-row">
+      <div class="grow">
+        <div class="name">รับงานพิมพ์ “ป้าย QR โต๊ะ” จากมือถือ/แท็บเล็ต</div>
+        <div class="desc">สั่งพิมพ์ป้ายจากเครื่องอื่น → เครื่องนี้พิมพ์ให้</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="sw-kind-label"><span></span></label>
+    </div>
+    <div class="switch-row">
+      <div class="grow">
+        <div class="name">เปิดโปรแกรมพร้อมเปิดเครื่อง</div>
+        <div class="desc">เหมาะกับคอมที่ครัว — เปิดเครื่องแล้วพร้อมรับงานพิมพ์ทันที</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="sw-autostart"><span></span></label>
+    </div>
+    <div class="switch-row">
+      <div class="grow">
+        <div class="name">เปิดแบบเต็มจอ</div>
+        <div class="desc">ใช้กับจอที่ตั้งประจำครัว/แคชเชียร์ (กด F11 สลับได้ตลอด)</div>
+      </div>
+      <label class="sw"><input type="checkbox" id="sw-fullscreen"><span></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>ประวัติการพิมพ์ล่าสุด (จากเซิร์ฟเวอร์)</h2>
+    <table>
+      <thead><tr><th>เวลา</th><th>เอกสาร</th><th>โต๊ะ/บิล</th><th>สถานะ</th></tr></thead>
+      <tbody id="jobRows"><tr><td colspan="4" class="hint">กำลังโหลด…</td></tr></tbody>
+    </table>
+    <div class="hint">รายการนี้คือ “งานที่ส่งมาจากมือถือ/แท็บเล็ต” · การพิมพ์ที่กดจากเครื่องนี้จะไม่เข้าคิว (พิมพ์ทันที)</div>
+  </div>
+
+  <div class="card">
+    <h2>การพิมพ์ล่าสุดในเครื่องนี้</h2>
+    <div id="logBox" class="hint">ยังไม่มีการพิมพ์ในรอบนี้</div>
+  </div>
+
+  <div class="card">
+    <h2>ข้อมูลโปรแกรม</h2>
+    <div class="hint" id="aboutBox">—</div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>
