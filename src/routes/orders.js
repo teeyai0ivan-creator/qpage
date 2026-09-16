@@ -586,8 +586,9 @@ router.post('/api/shop/order-items/start', requireShop, async (req, res) => {
   const ids = Array.isArray(req.body?.ids) ? req.body.ids.slice(0, 200) : [];
   if (!ids.length) return res.status(400).json({ ok: false, message: 'ไม่พบรายการที่ต้องเริ่มทำ' });
   const r = await db.startPendingOrderItems(shop.id, ids);
+  const rounds = [];   // รอบพิมพ์ที่เกิดขึ้นจากการเริ่มทำครั้งนี้ (ส่งกลับให้โปรแกรมบนคอมเปิดพิมพ์เอง)
   if (!r.started.length) {
-    return res.json({ ok: true, started: [], message: 'ไม่มีรายการที่ต้องเริ่ม (เริ่มทำไปแล้ว)' });
+    return res.json({ ok: true, started: [], rounds, message: 'ไม่มีรายการที่ต้องเริ่ม (เริ่มทำไปแล้ว)' });
   }
   // แจ้งหน้าจออื่น (ครัว/แคชเชียร์/หน้าสั่งอาหาร) ให้ของใหม่ขึ้นทันที
   for (const orderId of r.orderIds) realtime.publish(shop.id, 'item_status', { order_id: orderId });
@@ -604,6 +605,8 @@ router.post('/api/shop/order-items/start', requireShop, async (req, res) => {
         billNo: list[0].bill_no != null ? Number(list[0].bill_no) : null,
         items: list,
       });
+      // ส่งข้อมูลรอบพิมพ์กลับไปด้วย (โปรแกรมบนคอมใช้เปิดหน้าพิมพ์เองโดยไม่ต้องเดา)
+      rounds.push({ print_id: printId, order_id: Number(orderId), url_path: `/shop/ticket.html?round=${printId}` });
       // ถ้ามี "ตัวช่วยพิมพ์" (โปรแกรมบนคอมร้าน) ออนไลน์อยู่ → เข้าคิวให้พิมพ์ที่ครัวด้วย
       await printJobs.enqueue(req, shop, 'ticket', {
         refId: printId,
@@ -617,7 +620,7 @@ router.post('/api/shop/order-items/start', requireShop, async (req, res) => {
     console.error('⚠️ บันทึกประวัติสั่งครัวไม่สำเร็จ:', e.message);
   }
   console.log(`🍳 [ครัว] เริ่มทำ ${r.started.length} รายการ (ร้าน #${shop.id})`);
-  res.json({ ok: true, started: r.started, message: `เริ่มทำ ${r.started.length} รายการแล้ว` });
+  res.json({ ok: true, started: r.started, rounds, message: `เริ่มทำ ${r.started.length} รายการแล้ว` });
 });
 
 // ข้อมูลสำหรับพิมพ์ใบสั่งครัว (ตาม id รายการที่เพิ่งเริ่มทำ หรือกดพิมพ์ซ้ำ)

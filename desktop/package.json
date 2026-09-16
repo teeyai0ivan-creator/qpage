@@ -35,7 +35,8 @@
       "shell.html",
       "shell.js",
       "shell-preload.js",
-      "icon-256.png"
+      "icon-256.png",
+      "app/**/*"
     ],
     "win": {
       "target": [

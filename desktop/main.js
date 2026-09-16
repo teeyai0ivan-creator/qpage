@@ -18,6 +18,7 @@ const fs = require('node:fs');
 const settingsLib = require('./lib/settings');
 const printLib = require('./lib/print');
 const { PrintAgent, PRINT_WAIT_MS } = require('./lib/agent');
+const api = require('./lib/api');
 
 const PARTITION = 'persist:qpage';     // เก็บคุกกี้/session ถาวร → ล็อกอินครั้งเดียวใช้ได้ยาว
 const ARGS = process.argv.slice(1);
@@ -137,6 +138,13 @@ async function printContents(kind, contents, silentOverride) {
 // ---------------------------------------------------------------------------
 // หน้าต่างหลัก = "เปลือกของโปรแกรม" (แถบเครื่องมือของเราเอง) + เนื้อหาที่โหลดจากเว็บ
 // ---------------------------------------------------------------------------
+// หน้าจอที่โปรแกรมวาดเอง (ไม่โหลดหน้าเว็บ) — ค่อย ๆ ย้ายทีละหน้า
+// key = path ของเว็บ, value = ไฟล์ในโปรแกรม + query ที่ต้องส่งต่อ
+const NATIVE_PAGES = {
+  '/shop/kitchen.html': { file: 'app/kitchen.html', query: { station: 'kitchen' }, preload: 'kitchen-preload.js' },
+  '/shop/cashier.html': { file: 'app/kitchen.html', query: { station: 'cashier' }, preload: 'kitchen-preload.js' },
+};
+
 const SHELL_WIDTH = 226;          // ความกว้างแถบเมนูด้านซ้าย (px)
 const SHELL_WIDTH_MINI = 64;      // ความกว้างเมื่อย่อ (เหลือไอคอน)
 let shellVisible = false;         // แถบเมนูแสดงเฉพาะหลังเข้าสู่ระบบแล้ว
@@ -274,10 +282,65 @@ function setShellVisible(on) {
 function loadAppPage(p) {
   if (!contentView) return;
   const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+  const native = p ? NATIVE_PAGES[p] : null;
+  if (native) {
+    // หน้าจอที่โปรแกรมวาดเอง (ไฟล์ในเครื่อง) — รับข้อมูลผ่าน IPC จาก main
+    contentView.webContents.loadFile(path.join(__dirname, native.file), native.query ? { query: native.query } : undefined);
+    startKitchenLive();
+    return;
+  }
+  stopKitchenLive();
   if (p) { contentView.webContents.loadURL(base + p); return; }
   startUrl()
-    .then((url) => { if (contentView) contentView.webContents.loadURL(url); })
+    .then((url) => {
+      if (!contentView) return;
+      // หน้าเริ่มต้น (ครัว) เป็นหน้าจอของโปรแกรมเองแล้ว
+      if (url === base + APP_HOME && NATIVE_PAGES[APP_HOME]) { loadAppPage(APP_HOME); return; }
+      contentView.webContents.loadURL(url);
+    })
     .catch(() => { if (contentView) contentView.webContents.loadURL(base + LOGIN_URL); });
+}
+
+/** เปิด/ปิดสายอัปเดตสด (SSE) ให้หน้าจอครัวของโปรแกรม */
+let kitchenLive = null;
+function startKitchenLive() {
+  if (kitchenLive) return;
+  kitchenLive = api.openEvents(
+    (evt) => { if (contentView && !contentView.webContents.isDestroyed()) contentView.webContents.send('kitchen:event', evt); },
+    (state) => { if (contentView && !contentView.webContents.isDestroyed()) contentView.webContents.send('kitchen:live', state); }
+  );
+}
+function stopKitchenLive() {
+  if (kitchenLive) { kitchenLive.abort(); kitchenLive = null; }
+}
+
+/** พิมพ์ใบสั่งครัวของ "รอบพิมพ์" หนึ่งรอบ (เปิดหน้าพิมพ์ในหน้าต่างซ่อน แล้วดักพิมพ์เงียบ) */
+async function printRoundTicket(urlPath) {
+  const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+  const win = new BrowserWindow({
+    show: false, width: 900, height: 1200,
+    webPreferences: {
+      partition: PARTITION,
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+    },
+  });
+  try {
+    win.webContents.on('dom-ready', () => installHook(win.webContents));
+    await win.loadURL(base + urlPath);
+    // หน้าใบสั่งครัวยิงพิมพ์เองหลังเรนเดอร์ → รอผลจากตัวดักพิมพ์ (สูงสุด 20 วินาที)
+    return await new Promise((resolve) => {
+      const id = win.webContents.id;
+      const timer = setTimeout(() => { pendingJobs.delete(id); resolve({ success: false, reason: 'หน้าใบสั่งครัวไม่สั่งพิมพ์ภายใน 20 วินาที' }); }, 20000);
+      pendingJobs.set(id, { job: null, timer, resolve });
+    });
+  } catch (err) {
+    return { success: false, reason: err.message };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
 }
 
 /** ส่งข้อมูลสถานะไปให้แถบเครื่องมือ (ร้าน/ผู้ใช้ · เครื่องพิมพ์ · งานพิมพ์ค้าง) */
@@ -465,6 +528,23 @@ ipcMain.on('shell:fullscreen', () => {
 });
 ipcMain.on('shell:settings', () => createSettingsWindow());
 ipcMain.on('shell:status-now', () => { pushStatus(); });
+
+// ---------------------------------------------------------------------------
+// IPC — หน้าจอครัว/แคชเชียร์ของโปรแกรม (เรียก API ให้ เพราะหน้าจอเป็นไฟล์ในเครื่อง)
+// ---------------------------------------------------------------------------
+ipcMain.handle('kitchen:list', async (event, station) => {
+  const data = await api.kitchenItems(station);
+  return { station: data.station, items: data.items };
+});
+ipcMain.handle('kitchen:start', async (event, ids) => api.startItems(Array.isArray(ids) ? ids : []));
+ipcMain.handle('kitchen:status', async (event, payload) => api.setItemStatus(payload && payload.id, payload && payload.status));
+ipcMain.handle('kitchen:cancel', async (event, payload) => api.cancelItem(payload && payload.id, payload && payload.reason));
+ipcMain.on('kitchen:print-round', async (event, payload) => {
+  const urlPath = (payload && payload.url_path) || ('/shop/ticket.html?round=' + Number(payload && payload.roundId));
+  const r = await printRoundTicket(urlPath);
+  if (r.success) console.log(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) → ${r.device} (${r.paper})`);
+  else console.error(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) ไม่สำเร็จ: ${r.reason}`);
+});
 ipcMain.on('shell:collapse-toggle', () => {
   const collapsed = !settingsLib.get().sidebarCollapsed;
   settingsLib.save({ sidebarCollapsed: collapsed });
