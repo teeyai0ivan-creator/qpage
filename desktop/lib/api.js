@@ -128,6 +128,12 @@ async function history(opts) {
   return data.orders || [];
 }
 
+/** ประวัติการพิมพ์ใบสั่งครัว แยกรอบ (มีสำเนารายการที่พิมพ์ไปจริงในแต่ละรอบ) */
+async function kitchenPrints(limit) {
+  const data = await call('/api/shop/kitchen-prints?limit=' + (Number(limit) || 100));
+  return data.prints || [];
+}
+
 /** โต๊ะที่ปิดใช้งานแล้ว (QR ที่เลิกใช้) — เก็บไว้เป็นหลักฐาน */
 async function retiredTables() {
   const data = await call('/api/shop/tables/retired');
@@ -224,5 +230,5 @@ module.exports = {
   call, openEvents, shopInfo,
   kitchenItems, startItems, setItemStatus, cancelItem,
   tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
-  history, retiredTables, qrImage,
+  history, kitchenPrints, retiredTables, qrImage,
 };

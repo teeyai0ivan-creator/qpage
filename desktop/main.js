@@ -148,6 +148,8 @@ const NATIVE_PAGES = {
   '/shop/cashier.html': { file: 'app/kitchen.html', query: { station: 'cashier' } },
   '/shop/orders.html': { file: 'app/orders.html' },
   '/shop/history.html': { file: 'app/history.html' },
+  // ประวัติสั่งครัว = แท็บที่ 3 ของหน้าจอประวัติ (แบบเดียวกับหน้าเว็บที่มีปุ่มเชื่อมกัน)
+  '/shop/kitchen-history.html': { file: 'app/history.html', query: { tab: 'prints' } },
 };
 
 const SHELL_WIDTH = 226;          // ความกว้างแถบเมนูด้านซ้าย (px)
@@ -564,6 +566,7 @@ ipcMain.on('kitchen:print-round', async (event, payload) => {
 // IPC — หน้าจอ "ประวัติ" ของโปรแกรม (บิลที่ปิดแล้ว + QR โต๊ะที่ปิดใช้งาน)
 // ---------------------------------------------------------------------------
 ipcMain.handle('history:bills', (event, payload) => api.history(payload || {}));
+ipcMain.handle('history:prints', (event, limit) => api.kitchenPrints(limit));
 ipcMain.handle('history:retired', () => api.retiredTables());
 ipcMain.handle('history:qr', (event, tableId) => api.qrImage(tableId));
 /** บันทึกไฟล์ลงโฟลเดอร์ Downloads ของเครื่อง (ไม่มีกล่องให้เลือกพาธ — ใช้ชื่อไฟล์ที่ส่งมาแบบปลอดภัย) */

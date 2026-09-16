@@ -96,15 +96,8 @@
     <div class="filters">
       <button class="chip active" data-tab="bills" type="button">ประวัติบิล <span class="c" id="cntBills"></span></button>
       <button class="chip" data-tab="qr" type="button">QR โต๊ะที่ปิดใช้งาน <span class="c" id="cntQr"></span></button>
+      <button class="chip" data-tab="prints" type="button">ประวัติสั่งครัว <span class="c" id="cntPrints"></span></button>
       <span class="spacer" style="flex:1;"></span>
-      <span class="lbl">โต๊ะ</span>
-      <select class="inp" id="fTable"><option value="">ทุกโต๊ะ</option></select>
-      <span class="lbl">บิลล่าสุด</span>
-      <select class="inp" id="fLimit">
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="200">200</option>
-      </select>
       <button class="btn" id="btnExport" type="button">⬇ ออกรายการ (CSV)</button>
       <button class="btn" id="btnReload" type="button">⟳ รีเฟรช</button>
     </div>
@@ -112,11 +105,35 @@
 
   <main>
     <div id="paneBills" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="filters" style="margin:0;">
+        <span class="lbl">โต๊ะ</span>
+        <select class="inp" id="fTable"><option value="">ทุกโต๊ะ</option></select>
+        <span class="lbl">บิลล่าสุด</span>
+        <select class="inp" id="fLimit">
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+        <span class="lbl" id="sumBills"></span>
+      </div>
       <div id="histList"><div class="empty">กำลังโหลดประวัติ…</div></div>
     </div>
     <div id="paneQr" hidden style="display:flex;flex-direction:column;gap:12px;">
       <div class="empty" style="text-align:left;">QR ที่ปิดใช้งานแล้วจะสแกนไม่ได้อีก แต่ยังดูและดาวน์โหลดเก็บไว้เป็นหลักฐานได้ — โต๊ะจะเข้ามาที่นี่เมื่อติ๊ก "ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล" ไว้ในหน้าจอสั่งอาหาร</div>
       <div id="qrList" style="display:flex;flex-direction:column;gap:12px;"></div>
+    </div>
+    <div id="panePrints" hidden style="display:flex;flex-direction:column;gap:12px;">
+      <div class="filters" style="margin:0;">
+        <span class="lbl">จำนวนรอบล่าสุด</span>
+        <select class="inp" id="fLimitPrints">
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+          <option value="500">500</option>
+        </select>
+        <span class="lbl" id="sumPrints"></span>
+      </div>
+      <div id="printList" style="display:flex;flex-direction:column;gap:12px;"></div>
     </div>
   </main>
 

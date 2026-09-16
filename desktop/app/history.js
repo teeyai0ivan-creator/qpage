@@ -30,7 +30,10 @@ const csvRows = (rows) => rows.map((r) => r.map(csvCell).join(',')).join('\r\n')
 let tab = 'bills';
 let orders = [];
 let retired = [];
+let prints = [];                  // รอบการพิมพ์ใบสั่งครัว
+let printsTried = false;          // โหลดรอบพิมพ์แล้วหรือยัง (โหลดเมื่อเปิดแท็บครั้งแรก)
 const openBills = new Set();      // บิลที่กางรายการอยู่ (จำสถานะไว้หลังรีเฟรช)
+const openPrints = new Set();     // รอบพิมพ์ที่กางรายการอยู่
 const qrImages = new Map();       // tableId → data URL (โหลดครั้งเดียว)
 
 function toast(msg, revealPath) {
@@ -51,7 +54,11 @@ function showTab(which) {
   document.querySelectorAll('.chip[data-tab]').forEach((c) => c.classList.toggle('active', c.dataset.tab === which));
   $('paneBills').hidden = which !== 'bills';
   $('paneQr').hidden = which !== 'qr';
-  $('btnExport').textContent = which === 'qr' ? '⬇ ออกรายการ QR (CSV)' : '⬇ ออกรายการ (CSV)';
+  $('panePrints').hidden = which !== 'prints';
+  $('btnExport').textContent = which === 'qr' ? '⬇ ออกรายการ QR (CSV)'
+    : which === 'prints' ? '⬇ ออกรายการรอบพิมพ์ (CSV)'
+      : '⬇ ออกรายการ (CSV)';
+  if (which === 'prints' && !prints.length && !printsTried) loadPrints().catch(() => { /* แจ้งในหน้าจอแล้ว */ });
 }
 document.querySelectorAll('.chip[data-tab]').forEach((c) => c.addEventListener('click', () => showTab(c.dataset.tab)));
 
@@ -80,6 +87,9 @@ function renderBills() {
   $('cntBills').textContent = orders.length ? '(' + orders.length + ')' : '';
   $('nBills').textContent = orders.length;
   $('nTotal').textContent = money(orders.reduce((s, o) => s + Number(o.total || 0), 0));
+  $('sumBills').textContent = orders.length
+    ? 'แสดง ' + orders.length + ' ใบ · รวม ' + money(orders.reduce((s, o) => s + Number(o.total || 0), 0))
+    : '';
   const box = $('histList');
   if (!orders.length) {
     box.innerHTML = '<div class="empty">ยังไม่มีประวัติ — บิลจะมาแสดงที่นี่หลังเช็คบิล<br>(ถ้าเลือกกรองตามโต๊ะอยู่ ลองเปลี่ยนเป็น "ทุกโต๊ะ")</div>';
@@ -124,7 +134,78 @@ function renderBills() {
 }
 
 // ---------------------------------------------------------------------------
-// แท็บ 2: QR โต๊ะที่ปิดใช้งาน
+// แท็บ 2: ประวัติสั่งครัว (รอบการพิมพ์ใบสั่งครัว — พิมพ์ซ้ำได้)
+// ---------------------------------------------------------------------------
+/** วันเวลาแบบมีวินาที (รอบการพิมพ์ต่างกันแค่ไม่กี่นาที) */
+const stamp = (iso) => {
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + (d.getFullYear() + 543) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+};
+
+function renderPrints() {
+  $('cntPrints').textContent = prints.length ? '(' + prints.length + ')' : '';
+  const plates = prints.reduce((s, p) => s + Number(p.plates || 0), 0);
+  const items = prints.reduce((s, p) => s + Number(p.items_count || 0), 0);
+  $('sumPrints').textContent = prints.length ? 'รวม ' + prints.length + ' รอบ · ' + items + ' รายการ · ' + plates + ' จาน' : '';
+  const box = $('printList');
+  if (!prints.length) {
+    box.innerHTML = '<div class="empty">ยังไม่มีประวัติการพิมพ์ใบสั่งครัว<br>รอบการพิมพ์จะถูกบันทึกทุกครั้งที่กด "เริ่มทำ/เริ่มจัด" ในหน้าจอครัวหรือแคชเชียร์</div>';
+    return;
+  }
+  box.innerHTML = prints.map((p) => {
+    const open = openPrints.has(p.id);
+    const list = p.items || [];
+    const allCashier = list.length > 0 && list.every((i) => i.station === 'cashier');
+    return `<section class="bill" data-round="${p.id}">
+      <div class="bill-head" data-toggle-round="${p.id}">
+        <span class="t">รอบที่ ${p.id}</span>
+        <span class="b">· โต๊ะ ${esc(p.table_code || '-')} · บิล ${p.bill_no != null ? billNo(p.bill_no) : '—'} · ${allCashier ? 'แคชเชียร์' : 'ครัว'}</span>
+        <span class="spacer"></span>
+        <span class="when">พิมพ์เมื่อ ${stamp(p.printed_at)} · ${p.items_count} รายการ · ${p.plates} จาน</span>
+        <span class="caret">${open ? '▲' : '▼'}</span>
+      </div>
+      ${open ? `<div class="bill-items">${list.length ? list.map((i) => {
+        const opts = optsText(i.options_json);
+        return `<div class="row">
+          <div class="qty">${Number(i.quantity) || 0}×</div>
+          <div class="info">
+            <div class="name">${esc(i.menu_name)}</div>
+            ${opts ? `<div class="opts">${esc(opts)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('') : '<div class="row"><div class="info"><div class="opts">ไม่มีรายการในรอบนี้</div></div></div>'}</div>
+      <div class="bill-foot">
+        <button class="btn btn-primary btn-sm" data-reprint="${p.id}" type="button">🖨 พิมพ์รอบนี้ซ้ำ</button>
+      </div>` : ''}
+    </section>`;
+  }).join('');
+
+  box.querySelectorAll('[data-toggle-round]').forEach((el) => el.addEventListener('click', () => {
+    const id = Number(el.dataset.toggleRound);
+    if (openPrints.has(id)) openPrints.delete(id); else openPrints.add(id);
+    renderPrints();
+  }));
+  box.querySelectorAll('[data-reprint]').forEach((b) => b.addEventListener('click', () => {
+    const id = Number(b.dataset.reprint);
+    API.printRound({ roundId: id, url_path: '/shop/ticket.html?round=' + id });
+    toast('กำลังพิมพ์รอบที่ ' + id + ' ซ้ำ');
+  }));
+}
+
+async function loadPrints() {
+  try {
+    printsTried = true;
+    prints = await API.prints($('fLimitPrints').value || 100);
+    renderPrints();
+  } catch (err) {
+    printsTried = true;
+    $('printList').innerHTML = '<div class="empty">โหลดประวัติสั่งครัวไม่สำเร็จ: ' + esc(err.message) + '</div>';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// แท็บ 3: QR โต๊ะที่ปิดใช้งาน
 // ---------------------------------------------------------------------------
 function renderRetired() {
   $('cntQr').textContent = retired.length ? '(' + retired.length + ')' : '';
@@ -252,6 +333,7 @@ async function loadAll() {
     renderTableFilter();
     await loadBills();
     await loadTables();
+    if (printsTried) await loadPrints();   // แท็บประวัติสั่งครัวเคยเปิดแล้ว → อัปเดตให้ด้วย
   } catch (err) {
     $('histList').innerHTML = '<div class="empty">โหลดประวัติไม่สำเร็จ: ' + esc(err.message) + '</div>';
   }
@@ -271,6 +353,16 @@ async function exportCsv() {
       rows = [['โต๊ะ', 'โซน', 'สร้าง QR', 'ปิดใช้งานเมื่อ', 'บิลที่ปิดแล้ว', 'ยอดรวม']];
       for (const t of retired) rows.push([t.code, t.zone_name || '', t.created_at || '', t.retired_at || '', t.bill_count, Number(t.total_sales)]);
       name = 'qpage-qr-history.csv';
+    } else if (tab === 'prints') {
+      if (!prints.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
+      rows = [['รอบที่', 'โต๊ะ', 'บิล', 'จุดที่พิมพ์', 'พิมพ์เมื่อ', 'จำนวนรายการ', 'จำนวนจาน', 'รายการอาหาร']];
+      for (const p of prints) {
+        const list = p.items || [];
+        const allCashier = list.length > 0 && list.every((i) => i.station === 'cashier');
+        const names = list.map((i) => i.quantity + 'x ' + i.menu_name).join(' | ');
+        rows.push([p.id, p.table_code || '', p.bill_no != null ? billNo(p.bill_no) : '', allCashier ? 'แคชเชียร์' : 'ครัว', p.printed_at || '', p.items_count, p.plates, names]);
+      }
+      name = 'qpage-kitchen-print-history.csv';
     } else {
       if (!orders.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
       rows = [['บิล', 'โต๊ะ', 'เปิด', 'ปิด', 'จำนวนจาน', 'ยอดรวม', 'รายการ']];
@@ -292,6 +384,7 @@ async function exportCsv() {
 // ---------------------------------------------------------------------------
 $('fTable').addEventListener('change', () => loadBills().catch((e) => toast('โหลดไม่สำเร็จ: ' + e.message)));
 $('fLimit').addEventListener('change', () => loadBills().catch((e) => toast('โหลดไม่สำเร็จ: ' + e.message)));
+$('fLimitPrints').addEventListener('change', () => loadPrints().then(() => toast('อัปเดตแล้ว')).catch(() => { /* แจ้งในหน้าจอแล้ว */ }));
 $('btnReload').addEventListener('click', () => loadAll().then(() => toast('อัปเดตแล้ว')));
 $('btnExport').addEventListener('click', exportCsv);
 
@@ -303,8 +396,11 @@ API.onLive((state) => {
 // เช็คบิล/ปิดใช้งาน QR ระหว่างเปิดหน้านี้อยู่ → ประวัติอัปเดตเอง
 API.onEvent((evt) => {
   if (['checkout', 'bill_changed', 'tables_changed'].includes(evt.type)) loadAll();
+  if (evt.type === 'print_round' && printsTried) loadPrints().catch(() => { /* ข้าม */ });
 });
 
-showTab('bills');
+// เปิดมาที่แท็บที่ขอ (เมนู "ประวัติสั่งครัว" ในแถบซ้ายจะเปิดแท็บนี้ให้เลย)
+const startTab = new URLSearchParams(location.search).get('tab');
+showTab(startTab === 'prints' ? 'prints' : 'bills');
 loadAll();
 setInterval(loadAll, 60000);   // สำรอง เผื่อสายเรียลไทม์หลุด

@@ -27,15 +27,17 @@ contextBridge.exposeInMainWorld('qpageKitchen', {
   onEvent: (cb) => ipcRenderer.on('kitchen:event', (event, evt) => cb(evt)),
 });
 
-// หน้าจอ "ประวัติ" ของโปรแกรม (บิลที่ปิดแล้ว + QR โต๊ะที่ปิดใช้งาน)
+// หน้าจอ "ประวัติ" ของโปรแกรม (บิลที่ปิดแล้ว + QR โต๊ะที่ปิดใช้งาน + ประวัติสั่งครัว)
 contextBridge.exposeInMainWorld('qpageHistory', {
   bills: (opts) => ipcRenderer.invoke('history:bills', opts || {}),
+  prints: (limit) => ipcRenderer.invoke('history:prints', limit),
   retired: () => ipcRenderer.invoke('history:retired'),
   qr: (tableId) => ipcRenderer.invoke('history:qr', tableId),
   saveCsv: (payload) => ipcRenderer.invoke('history:save-csv', payload || {}),
   saveQr: (payload) => ipcRenderer.invoke('history:save-qr', payload || {}),
   reveal: (filePath) => ipcRenderer.send('app:reveal', filePath),
   printReceipt: (payload) => ipcRenderer.send('orders:print-receipt', payload || {}),
+  printRound: (payload) => ipcRenderer.send('kitchen:print-round', payload || {}),
   onLive: (cb) => ipcRenderer.on('kitchen:live', (event, state) => cb(state)),
   onEvent: (cb) => ipcRenderer.on('kitchen:event', (event, evt) => cb(evt)),
 });
