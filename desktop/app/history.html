@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>ประวัติ</title>
+  <style>
+    /* หน้าจอประวัติของ "โปรแกรม" (ไม่ใช่หน้าเว็บ) — ดีไซน์ชุดเดียวกับครัว/สั่งอาหาร */
+    :root {
+      --bg: #f4f5fb; --card: #ffffff; --card-2: #f8f9fd; --border: #e4e7ec; --text: #101828; --muted: #667085;
+      --accent: #4f46e5; --accent-2: #8b5cf6;
+      --ok: #059669; --ok-bg: #ecfdf5; --wait: #b45309; --wait-bg: #fffbeb; --cook: #1d4ed8; --cook-bg: #eef2ff;
+      --orange: #c2410c; --orange-bg: #fff1e6; --orange-border: #ffd6b0; --danger: #dc2626; --danger-bg: #fef2f2;
+      --money: #0f766e; --money-bg: #ecfdf5;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; font-size: 14px; line-height: 1.5; overflow-y: auto; }
+
+    header.pg-head {
+      position: sticky; top: 0; z-index: 5; background: rgba(244,245,251,.92); backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--border); padding: 14px 18px 12px;
+    }
+    .pg-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .pg-title h1 { font-size: 20px; margin: 0; font-weight: 800; letter-spacing: .2px; }
+    .pg-title .sub { color: var(--muted); font-size: 12.5px; }
+    .pg-title .spacer { flex: 1; min-width: 0; }
+    .stat { display: flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; }
+    .stat .n { font-size: 15px; font-weight: 800; }
+    .stat.money { background: var(--money-bg); border-color: #a7f3d0; color: var(--money); }
+    .stat.wait { background: var(--wait-bg); border-color: #fde68a; color: var(--wait); }
+    .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .live .dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+    .live.open .dot { background: #34d399; } .live.error .dot { background: #f87171; }
+
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+    .chip { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+    .chip:hover { background: var(--card-2); }
+    .chip.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .chip .c { opacity: .75; margin-left: 4px; }
+    .btn { font-family: inherit; font-size: 13px; font-weight: 700; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+    .btn:hover { background: var(--card-2); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-sm { padding: 6px 11px; font-size: 12.5px; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    select.inp { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
+    .lbl { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+
+    main { padding: 16px 18px 40px; display: flex; flex-direction: column; gap: 12px; }
+    .empty { text-align: center; color: var(--muted); padding: 30px 20px; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); font-size: 14px; }
+
+    /* การ์ดบิล */
+    .bill { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+    .bill-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--card-2); border-bottom: 1px solid var(--border); flex-wrap: wrap; cursor: pointer; }
+    .bill-head .t { font-size: 16px; font-weight: 800; }
+    .bill-head .b { font-size: 13px; font-weight: 700; color: var(--muted); }
+    .bill-head .when { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .bill-head .amt { font-size: 17px; font-weight: 800; color: var(--money); font-variant-numeric: tabular-nums; }
+    .bill-head .spacer { flex: 1; min-width: 0; }
+    .caret { font-size: 12px; color: var(--muted); font-weight: 800; }
+    .row { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-top: 1px solid var(--border); }
+    .qty { font-size: 16px; font-weight: 800; min-width: 36px; text-align: center; background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px 6px; }
+    .info { flex: 1; min-width: 0; }
+    .name { font-weight: 700; font-size: 14.5px; }
+    .name.cancelled { text-decoration: line-through; opacity: .6; }
+    .opts { font-size: 12.5px; color: var(--muted); }
+    .price { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .badge { font-size: 11.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+    .badge.cancel { background: var(--danger-bg); color: var(--danger); }
+    .bill-foot { display: flex; gap: 8px; flex-wrap: wrap; padding: 11px 14px; border-top: 1px solid var(--border); background: var(--card-2); }
+
+    /* การ์ด QR โต๊ะที่ปิดใช้งาน */
+    .qr-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; gap: 14px; align-items: flex-start; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+    .qr-card img { width: 112px; height: 112px; border: 1px solid var(--border); border-radius: 10px; background: #fff; padding: 6px; }
+    .qr-card .t { font-size: 16px; font-weight: 800; }
+    .qr-off { font-size: 11.5px; font-weight: 800; color: var(--danger); background: var(--danger-bg); border-radius: 999px; padding: 3px 9px; margin-left: 6px; }
+    .qr-card .l { font-size: 12.5px; color: var(--muted); }
+    .qr-card .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .qr-ph { width: 112px; height: 112px; border: 1px dashed var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 11.5px; text-align: center; padding: 8px; }
+
+    .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); background: #101828; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; opacity: 0; transition: .18s; pointer-events: none; z-index: 30; max-width: 80vw; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>ประวัติ</h1>
+      <span class="sub">บิลที่ปิดไปแล้ว และ QR โต๊ะที่ปิดใช้งาน — เก็บไว้เป็นหลักฐาน</span>
+      <span class="spacer"></span>
+      <span class="stat">บิล <span class="n" id="nBills">0</span></span>
+      <span class="stat money">ยอดรวม <span class="n" id="nTotal">฿0</span></span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="filters">
+      <button class="chip active" data-tab="bills" type="button">ประวัติบิล <span class="c" id="cntBills"></span></button>
+      <button class="chip" data-tab="qr" type="button">QR โต๊ะที่ปิดใช้งาน <span class="c" id="cntQr"></span></button>
+      <span class="spacer" style="flex:1;"></span>
+      <span class="lbl">โต๊ะ</span>
+      <select class="inp" id="fTable"><option value="">ทุกโต๊ะ</option></select>
+      <span class="lbl">บิลล่าสุด</span>
+      <select class="inp" id="fLimit">
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+      </select>
+      <button class="btn" id="btnExport" type="button">⬇ ออกรายการ (CSV)</button>
+      <button class="btn" id="btnReload" type="button">⟳ รีเฟรช</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="paneBills" style="display:flex;flex-direction:column;gap:12px;">
+      <div id="histList"><div class="empty">กำลังโหลดประวัติ…</div></div>
+    </div>
+    <div id="paneQr" hidden style="display:flex;flex-direction:column;gap:12px;">
+      <div class="empty" style="text-align:left;">QR ที่ปิดใช้งานแล้วจะสแกนไม่ได้อีก แต่ยังดูและดาวน์โหลดเก็บไว้เป็นหลักฐานได้ — โต๊ะจะเข้ามาที่นี่เมื่อติ๊ก "ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล" ไว้ในหน้าจอสั่งอาหาร</div>
+      <div id="qrList" style="display:flex;flex-direction:column;gap:12px;"></div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="history.js"></script>
+</body>
+</html>

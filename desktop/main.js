@@ -147,6 +147,7 @@ const NATIVE_PAGES = {
   '/shop/kitchen.html': { file: 'app/kitchen.html', query: { station: 'kitchen' } },
   '/shop/cashier.html': { file: 'app/kitchen.html', query: { station: 'cashier' } },
   '/shop/orders.html': { file: 'app/orders.html' },
+  '/shop/history.html': { file: 'app/history.html' },
 };
 
 const SHELL_WIDTH = 226;          // ความกว้างแถบเมนูด้านซ้าย (px)
@@ -557,6 +558,37 @@ ipcMain.on('kitchen:print-round', async (event, payload) => {
   const r = await printRoundTicket(urlPath);
   if (r.success) console.log(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) → ${r.device} (${r.paper})`);
   else console.error(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) ไม่สำเร็จ: ${r.reason}`);
+});
+
+// ---------------------------------------------------------------------------
+// IPC — หน้าจอ "ประวัติ" ของโปรแกรม (บิลที่ปิดแล้ว + QR โต๊ะที่ปิดใช้งาน)
+// ---------------------------------------------------------------------------
+ipcMain.handle('history:bills', (event, payload) => api.history(payload || {}));
+ipcMain.handle('history:retired', () => api.retiredTables());
+ipcMain.handle('history:qr', (event, tableId) => api.qrImage(tableId));
+/** บันทึกไฟล์ลงโฟลเดอร์ Downloads ของเครื่อง (ไม่มีกล่องให้เลือกพาธ — ใช้ชื่อไฟล์ที่ส่งมาแบบปลอดภัย) */
+function saveToDownloads(name, data) {
+  const safe = String(name || 'qpage.txt').replace(/[\\/:*?"<>|]/g, '_').slice(-120);
+  const dir = app.getPath('downloads');
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, safe);
+  fs.writeFileSync(file, data);
+  startupLog('บันทึกไฟล์ให้ผู้ใช้: ' + file);
+  return file;
+}
+ipcMain.handle('history:save-csv', (event, payload) => {
+  const p = saveToDownloads((payload && payload.name) || 'qpage.csv', '\ufeff' + String((payload && payload.csv) || ''));
+  return { path: p };
+});
+ipcMain.handle('history:save-qr', async (event, payload) => {
+  const id = Number(payload && payload.tableId);
+  const img = await api.qrImage(id);
+  const b64 = String(img.dataUrl).replace(/^data:image\/png;base64,/, '');
+  const p = saveToDownloads((payload && payload.name) || ('table-' + id + '-qr.png'), Buffer.from(b64, 'base64'));
+  return { path: p };
+});
+ipcMain.on('app:reveal', (event, filePath) => {
+  try { shell.showItemInFolder(String(filePath)); } catch (e) { /* ข้าม */ }
 });
 
 // ---------------------------------------------------------------------------

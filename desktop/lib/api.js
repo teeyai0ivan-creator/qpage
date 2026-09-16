@@ -119,6 +119,33 @@ async function catalog() {
   };
 }
 
+/** ประวัติบิลที่ปิดแล้ว (ใหม่สุดก่อน) — ใช้ที่หน้าจอประวัติ */
+async function history(opts) {
+  const q = new URLSearchParams();
+  if (opts && opts.tableId) q.set('tableId', String(opts.tableId));
+  if (opts && opts.limit) q.set('limit', String(opts.limit));
+  const data = await call('/api/shop/orders/history' + (q.toString() ? '?' + q.toString() : ''));
+  return data.orders || [];
+}
+
+/** โต๊ะที่ปิดใช้งานแล้ว (QR ที่เลิกใช้) — เก็บไว้เป็นหลักฐาน */
+async function retiredTables() {
+  const data = await call('/api/shop/tables/retired');
+  return data.tables || [];
+}
+
+/**
+ * รูป QR ของโต๊ะ (คืนเป็น data URL)
+ * หน้าจอเป็นไฟล์ในเครื่อง (file://) จึงโหลดรูปจากเซิร์ฟเวอร์ตรง ๆ ไม่ได้ (ไม่มีคุกกี้) → ให้ main โหลดมาให้
+ */
+async function qrImage(tableId) {
+  const url = base() + '/api/shop/tables/' + Number(tableId) + '/qr?origin=' + encodeURIComponent(base());
+  const res = await sess().fetch(url, { headers: headers() });
+  if (!res.ok) throw new Error('โหลดรูป QR ไม่สำเร็จ (HTTP ' + res.status + ')');
+  const buf = Buffer.from(await res.arrayBuffer());
+  return { dataUrl: 'data:image/png;base64,' + buf.toString('base64'), bytes: buf.length };
+}
+
 /** เพิ่มอาหารเข้าบิลของโต๊ะ */
 async function addItems(tableId, items) {
   return call('/api/shop/tables/' + Number(tableId) + '/items', { method: 'POST', body: { items } });
@@ -197,4 +224,5 @@ module.exports = {
   call, openEvents, shopInfo,
   kitchenItems, startItems, setItemStatus, cancelItem,
   tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
+  history, retiredTables, qrImage,
 };
