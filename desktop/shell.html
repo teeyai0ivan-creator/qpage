@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>QPage Shop</title>
+  <style>
+    /* แถบเครื่องมือของโปรแกรม (ไม่ใช่ของเว็บ) — สูง 64px ตรึงด้านบนตลอดเวลา */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 64px; overflow: hidden; }
+    body {
+      font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif;
+      background: linear-gradient(180deg, #131a2e 0%, #0f1626 100%);
+      color: #e6e9f2; font-size: 13px;
+      display: flex; align-items: center; gap: 10px; padding: 0 12px;
+      user-select: none; -webkit-app-region: drag;   /* ลากหน้าต่างได้จากแถบนี้ */
+    }
+    button, .pill { -webkit-app-region: no-drag; }
+    .brand { display: flex; align-items: center; gap: 8px; padding-right: 6px; flex: none; }
+    .brand img { width: 26px; height: 26px; border-radius: 8px; }
+    .brand b { font-size: 14.5px; letter-spacing: .2px; white-space: nowrap; }
+    .brand small { display: block; font-size: 10.5px; color: #9aa4bf; font-weight: 600; }
+
+    .nav { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; overflow: hidden; }
+    .nav button {
+      font-family: inherit; font-size: 13px; font-weight: 700; color: #cfd6e6;
+      background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08);
+      padding: 8px 12px; border-radius: 10px; cursor: pointer; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .nav button svg { width: 15px; height: 15px; }
+    .nav button:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+    .nav button.active { background: linear-gradient(135deg, #6366f1, #8b5cf6); border-color: transparent; color: #fff; }
+    .nav button.badge { position: relative; }
+    .nav button .cnt { background: #ef4444; color: #fff; font-size: 10.5px; font-weight: 800; border-radius: 999px; padding: 1px 6px; margin-left: 2px; }
+
+    .side { display: flex; align-items: center; gap: 6px; flex: none; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700;
+      padding: 6px 10px; border-radius: 999px; background: rgba(255, 255, 255, .07);
+      border: 1px solid rgba(255, 255, 255, .09); color: #c7cee0; white-space: nowrap;
+    }
+    .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: #94a3b8; flex: none; }
+    .pill.ok .dot { background: #34d399; } .pill.ok { color: #a7f3d0; }
+    .pill.warn .dot { background: #fbbf24; } .pill.warn { color: #fde68a; }
+    .pill.bad .dot { background: #f87171; } .pill.bad { color: #fecaca; }
+    .icon-btn {
+      font-family: inherit; font-size: 15px; line-height: 1; color: #cfd6e6;
+      background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08);
+      width: 34px; height: 34px; border-radius: 10px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; padding: 0;
+    }
+    .icon-btn:hover { background: rgba(255, 255, 255, .13); color: #fff; }
+    .icon-btn.wide { width: auto; padding: 0 12px; gap: 7px; font-size: 12.5px; font-weight: 700; }
+    .sep { width: 1px; height: 26px; background: rgba(255, 255, 255, .12); flex: none; }
+    .clock { font-variant-numeric: tabular-nums; font-weight: 700; color: #cbd5e1; font-size: 12.5px; }
+    @media (max-width: 1180px) { .hide-mid { display: none; } }
+    @media (max-width: 980px) { .pill .txt, .brand small { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="brand">
+    <img src="icon-256.png" alt="" onerror="this.style.display='none'">
+    <div><b>QPage Shop</b><small id="brandSub">โปรแกรมร้านค้า</small></div>
+  </div>
+
+  <div class="nav">
+    <button type="button" data-nav="/shop/kitchen.html" data-match="/shop/kitchen.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 10h16v6a4 4 0 01-4 4H8a4 4 0 01-4-4v-6z"/><path d="M6 10V7a2 2 0 012-2h8a2 2 0 012 2v3"/></svg>
+      ครัว
+    </button>
+    <button type="button" data-nav="/shop/cashier.html" data-match="/shop/cashier.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h.01M12 11h.01M15 11h.01M9 15h.01M12 15h.01M15 15h.01" stroke-linecap="round"/></svg>
+      แคชเชียร์
+    </button>
+    <button type="button" data-nav="/shop/orders.html" data-match="/shop/orders.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      สั่งอาหาร
+    </button>
+    <button type="button" data-nav="/shop/history.html" data-match="/shop/history.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1015.5-6.2M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>
+      ประวัติ
+    </button>
+    <button type="button" class="hide-mid" data-nav="/shop/kitchen-history.html" data-match="/shop/kitchen-history.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M6 9V3h12v6a4 4 0 01-4 4h-4a4 4 0 01-4-4z"/><path d="M6 5H4v3a3 3 0 003 3M18 5h2v3a3 3 0 01-3 3M9 17h6M12 13v4M8 21h8"/></svg>
+      ประวัติสั่งครัว
+    </button>
+    <button type="button" class="hide-mid" data-nav="/shop/menu.html" data-match="/shop/menu.html,/shop/menus.html,/shop/setup.html,/shop/notify.html,/shop/settings.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2V5z"/><path d="M8 7h8M8 11h5"/></svg>
+      จัดการร้าน
+    </button>
+  </div>
+
+  <div class="side">
+    <span class="pill" id="pillShop"><span class="dot"></span><span class="txt" id="txtShop">—</span></span>
+    <span class="pill hide-mid" id="pillPrinter"><span class="dot"></span><span class="txt" id="txtPrinter">—</span></span>
+    <span class="pill hide-mid" id="pillJobs"><span class="dot"></span><span class="txt" id="txtJobs">—</span></span>
+    <span class="clock" id="clock">--:--</span>
+    <span class="sep"></span>
+    <button class="icon-btn wide" id="btnPrintTest" type="button" title="พิมพ์ใบสั่งครัวทดสอบ">🖨 <span class="hide-mid">พิมพ์ทดสอบ</span></button>
+    <button class="icon-btn" id="btnTheme" type="button" title="สลับธีมสว่าง/มืด">🌗</button>
+    <button class="icon-btn" id="btnReload" type="button" title="รีเฟรชหน้าจอ (F5)">⟳</button>
+    <button class="icon-btn" id="btnZoomOut" type="button" title="ย่อขนาด">−</button>
+    <button class="icon-btn" id="btnZoomIn" type="button" title="ขยายขนาด">＋</button>
+    <button class="icon-btn" id="btnFull" type="button" title="เต็มจอ (F11)">⛶</button>
+    <span class="sep"></span>
+    <button class="icon-btn wide" id="btnSettings" type="button" title="ตั้งค่าเครื่องพิมพ์/โปรแกรม">⚙ <span class="hide-mid">ตั้งค่า</span></button>
+  </div>
+
+  <script src="shell.js"></script>
+</body>
+</html>

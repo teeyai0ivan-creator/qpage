@@ -58,6 +58,8 @@ app.whenReady().then(async () => {
   const full = await win.webContents.capturePage({ x: 0, y: 0, width: 256, height: 256 });
   const entries = SIZES.map((size) => ({ size, png: (size === 256 ? full : full.resize({ width: size, height: size })).toPNG() }));
   fs.writeFileSync(OUT, buildIco(entries));
+  // เก็บ PNG ขนาด 256 ไว้ใช้ในแถบเครื่องมือของโปรแกรมด้วย
+  fs.writeFileSync(path.join(__dirname, '..', 'icon-256.png'), entries[0].png);
   console.log('ICON_RESULT ' + JSON.stringify({ file: OUT, bytes: fs.statSync(OUT).size, sizes: SIZES }));
   app.exit(0);
 });

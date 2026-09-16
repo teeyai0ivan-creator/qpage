@@ -31,7 +31,11 @@
       "settings.js",
       "test-ticket.html",
       "test-ticket.js",
-      "lib/**/*"
+      "lib/**/*",
+      "shell.html",
+      "shell.js",
+      "shell-preload.js",
+      "icon-256.png"
     ],
     "win": {
       "target": [

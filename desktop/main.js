@@ -11,7 +11,7 @@
  */
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Menu, shell, dialog, session } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, Menu, shell, dialog, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 
@@ -28,20 +28,33 @@ const argValue = (name) => {
 };
 
 let mainWindow = null;
+let shellView = null;      // แถบเครื่องมือของโปรแกรม
+let contentView = null;    // เนื้อหาที่โหลดจากเว็บ
+let statusTimer = null;
 
 // หน้าแรกของโปรแกรม (ใช้ทั้งตอนเปิดโปรแกรมและตอนกลับจากหน้าเว็บไซต์)
 const APP_HOME = '/shop/kitchen.html';
 const LOGIN_URL = '/login.html?next=' + encodeURIComponent(APP_HOME);
 
-/** ตรวจว่าล็อกอินอยู่หรือยัง (ใช้ session ของโปรแกรม) */
+/** ตรวจว่าล็อกอินอยู่หรือยัง (ใช้ session ของโปรแกรม) + ชื่อร้านไว้แสดงบนแถบเครื่องมือ */
 async function checkLogin() {
   const sess = session.fromPartition(PARTITION);
   const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+  const headers = { 'X-QPage-Device': settingsLib.get().deviceId };
   try {
-    const res = await sess.fetch(base + '/api/me', { headers: { 'X-QPage-Device': settingsLib.get().deviceId } });
+    const res = await sess.fetch(base + '/api/me', { headers });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) return { loggedIn: false };
-    return { loggedIn: true, email: data.user.email, role: data.user.role, name: (data.shop && data.shop.name) || '' };
+    let name = '';
+    // ชื่อร้านมาจากอีกเส้นทางหนึ่ง (/api/me ให้แค่ข้อมูลผู้ใช้)
+    if (data.user && data.user.role === 'shop') {
+      try {
+        const r2 = await sess.fetch(base + '/api/shop/me', { headers });
+        const d2 = await r2.json().catch(() => ({}));
+        if (r2.ok && d2.ok && d2.shop) name = d2.shop.name || '';
+      } catch (e) { /* ยังไม่มีร้าน ก็ไม่เป็นไร */ }
+    }
+    return { loggedIn: true, email: data.user.email, role: data.user.role, name };
   } catch (err) {
     return { loggedIn: false, error: err.message };
   }
@@ -76,12 +89,20 @@ const HOOK_JS = `(() => {
   return 'hooked';
 })()`;
 
-// ปรับหน้าตาให้เป็น "โปรแกรม" ไม่ใช่เว็บไซต์ — ซ่อนส่วนที่เป็นหน้าเว็บสาธารณะ (แก้ที่โปรแกรมเท่านั้น หน้าเว็บจริงไม่กระทบ)
+// ปรับหน้าตาให้เป็น "โปรแกรม" ไม่ใช่เว็บไซต์ — ซ่อนส่วนของเว็บที่โปรแกรมมีของตัวเองแล้ว
+// (แก้ที่โปรแกรมเท่านั้น หน้าเว็บจริงไม่กระทบ)
 const APP_CSS = [
   '/* ลิงก์ "กลับหน้าแรก" ของเว็บไซต์ ไม่มีความหมายในโปรแกรม */',
   '.back-home { display: none !important; }',
   '/* หน้าล็อกอินของโปรแกรม: เหลือแค่เข้าสู่ระบบ (ไม่ต้องมีสมัครสมาชิก) */',
   '.auth-switch { display: none !important; }',
+  '/* แถบเมนูด้านบนของเว็บ + เมนูด้านซ้าย = โปรแกรมมีแถบเครื่องมือของตัวเองแล้ว */',
+  '.site-nav { display: none !important; }',
+  '.shop-side { display: none !important; }',
+  '.menu-toggle, .side-menu-backdrop { display: none !important; }',
+  '/* ปรับระยะให้เนื้อหาเต็มพื้นที่โปรแกรม (ไม่มีแถบเว็บด้านบนแล้ว) */',
+  '.shop-shell { padding-top: 18px !important; }',
+  ':root { --nav-h: 0px !important; }',
   '/* ซ่อนส่วนชวนสมัคร/แพ็กเกจ ถ้ามีหลุดเข้ามาในหน้าต่างโปรแกรม */',
   '.land-band, .land-packages, .land-hero { display: none !important; }',
 ].join('\n');
@@ -114,19 +135,38 @@ async function printContents(kind, contents, silentOverride) {
 }
 
 // ---------------------------------------------------------------------------
-// หน้าต่างหลัก
+// หน้าต่างหลัก = "เปลือกของโปรแกรม" (แถบเครื่องมือของเราเอง) + เนื้อหาที่โหลดจากเว็บ
 // ---------------------------------------------------------------------------
+const SHELL_HEIGHT = 64;      // ความสูงแถบเครื่องมือของโปรแกรม (px)
+
 function createMainWindow() {
   const s = settingsLib.get();
   mainWindow = new BrowserWindow({
-    width: 1280,
+    width: 1360,
     height: 900,
-    minWidth: 900,
-    minHeight: 600,
+    minWidth: 1024,
+    minHeight: 640,
     title: 'QPage Shop — ระบบร้านค้า',
-    backgroundColor: '#f4f5fb',
+    backgroundColor: '#0f1626',
     autoHideMenuBar: false,
     fullscreen: !!s.fullscreen,
+    show: false,
+  });
+  mainWindow.on('page-title-updated', (e) => e.preventDefault());
+
+  // แถบเครื่องมือของโปรแกรม (ไฟล์ในเครื่อง ไม่ใช่หน้าเว็บ)
+  shellView = new WebContentsView({
+    webPreferences: {
+      preload: path.join(__dirname, 'shell-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  shellView.setBackgroundColor('#0f1626');
+  shellView.webContents.loadFile(path.join(__dirname, 'shell.html'));
+
+  // เนื้อหา (หน้าเว็บของระบบ) — ใช้ session ถาวร + preload สำหรับดักการพิมพ์
+  contentView = new WebContentsView({
     webPreferences: {
       partition: PARTITION,
       preload: path.join(__dirname, 'preload.js'),
@@ -134,27 +174,32 @@ function createMainWindow() {
       nodeIntegration: false,
     },
   });
+  contentView.setBackgroundColor('#f4f5fb');
+
+  mainWindow.contentView.addChildView(shellView);
+  mainWindow.contentView.addChildView(contentView);
+  layoutViews();
+  mainWindow.on('resize', layoutViews);
+  mainWindow.once('ready-to-show', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show(); });
 
   // เปิดโปรแกรมแล้วเข้าหน้าล็อกอินทันที (ถ้าล็อกอินอยู่แล้วเข้าหน้าครัวเลย) — ไม่ผ่านหน้าเว็บไซต์สาธารณะ
-  startUrl().then((url) => {
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(url);
-  }).catch(() => {
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(String(s.serverUrl).replace(/\/+$/, '') + LOGIN_URL);
-  });
-  // ตั้งชื่อหน้าต่างเป็นชื่อโปรแกรมเสมอ (ไม่ให้ชื่อหน้าเว็บมาเปลี่ยน)
-  mainWindow.on('page-title-updated', (e) => e.preventDefault());
-  mainWindow.webContents.on('dom-ready', () => { installHook(mainWindow.webContents); applyAppLook(mainWindow.webContents); });
+  loadAppPage(null);
+
+  const cc = contentView.webContents;
+  cc.on('dom-ready', () => { installHook(cc); applyAppLook(cc); });
+  cc.on('did-navigate', () => pushStatus());
+  cc.on('did-navigate-in-page', () => pushStatus());
   // กันไม่ให้หลุดไปหน้าเว็บไซต์สาธารณะในหน้าต่างโปรแกรม (ถ้ามีลิงก์ชี้ไปหน้าแรก → พากลับเข้าหน้าของโปรแกรม)
-  mainWindow.webContents.on('will-navigate', (e, url) => {
+  cc.on('will-navigate', (e, url) => {
     const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
     if (url === base || url === base + '/' || /^https?:\/\/[^/]+\/?$/.test(url)) {
       e.preventDefault();
-      startUrl().then((u) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(u); }).catch(() => {});
+      loadAppPage(null);
     }
   });
   // หน้าเว็บเปิด "แท็บใหม่" ผ่าน window.open (ใบสั่งครัว/ใบเสร็จ/ป้าย QR)
   // → ให้ Electron สร้างหน้าต่างให้ แต่ต้องใช้ preload + session ชุดเดียวกัน เพื่อให้ดักพิมพ์ได้เหมือนกัน
-  mainWindow.webContents.setWindowOpenHandler(() => ({
+  cc.setWindowOpenHandler(() => ({
     action: 'allow',
     overrideBrowserWindowOptions: {
       width: 900,
@@ -169,10 +214,73 @@ function createMainWindow() {
     },
   }));
   // หน้าต่างที่ถูกสร้างใหม่ (รวมกรณีเปิด about:blank แล้วค่อยเปลี่ยนที่อยู่) → ติดตั้งตัวดักพิมพ์ทุกครั้งที่โหลดเสร็จ
-  mainWindow.webContents.on('did-create-window', (child) => {
+  cc.on('did-create-window', (child) => {
     child.webContents.on('dom-ready', () => installHook(child.webContents));
   });
-  mainWindow.on('closed', () => { mainWindow = null; });
+
+  mainWindow.on('closed', () => { mainWindow = null; shellView = null; contentView = null; });
+  if (statusTimer) clearInterval(statusTimer);
+  statusTimer = setInterval(() => pushStatus(), 5000);
+}
+
+/** จัดตำแหน่ง: แถบเครื่องมือบนสุด + เนื้อหาใต้ลงมา */
+function layoutViews() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const { width, height } = mainWindow.getContentBounds();
+  if (shellView) shellView.setBounds({ x: 0, y: 0, width, height: SHELL_HEIGHT });
+  if (contentView) contentView.setBounds({ x: 0, y: SHELL_HEIGHT, width, height: Math.max(0, height - SHELL_HEIGHT) });
+}
+
+/** เปิดหน้าของโปรแกรม (path = '/shop/kitchen.html' …) · ส่ง null = ใช้หน้าเริ่มต้นตามสถานะล็อกอิน */
+function loadAppPage(p) {
+  if (!contentView) return;
+  const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+  if (p) { contentView.webContents.loadURL(base + p); return; }
+  startUrl()
+    .then((url) => { if (contentView) contentView.webContents.loadURL(url); })
+    .catch(() => { if (contentView) contentView.webContents.loadURL(base + LOGIN_URL); });
+}
+
+/** ส่งข้อมูลสถานะไปให้แถบเครื่องมือ (ร้าน/ผู้ใช้ · เครื่องพิมพ์ · งานพิมพ์ค้าง) */
+async function pushStatus() {
+  if (!shellView || !mainWindow || mainWindow.isDestroyed() || shellView.webContents.isDestroyed()) return;
+  const s = settingsLib.get();
+  const path = contentView ? (() => { try { return new URL(contentView.webContents.getURL()).pathname; } catch (e) { return ''; } })() : '';
+  let pendingJobs = 0;
+  try {
+    const sess = session.fromPartition(PARTITION);
+    const base = String(s.serverUrl || '').replace(/\/+$/, '');
+    const res = await sess.fetch(base + '/api/shop/print-jobs?deviceId=' + encodeURIComponent(s.deviceId), { headers: { 'X-QPage-Device': s.deviceId } });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      pendingJobs = ((data && data.jobs) || []).length;
+    }
+  } catch (err) { /* ออฟไลน์/ยังไม่ล็อกอิน = 0 */ }
+  const me = await checkLogin();
+  const printerNames = await listPrinterDisplayNames();
+  const configured = (s.printers && s.printers.ticket && s.printers.ticket.device) || '';
+  shellView.webContents.send('shell-status', {
+    path,
+    loggedIn: !!me.loggedIn,
+    email: me.email || '',
+    shopName: me.name || '',
+    silent: s.silent !== false,
+    printerName: configured ? (printerNames[configured] || configured) : '',
+    agentActive: !!(agent && agent.kinds().length),
+    pendingJobs,
+  });
+}
+
+/** ชื่อที่แสดงของเครื่องพิมพ์ (ไว้โชว์บนแถบเครื่องมือ) */
+async function listPrinterDisplayNames() {
+  const map = {};
+  try {
+    const target = (contentView && !contentView.webContents.isDestroyed()) ? contentView : (settingsWindow || null);
+    if (!target) return map;
+    const list = await target.webContents.getPrintersAsync();
+    for (const p of list || []) map[p.name] = p.displayName || p.name;
+  } catch (err) { /* ข้าม */ }
+  return map;
 }
 
 function createSettingsWindow() {
@@ -212,8 +320,8 @@ function buildMenu() {
     {
       label: 'มุมมอง',
       submenu: [
-        { label: 'รีเฟรช', accelerator: 'F5', click: () => mainWindow && mainWindow.reload() },
-        { label: 'ย้อนกลับ', accelerator: 'Alt+Left', click: () => mainWindow && mainWindow.webContents.navigationHistory.goBack() },
+        { label: 'รีเฟรช', accelerator: 'F5', click: () => contentView && contentView.webContents.reload() },
+        { label: 'ย้อนกลับ', accelerator: 'Alt+Left', click: () => contentView && contentView.webContents.navigationHistory.goBack() },
         { type: 'separator' },
         { label: 'ซูมเข้า', role: 'zoomIn' },
         { label: 'ซูมออก', role: 'zoomOut' },
@@ -277,7 +385,9 @@ ipcMain.on('print-now', async (event) => {
 });
 
 ipcMain.handle('printers:list', async () => {
-  const target = mainWindow && !mainWindow.isDestroyed() ? mainWindow : settingsWindow;
+  // ใช้ webContents ที่ยังอยู่ (เนื้อหา/หน้าตั้งค่า) ขอรายชื่อเครื่องพิมพ์จากระบบ
+  const target = (contentView && !contentView.webContents.isDestroyed()) ? contentView
+    : (settingsWindow && !settingsWindow.isDestroyed() ? settingsWindow : null);
   if (!target) return [];
   try {
     const list = await target.webContents.getPrintersAsync();
@@ -289,6 +399,68 @@ ipcMain.handle('printers:list', async () => {
     }));
   } catch (err) {
     return [];
+  }
+});
+
+// ---------------------------------------------------------------------------
+// IPC — จากแถบเครื่องมือของโปรแกรม (shell)
+// ---------------------------------------------------------------------------
+ipcMain.on('shell:nav', (event, p) => {
+  const path = String(p || '');
+  // อนุญาตเฉพาะเส้นทางภายในเว็บของเรา (กันคำสั่งแปลกปลอม)
+  if (!/^\/[A-Za-z0-9._\-/?=&%]*$/.test(path)) return;
+  loadAppPage(path);
+});
+ipcMain.on('shell:reload', () => { if (contentView) contentView.webContents.reload(); });
+ipcMain.on('shell:zoom', (event, delta) => {
+  if (!contentView) return;
+  const wc = contentView.webContents;
+  const now = wc.getZoomFactor();
+  const next = Math.min(2, Math.max(0.6, Math.round((now + Number(delta) * 0.1) * 100) / 100));
+  wc.setZoomFactor(next);
+});
+ipcMain.on('shell:fullscreen', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setFullScreen(!mainWindow.isFullScreen());
+});
+ipcMain.on('shell:settings', () => createSettingsWindow());
+ipcMain.on('shell:status-now', () => { pushStatus(); });
+ipcMain.on('shell:logout', async () => {
+  try {
+    const sess = session.fromPartition(PARTITION);
+    const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+    await sess.fetch(base + '/api/logout', { method: 'POST', headers: { 'X-QPage-Device': settingsLib.get().deviceId } });
+  } catch (err) { /* ข้าม */ }
+  loadAppPage(LOGIN_URL);
+  setTimeout(() => pushStatus(), 800);
+});
+ipcMain.handle('shell:toggle-theme', async () => {
+  if (!contentView) return { theme: 'light' };
+  try {
+    const theme = await contentView.webContents.executeJavaScript(`(() => {
+      const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = cur === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('member-theme', next); } catch (e) {}
+      document.documentElement.setAttribute('data-theme', next);
+      return next;
+    })()`, true);
+    return { theme };
+  } catch (err) {
+    return { theme: 'light' };
+  }
+});
+ipcMain.handle('shell:test-print', async () => {
+  const win = new BrowserWindow({
+    show: false, width: 900, height: 1200,
+    webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false },
+  });
+  try {
+    await win.loadFile(path.join(__dirname, 'test-ticket.html'), { query: { kind: 'ticket', t: String(Date.now()) } });
+    await new Promise((r) => setTimeout(r, 300));
+    return await printContents('ticket', win.webContents);
+  } catch (err) {
+    return { success: false, reason: err.message };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
   }
 });
 
@@ -309,7 +481,7 @@ ipcMain.handle('settings:save', (event, patch) => {
   const after = settingsLib.save(patch || {});
   // เปลี่ยนที่อยู่เซิร์ฟเวอร์ → เปิดหน้าใหม่
   if (patch && patch.serverUrl && patch.serverUrl !== before.serverUrl && mainWindow && !mainWindow.isDestroyed()) {
-    startUrl().then((u) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(u); }).catch(() => {});
+    loadAppPage(null);
   }
   // เปิด/ปิดตัวช่วยพิมพ์ตามค่าใหม่
   if (agent) { agent.stop(); if (agent.kinds().length) agent.start(); }
@@ -352,7 +524,7 @@ ipcMain.handle('jobs:recent', async () => {
 ipcMain.handle('me:info', () => checkLogin());
 
 ipcMain.handle('app:open-settings', () => createSettingsWindow());
-ipcMain.handle('app:reload-main', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload(); });
+ipcMain.handle('app:reload-main', () => { if (contentView && !contentView.webContents.isDestroyed()) contentView.webContents.reload(); });
 
 // ---------------------------------------------------------------------------
 // ตัวช่วยพิมพ์ (รับงานจากมือถือ/แท็บเล็ต)
