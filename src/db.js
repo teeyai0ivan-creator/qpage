@@ -1875,7 +1875,7 @@ async function setOrderItemStatus(id, shopId, status) {
   await pool.execute(
     `UPDATE order_items oi JOIN orders o ON o.id = oi.order_id
         SET ${sets.join(', ')}
-      WHERE oi.id = ? AND oi.shop_id = ? AND o.status = 'open'`,
+      WHERE oi.id = ? AND o.shop_id = ? AND o.status = 'open'`,
     [...params, id, shopId]
   );
 }

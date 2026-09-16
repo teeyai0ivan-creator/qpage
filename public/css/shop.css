@@ -184,6 +184,9 @@
 .mini-btn:hover { background: var(--surface-hover); }
 .mini-btn.primary { background: var(--accent-gradient); border: none; color: #fff; }
 .mini-btn.danger { color: var(--danger); border-color: var(--danger-border); background: transparent; }
+/* ปุ่มสีส้มอ่อน — ใช้กับปุ่ม "เคลียร์อาหาร" (รายการที่กำลังทำ) ให้ต่างจากปุ่มเริ่มทำสีม่วง */
+.mini-btn.soft-orange { background: var(--orange-bg); border-color: var(--orange-border); color: var(--orange); }
+.mini-btn.soft-orange:hover { filter: brightness(.96); }
 
 .logo-preview { width: 84px; height: 84px; border-radius: 16px; object-fit: cover; background: var(--surface-2); border: 1px solid var(--border); }
 /* ---------- หน้าเลือกแพ็กเกจ (ผู้ใช้ซื้อเพื่อเปิดร้าน) ---------- */

@@ -213,7 +213,8 @@
       const btn = i.status === 'pending'
         ? '<button class="mini-btn primary" data-set="' + i.id + '" data-status="cooking" type="button">' + L.actStart + '</button>'
         : i.status === 'cooking'
-          ? '<button class="mini-btn primary" data-set="' + i.id + '" data-status="done" type="button">' + L.actDone + '</button>'
+          // ปุ่มเคลียร์อาหาร/จัดเสร็จ ใช้สีส้มอ่อน ให้เห็นต่างจากปุ่มเริ่มทำสีม่วง
+          ? '<button class="mini-btn soft-orange" data-set="' + i.id + '" data-status="done" type="button">' + L.actDone + '</button>'
           : '<span class="mini-btn" style="opacity:.6;cursor:default;">' + L.stDone + '</span>';
       const cancelBtn = i.status !== 'done'
         ? '<button class="mini-btn danger" data-cancel="' + i.id + '" data-name="' + esc(i.menu_name) + '" type="button">ยกเลิก</button>'

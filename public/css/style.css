@@ -35,6 +35,10 @@
   --warning: #b45309;
   --warning-bg: #fffbeb;
   --warning-border: #fde68a;
+  /* ส้มอ่อน — ใช้กับปุ่ม "เคลียร์อาหาร" ในหน้าครัว (พื้นส้มอ่อน ตัวอักษรส้มเข้ม) */
+  --orange: #c2410c;
+  --orange-bg: #fff1e6;
+  --orange-border: #ffd6b0;
   --info: #1d4ed8;
   --info-bg: #eff6ff;
   --info-border: #bfdbfe;
@@ -75,6 +79,9 @@
   --warning: #fbbf24;
   --warning-bg: rgba(245, 158, 11, 0.12);
   --warning-border: rgba(245, 158, 11, 0.35);
+  --orange: #fdba74;
+  --orange-bg: rgba(249, 115, 22, 0.16);
+  --orange-border: rgba(249, 115, 22, 0.4);
   --info: #93c5fd;
   --info-bg: rgba(59, 130, 246, 0.12);
   --info-border: rgba(59, 130, 246, 0.35);
