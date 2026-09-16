@@ -581,6 +581,24 @@ router.post('/api/shop/order-items/start', requireShop, async (req, res) => {
   }
   // แจ้งหน้าจออื่น (ครัว/แคชเชียร์/หน้าสั่งอาหาร) ให้ของใหม่ขึ้นทันที
   for (const orderId of r.orderIds) realtime.publish(shop.id, 'item_status', { order_id: orderId });
+  // บันทึก "ประวัติสั่งครัว": 1 รอบการพิมพ์ = 1 บิล (โต๊ะเดียวกันพิมพ์ซ้ำหลายรอบได้ตามออเดอร์ใหม่)
+  try {
+    const items = await db.listTicketItems(shop.id, r.started);
+    const byOrder = {};
+    for (const it of items) (byOrder[it.order_id] || (byOrder[it.order_id] = [])).push(it);
+    for (const [orderId, list] of Object.entries(byOrder)) {
+      await db.recordKitchenPrint({
+        shopId: shop.id,
+        orderId: Number(orderId),
+        tableCode: list[0].table_code || '',
+        billNo: list[0].bill_no != null ? Number(list[0].bill_no) : null,
+        items: list,
+      });
+    }
+  } catch (e) {
+    // บันทึกประวัติไม่สำเร็จก็ยังต้องให้ครัวพิมพ์ได้ตามปกติ
+    console.error('⚠️ บันทึกประวัติสั่งครัวไม่สำเร็จ:', e.message);
+  }
   console.log(`🍳 [ครัว] เริ่มทำ ${r.started.length} รายการ (ร้าน #${shop.id})`);
   res.json({ ok: true, started: r.started, message: `เริ่มทำ ${r.started.length} รายการแล้ว` });
 });
@@ -603,6 +621,32 @@ router.get('/shop/ticket.html', requireShopPage, async (req, res) => {
   if (!shop) return res.redirect('/shop/setup.html');
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(PUBLIC_DIR, 'shop', 'ticket.html'));
+});
+
+// ---------------------------------------------------------------------------
+// ประวัติสั่งครัว — ทุกรอบที่พิมพ์ใบสั่งครัว (โต๊ะเดียวกันพิมพ์หลายรอบได้)
+// ---------------------------------------------------------------------------
+router.get('/shop/kitchen-history.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  await sendShopPage(res, 'kitchen-history.html', shop);
+});
+
+router.get('/api/shop/kitchen-prints', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const prints = await db.listKitchenPrints(shop.id, { limit: req.query.limit });
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, prints });
+});
+
+router.get('/api/shop/kitchen-prints/:id', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const print = await db.findKitchenPrint(Number(req.params.id), shop.id);
+  if (!print) return res.status(404).json({ ok: false, message: 'ไม่พบรอบการพิมพ์นี้' });
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, print, shop: { name: shop.name, logo_url: shop.logo_url || '' } });
 });
 
 // ---------------------------------------------------------------------------

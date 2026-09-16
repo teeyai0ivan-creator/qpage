@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ประวัติ | ระบบสมาชิก</title>
+  <title>ประวัติสั่งครัว | ระบบสมาชิก</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/settings.css">
   <link rel="stylesheet" href="/css/shop.css">
@@ -143,39 +143,28 @@
 
       <div class="shop-wrap">
     <div class="shop-head">
-      <h1>ประวัติ</h1>
-      <p>ดูย้อนหลังทั้งบิลที่ปิดไปแล้ว และ QR โต๊ะที่ปิดใช้งานแล้ว — เก็บไว้เป็นหลักฐาน</p>
+      <h1>ประวัติสั่งครัว</h1>
+      <p>ทุกรอบที่พิมพ์ใบสั่งครัว — โต๊ะเดียวกันพิมพ์หลายรอบได้ตามออเดอร์ใหม่ กด “พิมพ์รอบนี้ซ้ำ” เมื่อกระดาษที่พิมพ์ไปเสียหาย</p>
     </div>
 
     <div class="hist-tabs">
-      <button class="hist-tab active" id="tabBills" type="button">ประวัติบิล <span id="cntBills"></span></button>
-      <button class="hist-tab" id="tabQr" type="button">QR โต๊ะที่ปิดใช้งาน <span id="cntQr"></span></button>
-      <a class="hist-tab" href="/shop/kitchen-history.html">ประวัติสั่งครัว</a>
+      <a class="hist-tab" href="/shop/history.html">← กลับหน้าประวัติ</a>
+      <span class="hist-tab active" style="cursor:default;">ประวัติสั่งครัว <span id="cntPrints"></span></span>
     </div>
 
-    <div id="paneBills">
-      <div class="hist-filter">
-        <label for="fTable">โต๊ะ</label>
-        <select class="mini-input" id="fTable"><option value="">ทุกโต๊ะ</option></select>
-        <label for="fLimit">จำนวนบิลล่าสุด</label>
-        <select class="mini-input" id="fLimit">
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="200">200</option>
-        </select>
-        <button class="mini-btn" id="exportBtn" type="button">ออกรายการล่าสุด (CSV)</button>
-      </div>
-
-      <div id="histList"></div>
+    <div class="hist-filter">
+      <label for="fLimit">จำนวนรอบล่าสุด</label>
+      <select class="mini-input" id="fLimit">
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+        <option value="500">500</option>
+      </select>
+      <button class="mini-btn" id="refreshBtn" type="button">รีเฟรช</button>
+      <span class="hist-sub" id="sumPrints" style="margin:0;"></span>
     </div>
 
-    <div id="paneQr" hidden>
-      <div class="hist-filter">
-        <button class="mini-btn" id="exportQrBtn" type="button">ออกรายการ (CSV)</button>
-        <span class="hist-sub" style="margin:0;">QR ที่ปิดใช้งานแล้วสแกนไม่ได้อีก แต่ยังดู/ดาวน์โหลดไว้เป็นหลักฐานได้</span>
-      </div>
-      <div id="qrList"></div>
-    </div>
+    <div id="printList"></div>
   </div>
     </div>
 
@@ -183,7 +172,6 @@
 
   <script>
     let toastTimer = null;
-    let lastOrders = [];
 
     async function api(path, opts) {
       const res = await fetch(path, opts);
@@ -192,142 +180,67 @@
       return data;
     }
     function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }
-
-    let retired = [];
-
-    async function loadTables() {
+    const pad = (n) => String(n).padStart(2, '0');
+    // วันเวลาไทยแบบสั้น + วินาที (รอบการพิมพ์ต่างกันแค่ไม่กี่นาที จึงต้องเห็นวินาที)
+    function stamp(iso) {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '—';
+      return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + (d.getFullYear() + 543) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    }
+    function optionsText(json) {
+      if (!json) return '';
       try {
-        const [act, ret] = await Promise.all([api('/api/shop/tables'), api('/api/shop/tables/retired')]);
-        retired = ret.tables || [];
-        const sel = document.getElementById('fTable');
-        const cur = sel.value;
-        const opts = (act.tables || []).map((t) => `<option value="${t.id}">โต๊ะ ${esc(t.code)}</option>`)
-          .concat(retired.map((t) => `<option value="${t.id}">โต๊ะ ${esc(t.code)} (ปิดใช้งาน)</option>`));
-        sel.innerHTML = '<option value="">ทุกโต๊ะ</option>' + opts.join('');
-        if (cur) sel.value = cur;
-        document.getElementById('cntQr').textContent = retired.length ? '(' + retired.length + ')' : '';
-        renderRetired();
-      } catch (e) { /* ignore */ }
+        const v = JSON.parse(json);
+        if (!Array.isArray(v)) return '';
+        return v.map((o) => (typeof o === 'string' ? o : o && o.name ? o.name : '')).filter(Boolean).join(', ');
+      } catch (e) { return ''; }
     }
 
-    // ---------- ประวัติ QR โต๊ะที่ปิดใช้งานแล้ว (หลักฐาน) ----------
-    function renderRetired() {
-      const box = document.getElementById('qrList');
-      if (!retired.length) {
-        box.innerHTML = '<div class="cat-empty">ยังไม่มี QR ที่ปิดใช้งาน — ถ้าเปิดสวิตช์ "ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล" ไว้ โต๊ะที่เช็คบิลแล้วจะมาแสดงที่นี่</div>';
-        return;
-      }
-      box.innerHTML = retired.map((t) => `
-        <div class="qr-card" data-id="${t.id}">
-          <img src="/api/shop/tables/${t.id}/qr?origin=${encodeURIComponent(location.origin)}" alt="QR โต๊ะ ${esc(t.code)}">
-          <div style="flex:1;min-width:0;">
-            <div class="table-code">โต๊ะ ${esc(t.code)} <span class="qr-off">ปิดใช้งานแล้ว</span></div>
-            <div class="hist-sub">${t.zone_name ? 'โซน ' + esc(t.zone_name) + ' · ' : ''}สร้าง QR ${dt(t.created_at)} · ปิดใช้งาน ${dt(t.retired_at)}</div>
-            <div class="hist-sub">บิลที่ปิดแล้ว ${t.bill_count} ใบ · ยอดรวม ${money(t.total_sales)}</div>
-            <div class="hist-actions" style="padding:10px 0 0;">
-              <a class="mini-btn" href="/api/shop/tables/${t.id}/qr?origin=${encodeURIComponent(location.origin)}" download="table-${esc(t.code)}-qr.png">ดาวน์โหลด QR</a>
-              <button class="mini-btn" data-bills="${t.id}" type="button">ดูบิลของโต๊ะนี้</button>
-            </div>
-          </div>
-        </div>`).join('');
-      box.querySelectorAll('[data-bills]').forEach((b) => b.addEventListener('click', () => {
-        showTab('bills');
-        const sel = document.getElementById('fTable');
-        sel.value = b.dataset.bills;
-        loadHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }));
-      }));
-    }
+    let prints = [];
 
-    function showTab(which) {
-      const isQr = which === 'qr';
-      document.getElementById('tabBills').classList.toggle('active', !isQr);
-      document.getElementById('tabQr').classList.toggle('active', isQr);
-      document.getElementById('paneBills').hidden = isQr;
-      document.getElementById('paneQr').hidden = !isQr;
-    }
-    document.getElementById('tabBills').addEventListener('click', () => showTab('bills'));
-    document.getElementById('tabQr').addEventListener('click', () => showTab('qr'));
-
-    async function loadHistory() {
-      const tableId = document.getElementById('fTable').value;
-      const limit = document.getElementById('fLimit').value;
-      const qs = new URLSearchParams();
-      if (tableId) qs.set('tableId', tableId);
-      if (limit) qs.set('limit', limit);
-      const data = await api('/api/shop/orders/history' + (qs.toString() ? '?' + qs.toString() : ''));
-      lastOrders = data.orders || [];
-      document.getElementById('cntBills').textContent = lastOrders.length ? '(' + lastOrders.length + ')' : '';
-      const box = document.getElementById('histList');
-      if (!lastOrders.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีประวัติ (ยังไม่มีการเช็คบิล)</div>'; return; }
-      box.innerHTML = lastOrders.map((o) => `
+    function render() {
+      const box = document.getElementById('printList');
+      if (!prints.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีประวัติการพิมพ์ใบสั่งครัว</div>'; return; }
+      const totalItems = prints.reduce((s, p) => s + Number(p.items_count || 0), 0);
+      const totalPlates = prints.reduce((s, p) => s + Number(p.plates || 0), 0);
+      document.getElementById('sumPrints').textContent = 'รวม ' + prints.length + ' รอบ · ' + totalItems + ' รายการ · ' + totalPlates + ' จาน';
+      box.innerHTML = prints.map((p) => {
+        const items = p.items || [];
+        const isCashier = items.length && items.every((i) => i.station === 'cashier');
+        return `
         <details class="bill-card">
           <summary>
             <div style="flex:1;min-width:0;">
-              <div class="table-code">บิล ${billNoFmt(o.bill_no)} · โต๊ะ ${esc(o.table_code)}</div>
-              <div class="hist-sub">เปิด ${dt(o.opened_at)} · ปิด ${dt(o.closed_at)} · ${o.item_count} รายการ</div>
+              <div class="table-code">โต๊ะ ${esc(p.table_code || '-')} · บิล ${p.bill_no != null ? billNoFmt(p.bill_no) : '—'}<span style="font-weight:600;color:var(--muted);font-size:12.5px;"> · ${isCashier ? 'แคชเชียร์' : 'ครัว'}</span></div>
+              <div class="hist-sub">พิมพ์เมื่อ ${stamp(p.printed_at)} · ${p.items_count} รายการ · ${p.plates} จาน</div>
             </div>
-            <div class="bill-total">${money(o.total)}</div>
+            <div class="bill-total">${p.plates} จาน</div>
           </summary>
-          <div class="hist-items">
-            ${o.items.length ? o.items.map((it) => {
-              let opts = []; try { opts = it.options_json ? JSON.parse(it.options_json) : []; } catch (e) {}
-              const cancelled = it.status === 'cancelled';
-              return `<div class="bill-item"${cancelled ? ' style="opacity:.6;"' : ''}>
-                <span>${it.quantity} × ${cancelled ? '<span style="text-decoration:line-through;">' + esc(it.menu_name) + '</span>' : esc(it.menu_name)}${opts.length ? ' <small>(' + esc(opts.join(', ')) + ')</small>' : ''}${cancelled ? ' <span class="st-badge st-cancelled">ยกเลิก' + (it.cancel_reason ? ': ' + esc(it.cancel_reason) : '') + '</span>' : ''}</span>
-                <span>${cancelled ? '—' : money(it.line_total)}</span>
-              </div>`;
-            }).join('') : '<div style="color:var(--muted);font-size:13px;">ไม่มีรายการ</div>'}
+          <div class="bill-items">
+            ${items.length ? items.map((it) => `<div class="bill-item">
+              <span>${it.quantity} × ${esc(it.menu_name)}${optionsText(it.options_json) ? ' <small>(' + esc(optionsText(it.options_json)) + ')</small>' : ''}</span>
+              <span>${it.quantity}</span>
+            </div>`).join('') : '<div style="color:var(--muted);font-size:13px;">ไม่มีรายการ</div>'}
           </div>
           <div class="hist-actions">
-            <a class="mini-btn primary" href="/shop/receipt.html?order=${o.id}" target="_blank" rel="noopener">🖨 ขอใบเสร็จ (พิมพ์ใหม่)</a>
+            <a class="mini-btn primary" href="/shop/ticket.html?round=${p.id}" target="_blank" rel="noopener">🖨 พิมพ์รอบนี้ซ้ำ</a>
           </div>
-        </details>`).join('');
+        </details>`;
+      }).join('');
     }
 
-    document.getElementById('fTable').addEventListener('change', () => loadHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
-    document.getElementById('fLimit').addEventListener('change', () => loadHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
+    async function load() {
+      const limit = document.getElementById('fLimit').value;
+      const data = await api('/api/shop/kitchen-prints?limit=' + encodeURIComponent(limit));
+      prints = data.prints || [];
+      document.getElementById('cntPrints').textContent = prints.length ? '(' + prints.length + ')' : '';
+      render();
+    }
 
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      if (!lastOrders.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
-      const rows = [['บิล', 'โต๊ะ', 'เปิด', 'ปิด', 'จำนวน', 'ยอดรวม', 'รายการ']];
-      lastOrders.forEach((o) => {
-        const names = o.items.map((it) => `${it.quantity}x ${it.menu_name}${(it.status === 'cancelled') ? '(ยกเลิก)' : ''}`).join(' | ');
-        rows.push([billNoFmt(o.bill_no), o.table_code, o.opened_at || '', o.closed_at || '', o.item_count, Number(o.total), names]);
-      });
-      const csv = '\ufeff' + rows.map((r) => r.map((c) => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'order-history.csv';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
+    document.getElementById('fLimit').addEventListener('change', () => load().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
+    document.getElementById('refreshBtn').addEventListener('click', () => load().then(() => toast('อัปเดตแล้ว')).catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
 
-    document.getElementById('exportQrBtn').addEventListener('click', () => {
-      if (!retired.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
-      const rows = [['โต๊ะ', 'โซน', 'สร้าง QR', 'ปิดใช้งานเมื่อ', 'บิลที่ปิดแล้ว', 'ยอดรวม']];
-      retired.forEach((t) => rows.push([t.code, t.zone_name || '', t.created_at || '', t.retired_at || '', t.bill_count, Number(t.total_sales)]));
-      const csv = '\ufeff' + rows.map((r) => r.map((c) => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'qr-history.csv';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
-
-    (async () => {
-      try {
-        const me = await api('/api/shop/me');
-        if (!me.shop) { window.location.href = '/shop/setup.html'; return; }
-        document.getElementById('shopName').textContent = me.shop.name || 'ร้านของฉัน';
-        await loadTables();
-        await loadHistory();
-      } catch (e) {
-        if (e.status === 403) { window.location.href = '/shop'; return; }
-        document.getElementById('histList').innerHTML = '<div class="cat-empty">' + esc(e.message) + '</div>';
-      }
-    })();
+    load().catch((e) => { if (e.status === 403) location.href = '/shop'; else toast(e.message); });
   </script>
 </body>
 </html>

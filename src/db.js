@@ -444,6 +444,23 @@ async function initSchema() {
       CONSTRAINT fk_notify_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  // ประวัติการพิมพ์ใบสั่งครัว — 1 แถว = 1 รอบการพิมพ์ (โต๊ะเดียวกันพิมพ์หลายรอบได้)
+  // เก็บสำเนารายการที่พิมพ์ในรอบนั้นไว้ (items_json) เพื่อ "พิมพ์รอบนี้ซ้ำ" ได้ตรงกับที่พิมพ์ไปจริง
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS kitchen_prints (
+      id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+      shop_id     BIGINT NOT NULL,
+      order_id    BIGINT NULL,
+      table_code  VARCHAR(30) NOT NULL DEFAULT '',
+      bill_no     INT NULL,
+      items_count INT NOT NULL DEFAULT 0,
+      plates      INT NOT NULL DEFAULT 0,
+      items_json  TEXT,
+      printed_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_kprint_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE,
+      KEY idx_kprint_shop_time (shop_id, printed_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 }
 
 // เพิ่มคอลัมน์ถ้ายังไม่มี (ใช้กับตารางที่สร้างจาก schema เก่า)
@@ -1928,6 +1945,50 @@ async function listTicketItems(shopId, ids) {
   return rows;
 }
 
+// ---------------------------------------------------------------------------
+// ประวัติการพิมพ์ใบสั่งครัว (1 แถว = 1 รอบการพิมพ์)
+// ---------------------------------------------------------------------------
+/** บันทึกรอบการพิมพ์ + สำเนารายการที่พิมพ์ในรอบนั้น (ไว้พิมพ์ซ้ำให้ตรงกับที่พิมพ์ไปจริง) */
+async function recordKitchenPrint({ shopId, orderId = null, tableCode = '', billNo = null, items = [] }) {
+  const snapshot = (items || []).map((i) => ({
+    id: Number(i.id),
+    menu_name: i.menu_name || '',
+    quantity: Number(i.quantity) || 0,
+    options_json: i.options_json || null,
+    station: i.station === 'cashier' ? 'cashier' : 'kitchen',
+  }));
+  const plates = snapshot.reduce((s, i) => s + i.quantity, 0);
+  const [r] = await pool.execute(
+    `INSERT INTO kitchen_prints (shop_id, order_id, table_code, bill_no, items_count, plates, items_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [shopId, orderId, String(tableCode || '').slice(0, 30), billNo, snapshot.length, plates, JSON.stringify(snapshot)]
+  );
+  return Number(r.insertId);
+}
+
+/** รอบการพิมพ์ล่าสุดของร้าน (ใหม่ → เก่า) */
+async function listKitchenPrints(shopId, { limit = 100 } = {}) {
+  const lim = Math.min(Math.max(Number(limit) || 100, 1), 500);
+  const [rows] = await pool.execute(
+    'SELECT * FROM kitchen_prints WHERE shop_id = ? ORDER BY printed_at DESC, id DESC LIMIT ' + lim,
+    [shopId]
+  );
+  return rows.map((r) => {
+    let items = [];
+    try { items = r.items_json ? JSON.parse(r.items_json) : []; } catch (e) { items = []; }
+    return Object.assign({}, r, { items });
+  });
+}
+
+async function findKitchenPrint(id, shopId) {
+  const [rows] = await pool.execute('SELECT * FROM kitchen_prints WHERE id = ? AND shop_id = ? LIMIT 1', [Number(id), shopId]);
+  const r = rows[0];
+  if (!r) return null;
+  let items = [];
+  try { items = r.items_json ? JSON.parse(r.items_json) : []; } catch (e) { items = []; }
+  return Object.assign({}, r, { items });
+}
+
 /** ยกเลิกรายการ (ไม่ลบ แต่ทำเครื่องหมาย cancelled + เก็บสาเหตุ) แล้วคิดยอดใหม่ */
 async function cancelOrderItem(id, orderId, reason) {
   await pool.execute(
@@ -2148,6 +2209,9 @@ module.exports = {
   setOrderItemStatus,
   startPendingOrderItems,
   listTicketItems,
+  recordKitchenPrint,
+  listKitchenPrints,
+  findKitchenPrint,
   cancelOrderItem,
   deleteOrderItem,
 };

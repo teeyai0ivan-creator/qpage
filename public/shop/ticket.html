@@ -111,6 +111,8 @@
     const params = new URLSearchParams(location.search);
     const ids = (params.get('ids') || '').split(',').map((s) => s.trim()).filter((s) => /^\d+$/.test(s));
     const freshIds = (params.get('fresh') || '').split(',').map((s) => s.trim()).filter((s) => /^\d+$/.test(s));
+    // round = พิมพ์ซ้ำจาก "ประวัติสั่งครัว" (พิมพ์ตามสำเนาที่บันทึกไว้ในรอบนั้น ไม่ใช่ข้อมูลปัจจุบัน)
+    const roundId = /^\d+$/.test(params.get('round') || '') ? Number(params.get('round')) : null;
 
     async function api(path, opts) {
       const res = await fetch(path, opts);
@@ -136,25 +138,30 @@
       } catch (e) { return ''; }
     }
 
-    function render(shop, items) {
+    function render(shop, items, reprint) {
       const plates = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
       const tables = [...new Set(items.map((i) => i.table_code || '-'))];
       const bills = [...new Set(items.map((i) => i.bill_no).filter((b) => b != null))];
-      const station = items[0] && items[0].station === 'cashier' ? 'แคชเชียร์' : 'ครัว';
+      // จุดที่สั่งทำ: ถ้าเป็น "พิมพ์ซ้ำจากประวัติ" จะส่งค่ามาด้วย ส่วนโหมดปกติอ่านจากรายการแรก
+      const stations = [...new Set(items.map((i) => (i.station === 'cashier' ? 'cashier' : 'kitchen')))];
+      const stationName = reprint
+        ? (stations.length === 2 ? 'ครัว + แคชเชียร์' : (stations[0] === 'cashier' ? 'แคชเชียร์' : 'ครัว'))
+        : (stations[0] === 'cashier' ? 'แคชเชียร์' : 'ครัว');
       // หัวเรื่องบอกชัดว่าเป็นเอกสารของครัว (ไม่ใช่ใบเสร็จ) — ของที่ส่งไปแคชเชียร์จะเขียนกำกับไว้ตรง ๆ
-      const kindLabel = station === 'แคชเชียร์' ? 'ใบสั่งแคชเชียร์' : 'ใบสั่งครัว';
+      const kindLabel = (!reprint && stationName === 'แคชเชียร์') ? 'ใบสั่งแคชเชียร์' : 'ใบสั่งครัว';
       const fresh = new Set(freshIds.map(Number));
 
       document.getElementById('ticket').innerHTML = `
         ${shop.logo_url ? '<div class="t-shop-logo"><img src="' + esc(shop.logo_url) + '" alt=""></div>' : ''}
         <div class="t-shop">${esc(shop.name || '')}</div>
-        <div class="t-kind">${kindLabel}</div>
-        <div class="t-kind-sub">เอกสารสำหรับ${esc(station)} — ไม่ใช่ใบเสร็จรับเงิน</div>
+        <div class="t-kind">${kindLabel}${reprint ? ' <span style="font-size:12px;font-weight:700;">(พิมพ์ซ้ำ)</span>' : ''}</div>
+        <div class="t-kind-sub">เอกสารสำหรับ${esc(stationName)} — ไม่ใช่ใบเสร็จรับเงิน</div>
         <div class="t-head">
           <div><span>โต๊ะ</span><strong class="t-table">${esc(tables.join(', '))}</strong></div>
           <div><span>บิล</span><strong>${bills.map((b) => billNoFmt(b)).join(', ') || '—'}</strong></div>
-          <div><span>จุดที่สั่งทำ</span><strong>${esc(station)}</strong></div>
-          <div><span>เวลาพิมพ์</span><strong>${fmtTime()}</strong></div>
+          <div><span>จุดที่สั่งทำ</span><strong>${esc(stationName)}</strong></div>
+          ${reprint && reprint.printedAt ? `<div><span>พิมพ์ครั้งแรก</span><strong>${fmtTime(reprint.printedAt)}</strong></div>` : ''}
+          <div><span>${reprint ? 'พิมพ์ซ้ำเมื่อ' : 'เวลาพิมพ์'}</span><strong>${fmtTime()}</strong></div>
         </div>
         <table class="t-table-list">
           <thead><tr><th>รายการ</th><th style="text-align:right;">จำนวน</th></tr></thead>
@@ -212,13 +219,22 @@
     document.getElementById('closeBtn').addEventListener('click', closeSelf);
 
     (async function init() {
-      if (!ids.length) {
-        renderError('ไม่พบรายการที่ต้องพิมพ์', 'หน้านี้ต้องเปิดจากปุ่ม “เริ่มทำ” หรือปุ่มพิมพ์ซ้ำในหน้าครัว');
+      if (!ids.length && !roundId) {
+        renderError('ไม่พบรายการที่ต้องพิมพ์', 'หน้านี้ต้องเปิดจากปุ่ม “เริ่มทำ” ในหน้าครัว หรือปุ่ม “พิมพ์รอบนี้ซ้ำ” ในหน้าประวัติสั่งครัว');
         return;
       }
       try {
-        const [me, data] = await Promise.all([api('/api/shop/me'), api('/api/shop/tickets?ids=' + ids.join(','))]);
-        render(me.shop || {}, data.items || []);
+        if (roundId) {
+          // พิมพ์ซ้ำจากประวัติสั่งครัว: ใช้สำเนารายการที่บันทึกไว้ในรอบนั้น (ตรงกับที่พิมพ์ไปจริง)
+          const data = await api('/api/shop/kitchen-prints/' + roundId);
+          const p = data.print || {};
+          const items = (p.items || []).map((i) => Object.assign({}, i, { table_code: p.table_code, bill_no: p.bill_no }));
+          if (!items.length) { renderError('รอบการพิมพ์นี้ไม่มีรายการ', 'ลองเลือกอีกรอบจากหน้าประวัติสั่งครัว'); return; }
+          render(data.shop || {}, items, { printedAt: p.printed_at });
+        } else {
+          const [me, data] = await Promise.all([api('/api/shop/me'), api('/api/shop/tickets?ids=' + ids.join(','))]);
+          render(me.shop || {}, data.items || []);
+        }
         // เปิดหน้าต่างพิมพ์ให้อัตโนมัติหลังเรนเดอร์เสร็จ (ผู้ใช้กดยืนยันพิมพ์บนเครื่องได้เลย)
         setTimeout(() => { try { window.print(); } catch (e) { /* ผู้ใช้อาจปิดการพิมพ์ */ } }, 500);
       } catch (err) {
