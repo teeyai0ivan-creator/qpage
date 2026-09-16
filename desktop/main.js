@@ -28,6 +28,32 @@ const argValue = (name) => {
 };
 
 let mainWindow = null;
+
+// หน้าแรกของโปรแกรม (ใช้ทั้งตอนเปิดโปรแกรมและตอนกลับจากหน้าเว็บไซต์)
+const APP_HOME = '/shop/kitchen.html';
+const LOGIN_URL = '/login.html?next=' + encodeURIComponent(APP_HOME);
+
+/** ตรวจว่าล็อกอินอยู่หรือยัง (ใช้ session ของโปรแกรม) */
+async function checkLogin() {
+  const sess = session.fromPartition(PARTITION);
+  const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+  try {
+    const res = await sess.fetch(base + '/api/me', { headers: { 'X-QPage-Device': settingsLib.get().deviceId } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return { loggedIn: false };
+    return { loggedIn: true, email: data.user.email, role: data.user.role, name: (data.shop && data.shop.name) || '' };
+  } catch (err) {
+    return { loggedIn: false, error: err.message };
+  }
+}
+
+/** ที่อยู่ที่จะเปิดตอนเริ่มโปรแกรม: ล็อกอินแล้วเข้าหน้าครัวเลย ยังไม่ล็อกอินก็เข้าหน้าล็อกอิน */
+async function startUrl() {
+  const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+  const me = await checkLogin();
+  return base + (me.loggedIn ? APP_HOME : LOGIN_URL);
+}
+
 let settingsWindow = null;
 let agent = null;
 const printLog = [];                    // ประวัติการพิมพ์ในเครื่องนี้ (ให้หน้าตั้งค่าแสดง)
@@ -49,6 +75,20 @@ const HOOK_JS = `(() => {
   };
   return 'hooked';
 })()`;
+
+// ปรับหน้าตาให้เป็น "โปรแกรม" ไม่ใช่เว็บไซต์ — ซ่อนส่วนที่เป็นหน้าเว็บสาธารณะ (แก้ที่โปรแกรมเท่านั้น หน้าเว็บจริงไม่กระทบ)
+const APP_CSS = [
+  '/* ลิงก์ "กลับหน้าแรก" ของเว็บไซต์ ไม่มีความหมายในโปรแกรม */',
+  '.back-home { display: none !important; }',
+  '/* หน้าล็อกอินของโปรแกรม: เหลือแค่เข้าสู่ระบบ (ไม่ต้องมีสมัครสมาชิก) */',
+  '.auth-switch { display: none !important; }',
+  '/* ซ่อนส่วนชวนสมัคร/แพ็กเกจ ถ้ามีหลุดเข้ามาในหน้าต่างโปรแกรม */',
+  '.land-band, .land-packages, .land-hero { display: none !important; }',
+].join('\n');
+
+function applyAppLook(contents) {
+  contents.insertCSS(APP_CSS).catch(() => { /* ข้าม */ });
+}
 
 function installHook(contents) {
   contents.executeJavaScript(HOOK_JS, true).catch(() => { /* หน้าอาจยังไม่พร้อม — dom-ready ครั้งถัดไปจะลองใหม่ */ });
@@ -95,8 +135,23 @@ function createMainWindow() {
     },
   });
 
-  mainWindow.loadURL(s.serverUrl);
-  mainWindow.webContents.on('dom-ready', () => installHook(mainWindow.webContents));
+  // เปิดโปรแกรมแล้วเข้าหน้าล็อกอินทันที (ถ้าล็อกอินอยู่แล้วเข้าหน้าครัวเลย) — ไม่ผ่านหน้าเว็บไซต์สาธารณะ
+  startUrl().then((url) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(url);
+  }).catch(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(String(s.serverUrl).replace(/\/+$/, '') + LOGIN_URL);
+  });
+  // ตั้งชื่อหน้าต่างเป็นชื่อโปรแกรมเสมอ (ไม่ให้ชื่อหน้าเว็บมาเปลี่ยน)
+  mainWindow.on('page-title-updated', (e) => e.preventDefault());
+  mainWindow.webContents.on('dom-ready', () => { installHook(mainWindow.webContents); applyAppLook(mainWindow.webContents); });
+  // กันไม่ให้หลุดไปหน้าเว็บไซต์สาธารณะในหน้าต่างโปรแกรม (ถ้ามีลิงก์ชี้ไปหน้าแรก → พากลับเข้าหน้าของโปรแกรม)
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+    if (url === base || url === base + '/' || /^https?:\/\/[^/]+\/?$/.test(url)) {
+      e.preventDefault();
+      startUrl().then((u) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(u); }).catch(() => {});
+    }
+  });
   // หน้าเว็บเปิด "แท็บใหม่" ผ่าน window.open (ใบสั่งครัว/ใบเสร็จ/ป้าย QR)
   // → ให้ Electron สร้างหน้าต่างให้ แต่ต้องใช้ preload + session ชุดเดียวกัน เพื่อให้ดักพิมพ์ได้เหมือนกัน
   mainWindow.webContents.setWindowOpenHandler(() => ({
@@ -170,7 +225,7 @@ function buildMenu() {
     {
       label: 'ไปหน้า',
       submenu: [
-        { label: 'หน้าแรกของเว็บ', click: go('/') },
+        { label: 'หน้าเข้าสู่ระบบของโปรแกรม', click: go(LOGIN_URL) },
         { label: 'สั่งอาหาร', click: go('/shop/orders.html') },
         { label: 'ครัว', click: go('/shop/kitchen.html') },
         { label: 'แคชเชียร์', click: go('/shop/cashier.html') },
@@ -254,7 +309,7 @@ ipcMain.handle('settings:save', (event, patch) => {
   const after = settingsLib.save(patch || {});
   // เปลี่ยนที่อยู่เซิร์ฟเวอร์ → เปิดหน้าใหม่
   if (patch && patch.serverUrl && patch.serverUrl !== before.serverUrl && mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.loadURL(after.serverUrl);
+    startUrl().then((u) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(u); }).catch(() => {});
   }
   // เปิด/ปิดตัวช่วยพิมพ์ตามค่าใหม่
   if (agent) { agent.stop(); if (agent.kinds().length) agent.start(); }
@@ -294,18 +349,7 @@ ipcMain.handle('jobs:recent', async () => {
   }
 });
 
-ipcMain.handle('me:info', async () => {
-  const sess = session.fromPartition(PARTITION);
-  const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
-  try {
-    const res = await sess.fetch(base + '/api/me', { headers: { 'X-QPage-Device': settingsLib.get().deviceId } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return { loggedIn: false };
-    return { loggedIn: true, email: data.user.email, role: data.user.role, name: (data.shop && data.shop.name) || '' };
-  } catch (err) {
-    return { loggedIn: false, error: err.message };
-  }
-});
+ipcMain.handle('me:info', () => checkLogin());
 
 ipcMain.handle('app:open-settings', () => createSettingsWindow());
 ipcMain.handle('app:reload-main', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.reload(); });
@@ -438,6 +482,21 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('window-all-closed', () => {
     if (agent) agent.stop();
-    app.quit();
+    flushCookies().finally(() => app.quit());
   });
+
+  // ⚠️ คุกกี้ (session การล็อกอิน) ถูกเก็บในหน่วยความจำก่อน — ต้องสั่งเขียนลงดิสก์เอง
+  //    ไม่งั้นปิดโปรแกรมแล้วเปิดใหม่จะต้องล็อกอินซ้ำทุกครั้ง (ทดสอบพบปัญหานี้จริง)
+  app.on('before-quit', () => { flushCookies(); });
+  // เขียนเป็นระยะด้วย เผื่อเครื่องถูกปิดกะทันหัน/ไฟดับ
+  setInterval(() => { flushCookies(); }, 120000).unref?.();
+}
+
+/** เขียนคุกกี้ของ session โปรแกรมลงดิสก์ (จำการล็อกอินไว้ใช้ครั้งถัดไป) */
+function flushCookies() {
+  try {
+    return session.fromPartition(PARTITION).cookies.flushStore().catch(() => { /* ข้าม */ });
+  } catch (err) {
+    return Promise.resolve();
+  }
 }
