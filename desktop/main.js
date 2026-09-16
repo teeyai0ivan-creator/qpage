@@ -236,6 +236,12 @@ function createMainWindow() {
 
   const cc = contentView.webContents;
   cc.on('dom-ready', () => { installHook(cc); applyAppLook(cc); });
+  // หน้าจอของโปรแกรม (ไฟล์ในเครื่อง) โหลดเสร็จเมื่อไร ให้ส่งสถานะสายอัปเดตสดไปด้วยเสมอ
+  // ⚠️ ต้องเป็น listener ถาวร ไม่ใช่ once() ต่อการเปลี่ยนหน้า เพราะปุ่ม "โหลดหน้าเว็บใหม่" ในหน้าตั้งค่า
+  //    เรียก webContents.reload() ตรง ๆ (ไม่ผ่าน loadAppPage) → ถ้าไม่ส่ง ป้ายจะค้างที่ "กำลังเชื่อมต่อ…"
+  cc.on('did-finish-load', () => {
+    if (/^file:/i.test(cc.getURL())) pushLiveState();
+  });
   // หน้าที่โปรแกรมวาดเอง — ถ้าหน้าเว็บพาไปเส้นทางเหล่านี้ (เช่น ล็อกอินเสร็จแล้วเด้งไป /shop/kitchen.html)
   // ต้องเปลี่ยนเป็นหน้าจอของโปรแกรมทันที ไม่ใช่โหลดหน้าเว็บมาแสดง
   const nativePathOf = (url) => { try { const p = new URL(url).pathname; return NATIVE_PAGES[p] ? p : ''; } catch (e) { return ''; } };
@@ -337,8 +343,6 @@ function loadAppPage(p) {
     // หน้าจอที่โปรแกรมวาดเอง (ไฟล์ในเครื่อง) — รับข้อมูลผ่าน IPC จาก main
     contentView.webContents.loadFile(path.join(__dirname, native.file), native.query ? { query: native.query } : undefined);
     if (String(p).indexOf('/login.html') === 0) stopKitchenLive(); else startKitchenLive();
-    // ส่งสถานะสายอัปเดตสดให้หน้าจอใหม่ (ไม่งั้นป้ายค้างที่ "กำลังเชื่อมต่อ…")
-    contentView.webContents.once('did-finish-load', pushLiveState);
     return;
   }
   stopKitchenLive();
