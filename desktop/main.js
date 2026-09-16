@@ -137,7 +137,9 @@ async function printContents(kind, contents, silentOverride) {
 // ---------------------------------------------------------------------------
 // หน้าต่างหลัก = "เปลือกของโปรแกรม" (แถบเครื่องมือของเราเอง) + เนื้อหาที่โหลดจากเว็บ
 // ---------------------------------------------------------------------------
-const SHELL_HEIGHT = 64;      // ความสูงแถบเครื่องมือของโปรแกรม (px)
+const SHELL_WIDTH = 226;          // ความกว้างแถบเมนูด้านซ้าย (px)
+const SHELL_WIDTH_MINI = 64;      // ความกว้างเมื่อย่อ (เหลือไอคอน)
+let shellVisible = false;         // แถบเมนูแสดงเฉพาะหลังเข้าสู่ระบบแล้ว
 
 function createMainWindow() {
   const s = settingsLib.get();
@@ -192,7 +194,7 @@ function createMainWindow() {
 
   const cc = contentView.webContents;
   cc.on('dom-ready', () => { installHook(cc); applyAppLook(cc); });
-  cc.on('did-navigate', () => pushStatus());
+  cc.on('did-navigate', () => { pushStatus(); setTimeout(() => pushStatus(), 1200); });
   cc.on('did-navigate-in-page', () => pushStatus());
   // กันไม่ให้หลุดไปหน้าเว็บไซต์สาธารณะในหน้าต่างโปรแกรม (ถ้ามีลิงก์ชี้ไปหน้าแรก → พากลับเข้าหน้าของโปรแกรม)
   cc.on('will-navigate', (e, url) => {
@@ -244,8 +246,28 @@ function showMainWindow() {
 function layoutViews() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const { width, height } = mainWindow.getContentBounds();
-  if (shellView) shellView.setBounds({ x: 0, y: 0, width, height: SHELL_HEIGHT });
-  if (contentView) contentView.setBounds({ x: 0, y: SHELL_HEIGHT, width, height: Math.max(0, height - SHELL_HEIGHT) });
+  const collapsed = !!settingsLib.get().sidebarCollapsed;
+  const barW = collapsed ? SHELL_WIDTH_MINI : SHELL_WIDTH;
+  if (shellView) {
+    // ก่อนเข้าสู่ระบบ: ซ่อนแถบเมนูทั้งหมด ให้หน้าเข้าสู่ระบบเต็มหน้าต่าง
+    shellView.setVisible(shellVisible);
+    shellView.setBounds({ x: 0, y: 0, width: shellVisible ? barW : 0, height });
+  }
+  if (contentView) {
+    contentView.setBounds({ x: shellVisible ? barW : 0, y: 0, width: Math.max(0, width - (shellVisible ? barW : 0)), height });
+  }
+}
+
+/** เปิด/ปิดแถบเมนูตามสถานะการเข้าสู่ระบบ */
+function setShellVisible(on) {
+  if (shellVisible === on) return;
+  shellVisible = !!on;
+  if (shellView && !shellView.webContents.isDestroyed()) {
+    shellView.webContents.send('shell-visible', shellVisible);
+    shellView.webContents.send('shell-collapsed', !!settingsLib.get().sidebarCollapsed);
+  }
+  layoutViews();
+  startupLog('แถบเมนูด้านซ้าย: ' + (shellVisible ? 'แสดง' : 'ซ่อน') + ' (ยังไม่/เข้าสู่ระบบแล้ว)');
 }
 
 /** เปิดหน้าของโปรแกรม (path = '/shop/kitchen.html' …) · ส่ง null = ใช้หน้าเริ่มต้นตามสถานะล็อกอิน */
@@ -274,6 +296,7 @@ async function pushStatus() {
     }
   } catch (err) { /* ออฟไลน์/ยังไม่ล็อกอิน = 0 */ }
   const me = await checkLogin();
+  setShellVisible(!!me.loggedIn);   // ซ่อนแถบเมนูจนกว่าจะเข้าสู่ระบบ
   const printerNames = await listPrinterDisplayNames();
   const configured = (s.printers && s.printers.ticket && s.printers.ticket.device) || '';
   shellView.webContents.send('shell-status', {
@@ -283,6 +306,7 @@ async function pushStatus() {
     shopName: me.name || '',
     silent: s.silent !== false,
     printerName: configured ? (printerNames[configured] || configured) : '',
+    collapsed: !!s.sidebarCollapsed,
     agentActive: !!(agent && agent.kinds().length),
     pendingJobs,
   });
@@ -441,14 +465,30 @@ ipcMain.on('shell:fullscreen', () => {
 });
 ipcMain.on('shell:settings', () => createSettingsWindow());
 ipcMain.on('shell:status-now', () => { pushStatus(); });
+ipcMain.on('shell:collapse-toggle', () => {
+  const collapsed = !settingsLib.get().sidebarCollapsed;
+  settingsLib.save({ sidebarCollapsed: collapsed });
+  startupLog('ย่อ/ขยายแถบเมนู: ' + (collapsed ? 'ย่อ' : 'ขยาย'));
+  layoutViews();
+  // บอกแถบเมนูทันที (ไม่รอรอบสถานะทุก 5 วินาที)
+  if (shellView && !shellView.webContents.isDestroyed()) shellView.webContents.send('shell-collapsed', collapsed);
+  pushStatus();
+});
 ipcMain.on('shell:logout', async () => {
+  startupLog('กดออกจากระบบ');
+  const sess = session.fromPartition(PARTITION);
+  const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
   try {
-    const sess = session.fromPartition(PARTITION);
-    const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
     await sess.fetch(base + '/api/logout', { method: 'POST', headers: { 'X-QPage-Device': settingsLib.get().deviceId } });
-  } catch (err) { /* ข้าม */ }
+  } catch (err) { /* ออกที่เซิร์ฟเวอร์ไม่สำเร็จ ก็ยังต้องออกในเครื่องให้จบ */ }
+  // ⚠️ ต้อง "ล้างคุกกี้" เป็นขั้นสุดท้าย ไม่งั้นการเขียนคุกกี้ลงดิสก์อาจพาค่าเดิมกลับมา
+  //    แล้วแถบเมนู/หน้าเดิมจะค้างอยู่ (ทดสอบพบปัญหานี้)
+  try { await flushCookies(); } catch (err) { /* ข้าม */ }
+  try { await sess.clearStorageData({ storages: ['cookies'] }); } catch (err) { /* ข้าม */ }
+  startupLog('ออกจากระบบ: ล้างคุกกี้แล้ว');
   loadAppPage(LOGIN_URL);
   setTimeout(() => pushStatus(), 800);
+  setTimeout(() => pushStatus(), 2500);
 });
 ipcMain.handle('shell:toggle-theme', async () => {
   if (!contentView) return { theme: 'light' };

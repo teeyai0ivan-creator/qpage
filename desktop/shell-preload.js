@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('qpageShell', {
   testPrint: () => ipcRenderer.invoke('shell:test-print'),
   toggleTheme: () => ipcRenderer.invoke('shell:toggle-theme'),
   logout: () => ipcRenderer.send('shell:logout'),
+  toggleCollapse: () => ipcRenderer.send('shell:collapse-toggle'),
   refreshStatus: () => ipcRenderer.send('shell:status-now'),
   onStatus: (cb) => ipcRenderer.on('shell-status', (event, data) => cb(data)),
+  onVisible: (cb) => ipcRenderer.on('shell-visible', (event, on) => cb(on)),
+  onCollapsed: (cb) => ipcRenderer.on('shell-collapsed', (event, mini) => cb(mini)),
 });

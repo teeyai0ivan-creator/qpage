@@ -55,8 +55,10 @@ function paintStatus(s) {
     txtJb.textContent = 'รับงานจากมือถืออยู่';
     jb.title = 'พร้อมรับงานพิมพ์จากมือถือ/แท็บเล็ต';
   }
-  $('brandSub').textContent = s.shopName ? 'ร้าน ' + s.shopName : 'โปรแกรมร้านค้า';
+  $('brandName').textContent = s.shopName || 'QPage Shop';
+  $('brandSub').textContent = s.email || 'โปรแกรมร้านค้า';
   paintNav(String(s.path || ''));
+  document.body.classList.toggle('mini', !!s.collapsed);
 }
 
 function clock() {
@@ -69,6 +71,8 @@ document.querySelectorAll('.nav button[data-nav]').forEach((btn) => {
   btn.addEventListener('click', () => window.qpageShell.nav(btn.dataset.nav));
 });
 $('btnSettings').addEventListener('click', () => window.qpageShell.openSettings());
+$('btnCollapse').addEventListener('click', () => window.qpageShell.toggleCollapse());
+$('btnLogout').addEventListener('click', () => window.qpageShell.logout());
 $('btnReload').addEventListener('click', () => window.qpageShell.reload());
 $('btnZoomIn').addEventListener('click', () => window.qpageShell.zoom(1));
 $('btnZoomOut').addEventListener('click', () => window.qpageShell.zoom(-1));
@@ -85,6 +89,8 @@ $('btnPrintTest').addEventListener('click', async () => {
 });
 
 window.qpageShell.onStatus(paintStatus);
+window.qpageShell.onVisible((on) => { document.documentElement.style.opacity = on ? '1' : '0'; });
+window.qpageShell.onCollapsed((mini) => { document.body.classList.toggle('mini', !!mini); });
 window.qpageShell.refreshStatus();
 clock();
 setInterval(clock, 20000);

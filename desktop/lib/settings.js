@@ -23,6 +23,7 @@ const DEFAULTS = {
   label: '',
   silent: true,      // พิมพ์เงียบ (ไม่ขึ้นกล่องยืนยัน) — ปิดเพื่อกลับไปใช้กล่องพิมพ์ของเบราว์เซอร์
   fullscreen: false,
+  sidebarCollapsed: false,   // ย่อแถบเมนูด้านซ้ายเหลือเฉพาะไอคอน
   autoStart: false,
   kinds: { ticket: true, receipt: true, label: true },   // รับงานพิมพ์จากมือถือ/แท็บเล็ต
   printers: {
