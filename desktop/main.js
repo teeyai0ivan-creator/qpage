@@ -150,6 +150,12 @@ const NATIVE_PAGES = {
   '/shop/history.html': { file: 'app/history.html' },
   // ประวัติสั่งครัว = แท็บที่ 3 ของหน้าจอประวัติ (แบบเดียวกับหน้าเว็บที่มีปุ่มเชื่อมกัน)
   '/shop/kitchen-history.html': { file: 'app/history.html', query: { tab: 'prints' } },
+  // จัดการร้าน — ทำเป็นหน้าจอของโปรแกรมเองทั้งชุด
+  '/shop/menu.html': { file: 'app/menu.html' },
+  '/shop/menus.html': { file: 'app/menus.html' },
+  '/shop/setup.html': { file: 'app/setup.html' },
+  '/shop/notify.html': { file: 'app/notify.html' },
+  '/shop/settings.html': { file: 'app/sys.html' },
 };
 
 const SHELL_WIDTH = 226;          // ความกว้างแถบเมนูด้านซ้าย (px)
@@ -560,6 +566,37 @@ ipcMain.on('kitchen:print-round', async (event, payload) => {
   const r = await printRoundTicket(urlPath);
   if (r.success) console.log(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) → ${r.device} (${r.paper})`);
   else console.error(`🖨 พิมพ์ใบสั่งครัว (รอบ #${payload && payload.roundId}) ไม่สำเร็จ: ${r.reason}`);
+});
+
+// ---------------------------------------------------------------------------
+// IPC — หน้าจอจัดการร้านของโปรแกรม (ข้อมูลร้าน · หมวดหมู่/เมนู/ตัวเลือก · แจ้งเตือน · ตั้งค่าระบบ)
+// ---------------------------------------------------------------------------
+ipcMain.handle('shop:all', () => api.shopAll());
+ipcMain.handle('shop:save', (event, fields) => api.saveShop(fields || {}));
+ipcMain.handle('shop:upload', (event, dataUrl) => api.uploadImage(dataUrl));
+ipcMain.handle('shop:image-data', (event, path) => api.imageDataUrl(path));
+ipcMain.handle('shop:add-category', (event, fields) => api.addCategory(fields || {}));
+ipcMain.handle('shop:update-category', (event, p) => api.updateCategory(p && p.id, p && p.fields));
+ipcMain.handle('shop:delete-category', (event, id) => api.deleteCategory(id));
+ipcMain.handle('shop:add-menu', (event, fields) => api.addMenu(fields || {}));
+ipcMain.handle('shop:update-menu', (event, p) => api.updateMenu(p && p.id, p && p.fields));
+ipcMain.handle('shop:delete-menu', (event, id) => api.deleteMenu(id));
+ipcMain.handle('shop:set-menu-groups', (event, p) => api.setMenuGroups(p && p.id, (p && p.groupIds) || []));
+ipcMain.handle('shop:add-option-group', (event, fields) => api.addOptionGroup(fields || {}));
+ipcMain.handle('shop:update-option-group', (event, p) => api.updateOptionGroup(p && p.id, p && p.fields));
+ipcMain.handle('shop:delete-option-group', (event, id) => api.deleteOptionGroup(id));
+ipcMain.handle('shop:add-option-item', (event, p) => api.addOptionItem(p && p.groupId, p && p.fields));
+ipcMain.handle('shop:update-option-item', (event, p) => api.updateOptionItem(p && p.id, p && p.fields));
+ipcMain.handle('shop:delete-option-item', (event, id) => api.deleteOptionItem(id));
+ipcMain.handle('notify:groups', () => api.notifyGroups());
+ipcMain.handle('notify:add', (event, fields) => api.addNotifyGroup(fields || {}));
+ipcMain.handle('notify:update', (event, p) => api.updateNotifyGroup(p && p.id, p && p.fields));
+ipcMain.handle('notify:delete', (event, id) => api.deleteNotifyGroup(id));
+ipcMain.handle('sys:set-qr-auto-delete', (event, enabled) => api.setQrAutoDelete(enabled));
+/** ให้หน้าจอของโปรแกรมพาไปหน้าอื่นได้ (เช่น ปุ่ม "ดูประวัติ" ในหน้าตั้งค่า) — จำกัดเฉพาะหน้าของร้าน */
+ipcMain.on('nav:go', (event, target) => {
+  const p = String(target || '');
+  if (/^\/shop\/[a-z-]+\.html$/.test(p)) loadAppPage(p);
 });
 
 // ---------------------------------------------------------------------------

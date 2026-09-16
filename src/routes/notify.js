@@ -14,7 +14,8 @@ const notify = require('../lib/notify');
 const { getCurrentUser, requireShop } = require('../middleware/auth');
 const { isShop } = require('../lib/roles');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

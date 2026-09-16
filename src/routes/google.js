@@ -18,7 +18,8 @@ const legal = require('../lib/legal');
 const { startSession, requirePendingGoogle } = require('../middleware/auth');
 const { getGoogleConfig } = require('../lib/google-oauth');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 
 // เปิด URL สำหรับล็อกอิน Google
 router.get('/api/auth/google/url', (req, res) => {

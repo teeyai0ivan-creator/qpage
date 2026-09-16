@@ -152,6 +152,118 @@ async function qrImage(tableId) {
   return { dataUrl: 'data:image/png;base64,' + buf.toString('base64'), bytes: buf.length };
 }
 
+// ---------------------------------------------------------------------------
+// งานของหน้าจอจัดการร้าน: ข้อมูลร้าน · หมวดหมู่ · เมนู · กลุ่มตัวเลือก · แจ้งเตือน · ตั้งค่าระบบ
+// ---------------------------------------------------------------------------
+/** ข้อมูลร้าน + หมวดหมู่ + เมนู + กลุ่มตัวเลือกทั้งหมด (ใช้ร่วมกันหลายหน้าจอ) */
+async function shopAll() {
+  const data = await call('/api/shop/me');
+  return {
+    shop: data.shop || null,
+    publicUrl: data.publicUrl ? base() + data.publicUrl : '',
+    categories: data.categories || [],
+    menus: data.menus || [],
+    optionGroups: data.optionGroups || [],
+    optionItems: data.optionItems || [],
+    menuGroups: data.menuGroups || [],
+  };
+}
+
+/**
+ * รูปที่เก็บไว้บนเซิร์ฟเวอร์ (เช่น /uploads/shops/x.png) → data URL
+ * หน้าจอเป็นไฟล์ในเครื่อง (file://) จึงโหลดรูปจากเซิร์ฟเวอร์ตรง ๆ ไม่ได้ (ไม่มีคุกกี้)
+ */
+async function imageDataUrl(urlPath) {
+  const p = String(urlPath || '');
+  if (!p) return '';
+  if (/^data:/.test(p)) return p;
+  if (!/^\/[A-Za-z0-9_\-./]+$/.test(p)) return '';
+  const res = await sess().fetch(base() + p, { headers: headers() });
+  if (!res.ok) throw new Error('โหลดรูปไม่สำเร็จ (HTTP ' + res.status + ')');
+  const buf = Buffer.from(await res.arrayBuffer());
+  const type = res.headers.get('content-type') || 'image/png';
+  return 'data:' + type + ';base64,' + buf.toString('base64');
+}
+
+/** บันทึกข้อมูลร้าน (ส่งเฉพาะฟิลด์ที่แก้) */
+async function saveShop(fields) {
+  const data = await call('/api/shop', { method: 'PUT', body: fields });
+  return { shop: data.shop || null, message: data.message || '' };
+}
+
+/** อัปโหลดรูป (รับ data URL) → คืนพาธรูปที่เก็บบนเซิร์ฟเวอร์ */
+async function uploadImage(dataUrl) {
+  const data = await call('/api/shop/upload', { method: 'POST', body: { dataUrl } });
+  return data.url || '';
+}
+
+/** เพิ่ม/แก้/ลบ หมวดหมู่ (station = 'kitchen' | 'cashier') */
+async function addCategory(fields) {
+  return call('/api/shop/categories', { method: 'POST', body: fields });
+}
+async function updateCategory(id, fields) {
+  return call('/api/shop/categories/' + Number(id), { method: 'PUT', body: fields });
+}
+async function deleteCategory(id) {
+  return call('/api/shop/categories/' + Number(id), { method: 'DELETE' });
+}
+
+/** เพิ่ม/แก้/ลบ เมนู */
+async function addMenu(fields) {
+  return call('/api/shop/menus', { method: 'POST', body: fields });
+}
+async function updateMenu(id, fields) {
+  return call('/api/shop/menus/' + Number(id), { method: 'PUT', body: fields });
+}
+async function deleteMenu(id) {
+  return call('/api/shop/menus/' + Number(id), { method: 'DELETE' });
+}
+/** ผูกกลุ่มตัวเลือกกับเมนู (ส่งรายการ groupIds ทั้งชุด) */
+async function setMenuGroups(id, groupIds) {
+  return call('/api/shop/menus/' + Number(id) + '/groups', { method: 'PUT', body: { groupIds } });
+}
+
+/** กลุ่มตัวเลือก + ตัวเลือกในกลุ่ม */
+async function addOptionGroup(fields) {
+  return call('/api/shop/option-groups', { method: 'POST', body: fields });
+}
+async function updateOptionGroup(id, fields) {
+  return call('/api/shop/option-groups/' + Number(id), { method: 'PUT', body: fields });
+}
+async function deleteOptionGroup(id) {
+  return call('/api/shop/option-groups/' + Number(id), { method: 'DELETE' });
+}
+async function addOptionItem(groupId, fields) {
+  return call('/api/shop/option-groups/' + Number(groupId) + '/items', { method: 'POST', body: fields });
+}
+async function updateOptionItem(id, fields) {
+  return call('/api/shop/option-items/' + Number(id), { method: 'PUT', body: fields });
+}
+async function deleteOptionItem(id) {
+  return call('/api/shop/option-items/' + Number(id), { method: 'DELETE' });
+}
+
+/** กลุ่มแจ้งเตือน (Telegram) + รายการเหตุการณ์ที่เลือกได้ */
+async function notifyGroups() {
+  const data = await call('/api/shop/notify-groups');
+  return { events: data.events || [], groups: data.groups || [] };
+}
+async function addNotifyGroup(fields) {
+  return call('/api/shop/notify-groups', { method: 'POST', body: fields });
+}
+async function updateNotifyGroup(id, fields) {
+  return call('/api/shop/notify-groups/' + Number(id), { method: 'PUT', body: fields });
+}
+async function deleteNotifyGroup(id) {
+  return call('/api/shop/notify-groups/' + Number(id), { method: 'DELETE' });
+}
+
+/** เปิด/ปิด "ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล" */
+async function setQrAutoDelete(enabled) {
+  const data = await call('/api/shop/qr-auto-delete', { method: 'PUT', body: { enabled: !!enabled } });
+  return { enabled: !!data.enabled, message: data.message || '' };
+}
+
 /** เพิ่มอาหารเข้าบิลของโต๊ะ */
 async function addItems(tableId, items) {
   return call('/api/shop/tables/' + Number(tableId) + '/items', { method: 'POST', body: { items } });
@@ -231,4 +343,9 @@ module.exports = {
   kitchenItems, startItems, setItemStatus, cancelItem,
   tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
   history, kitchenPrints, retiredTables, qrImage,
+  shopAll, saveShop, uploadImage, imageDataUrl,
+  addCategory, updateCategory, deleteCategory,
+  addMenu, updateMenu, deleteMenu, setMenuGroups,
+  addOptionGroup, updateOptionGroup, deleteOptionGroup, addOptionItem, updateOptionItem, deleteOptionItem,
+  notifyGroups, addNotifyGroup, updateNotifyGroup, deleteNotifyGroup, setQrAutoDelete,
 };

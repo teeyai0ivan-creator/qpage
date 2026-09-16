@@ -1,0 +1,106 @@
+/* admin.css — สไตล์กลางของหน้าจอ "จัดการร้าน" ในโปรแกรม (ข้อมูลร้าน · เมนู · แจ้งเตือน · ตั้งค่าระบบ)
+   ใช้ชุดสี/ฟอนต์เดียวกับหน้าจอครัว สั่งอาหาร และประวัติ เพื่อให้เป็นโปรแกรมเดียวกัน */
+:root {
+  --bg: #f4f5fb; --card: #ffffff; --card-2: #f8f9fd; --border: #e4e7ec; --text: #101828; --muted: #667085;
+  --accent: #4f46e5; --accent-2: #8b5cf6;
+  --ok: #059669; --ok-bg: #ecfdf5; --wait: #b45309; --wait-bg: #fffbeb; --cook: #1d4ed8; --cook-bg: #eef2ff;
+  --orange: #c2410c; --orange-bg: #fff1e6; --orange-border: #ffd6b0; --danger: #dc2626; --danger-bg: #fef2f2;
+  --money: #0f766e; --money-bg: #ecfdf5;
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; font-size: 14px; line-height: 1.5; overflow-y: auto; }
+
+/* ---------- หัวหน้าจอ ---------- */
+header.pg-head {
+  position: sticky; top: 0; z-index: 5; background: rgba(244,245,251,.93); backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border); padding: 14px 18px 12px;
+}
+.pg-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pg-title h1 { font-size: 20px; margin: 0; font-weight: 800; letter-spacing: .2px; }
+.pg-title .sub { color: var(--muted); font-size: 12.5px; max-width: 640px; }
+.pg-title .spacer { flex: 1; min-width: 0; }
+.stat { display: flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; }
+.stat .n { font-size: 15px; font-weight: 800; }
+.stat.ok { background: var(--ok-bg); border-color: #a7f3d0; color: var(--ok); }
+.stat.wait { background: var(--wait-bg); border-color: #fde68a; color: var(--wait); }
+.stat.money { background: var(--money-bg); border-color: #a7f3d0; color: var(--money); }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.live .dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+.live.open .dot { background: #34d399; } .live.error .dot { background: #f87171; }
+
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+.chip { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+.chip:hover { background: var(--card-2); }
+.chip.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+.chip .c { opacity: .75; margin-left: 4px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; background: var(--card); }
+.seg button { font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 8px 14px; border: none; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button.active { background: var(--accent); color: #fff; }
+
+.btn { font-family: inherit; font-size: 13px; font-weight: 700; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+.btn:hover { background: var(--card-2); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-sm { padding: 6px 11px; font-size: 12.5px; }
+.btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+.btn-danger { color: var(--danger); border-color: #fecaca; background: transparent; }
+.btn-soft { background: var(--orange-bg); border-color: var(--orange-border); color: var(--orange); }
+
+/* ---------- ฟอร์ม ---------- */
+.inp { font-family: inherit; font-size: 13.5px; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); width: 100%; }
+.inp:focus { outline: 2px solid #c7d2fe; border-color: var(--accent); }
+textarea.inp { resize: vertical; min-height: 70px; }
+.lbl { font-size: 12.5px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 5px; }
+.field { display: flex; flex-direction: column; gap: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.err { color: var(--danger); font-size: 13px; font-weight: 700; min-height: 18px; }
+
+/* สวิตช์เปิด/ปิด */
+.sw { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.sw input { position: absolute; opacity: 0; width: 0; height: 0; }
+.sw .track { width: 46px; height: 26px; border-radius: 999px; background: #d0d5dd; position: relative; transition: .16s; flex: none; }
+.sw .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: .16s; box-shadow: 0 1px 3px rgba(16,24,40,.25); }
+.sw input:checked + .track { background: var(--accent); }
+.sw input:checked + .track::after { transform: translateX(20px); }
+.sw input:disabled + .track { opacity: .5; }
+
+/* ---------- เนื้อหา ---------- */
+main { padding: 16px 18px 40px; display: flex; flex-direction: column; gap: 14px; }
+.sec-title { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; color: var(--muted); margin: 6px 0 0; }
+.sec-title .line { flex: 1; height: 1px; background: var(--border); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04); display: flex; flex-direction: column; gap: 12px; }
+.empty { text-align: center; color: var(--muted); padding: 30px 20px; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius); font-size: 14px; }
+.badge { font-size: 11.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: var(--card-2); border: 1px solid var(--border); }
+.badge.ok { background: var(--ok-bg); border-color: #a7f3d0; color: var(--ok); }
+.badge.wait { background: var(--wait-bg); border-color: #fde68a; color: var(--wait); }
+.badge.cook { background: var(--cook-bg); border-color: #c7d2fe; color: var(--cook); }
+.badge.danger { background: var(--danger-bg); border-color: #fecaca; color: var(--danger); }
+.mono { font-variant-numeric: tabular-nums; }
+
+/* แถวรายการ (ใช้กับการ์ดหมวดหมู่/เมนู/กลุ่มแจ้งเตือน) */
+.row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.row:first-child { border-top: none; }
+.row .info { flex: 1; min-width: 0; }
+.row .name { font-weight: 700; font-size: 14.5px; }
+.row .sub { font-size: 12.5px; color: var(--muted); }
+.row .acts { display: flex; gap: 7px; flex-wrap: wrap; }
+.thumb { width: 54px; height: 54px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border); background: var(--card-2); flex: none; }
+.thumb-lg { width: 96px; height: 96px; border-radius: 12px; object-fit: contain; border: 1px solid var(--border); background: #fff; padding: 6px; }
+.price { font-weight: 800; color: var(--money); font-variant-numeric: tabular-nums; }
+
+/* ตัวเลือก (checkbox/radio) แบบแถว */
+.pick { display: flex; align-items: center; gap: 8px; font-size: 13.5px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); cursor: pointer; }
+.pick input { accent-color: var(--accent); }
+
+/* ---------- กล่องซ้อน/แจ้งเตือน ---------- */
+.overlay { position: fixed; inset: 0; background: rgba(16,24,40,.45); display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; }
+.overlay.show { display: flex; }
+.modal { background: var(--card); border-radius: 16px; padding: 20px; width: min(560px, 94vw); max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(16,24,40,.25); display: flex; flex-direction: column; gap: 12px; }
+.modal.narrow { width: min(430px, 92vw); }
+.modal h3 { margin: 0; font-size: 16px; }
+.modal p { margin: 0; color: var(--muted); font-size: 13px; }
+.modal .foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); background: #101828; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; opacity: 0; transition: .18s; pointer-events: none; z-index: 30; max-width: 80vw; text-align: center; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

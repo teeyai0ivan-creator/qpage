@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>แจ้งเตือน</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>ตั้งค่าการแจ้งเตือน</h1>
+      <span class="sub">ส่งข้อความเข้า Telegram เมื่อมีเหตุการณ์ในร้าน — แต่ละกลุ่มเลือกได้ว่าจะรับเรื่องอะไร</span>
+      <span class="spacer"></span>
+      <span class="stat" id="stGroups">กลุ่ม 0</span>
+      <span class="stat ok" id="stActive">เปิดใช้งาน 0</span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="filters">
+      <button class="btn btn-primary" id="btnAdd" type="button">＋ เพิ่มกลุ่มแจ้งเตือน</button>
+      <button class="btn" id="btnReload" type="button">⟳ โหลดใหม่</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="sec-title">เหตุการณ์ที่แจ้งเตือนได้ <span class="line"></span></div>
+      <div id="eventList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;"></div>
+    </div>
+    <div class="sec-title">กลุ่มแจ้งเตือนของร้าน <span class="line"></span></div>
+    <div id="groupList" style="display:flex;flex-direction:column;gap:12px;"><div class="empty">กำลังโหลด…</div></div>
+  </main>
+
+  <div class="overlay" id="editOverlay">
+    <div class="modal">
+      <h3 id="editTitle">เพิ่มกลุ่มแจ้งเตือน</h3>
+      <p>สร้างกลุ่มใน Telegram แล้วใส่ Token ของบอท + Chat ID ของกลุ่ม (ต้องเพิ่มบอทเข้ากลุ่มก่อน)</p>
+      <div class="field">
+        <label class="lbl" for="fName">ชื่อกลุ่ม *</label>
+        <input class="inp" id="fName" maxlength="120" placeholder="เช่น กลุ่มครัว, กลุ่มผู้จัดการ, ห้องแคชเชียร์">
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl" for="fToken">Telegram Bot Token *</label>
+          <input class="inp mono" id="fToken" maxlength="255" autocomplete="off" placeholder="123456789:AA…">
+        </div>
+        <div class="field">
+          <label class="lbl" for="fChat">Chat ID *</label>
+          <input class="inp mono" id="fChat" maxlength="120" autocomplete="off" placeholder="-1001234567890">
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="fThread">Message Thread ID (ใส่เมื่อส่งในหัวข้อ)</label>
+        <input class="inp mono" id="fThread" maxlength="40" placeholder="ไม่ใส่ก็ได้">
+      </div>
+      <div class="field">
+        <label class="lbl">เหตุการณ์ที่ให้แจ้งเตือน *</label>
+        <div id="fEvents" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;"></div>
+      </div>
+      <label class="sw"><input type="checkbox" id="fActive" checked><span class="track"></span><span id="fActiveLabel">เปิดใช้งาน</span></label>
+      <div class="err" id="editErr"></div>
+      <div class="foot">
+        <button class="btn" id="editCancel" type="button">ยกเลิก</button>
+        <button class="btn btn-primary" id="editSave" type="button">บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="delOverlay">
+    <div class="modal narrow">
+      <h3>ลบกลุ่มแจ้งเตือน</h3>
+      <p id="delMsg">—</p>
+      <div class="foot">
+        <button class="btn" id="delCancel" type="button">ยกเลิก</button>
+        <button class="btn btn-danger" id="delOk" type="button">ลบกลุ่มนี้</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="notify.js"></script>
+</body>
+</html>

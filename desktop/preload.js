@@ -42,6 +42,40 @@ contextBridge.exposeInMainWorld('qpageHistory', {
   onEvent: (cb) => ipcRenderer.on('kitchen:event', (event, evt) => cb(evt)),
 });
 
+// ให้หน้าจอของโปรแกรมพาไปหน้าอื่นในโปรแกรม (ไม่ใช่เปิดเว็บ) — เช่น ปุ่ม "ดูประวัติ"
+contextBridge.exposeInMainWorld('qpageNav', {
+  go: (path) => ipcRenderer.send('nav:go', String(path || '')),
+});
+
+// หน้าจอจัดการร้านของโปรแกรม (ข้อมูลร้าน · หมวดหมู่/เมนู/ตัวเลือก · แจ้งเตือน · ตั้งค่าระบบ)
+contextBridge.exposeInMainWorld('qpageShop', {
+  all: () => ipcRenderer.invoke('shop:all'),
+  save: (fields) => ipcRenderer.invoke('shop:save', fields || {}),
+  upload: (dataUrl) => ipcRenderer.invoke('shop:upload', dataUrl),
+  imageData: (path) => ipcRenderer.invoke('shop:image-data', path),
+  addCategory: (fields) => ipcRenderer.invoke('shop:add-category', fields || {}),
+  updateCategory: (id, fields) => ipcRenderer.invoke('shop:update-category', { id, fields }),
+  deleteCategory: (id) => ipcRenderer.invoke('shop:delete-category', id),
+  addMenu: (fields) => ipcRenderer.invoke('shop:add-menu', fields || {}),
+  updateMenu: (id, fields) => ipcRenderer.invoke('shop:update-menu', { id, fields }),
+  deleteMenu: (id) => ipcRenderer.invoke('shop:delete-menu', id),
+  setMenuGroups: (id, groupIds) => ipcRenderer.invoke('shop:set-menu-groups', { id, groupIds }),
+  addOptionGroup: (fields) => ipcRenderer.invoke('shop:add-option-group', fields || {}),
+  updateOptionGroup: (id, fields) => ipcRenderer.invoke('shop:update-option-group', { id, fields }),
+  deleteOptionGroup: (id) => ipcRenderer.invoke('shop:delete-option-group', id),
+  addOptionItem: (groupId, fields) => ipcRenderer.invoke('shop:add-option-item', { groupId, fields }),
+  updateOptionItem: (id, fields) => ipcRenderer.invoke('shop:update-option-item', { id, fields }),
+  deleteOptionItem: (id) => ipcRenderer.invoke('shop:delete-option-item', id),
+  notifyGroups: () => ipcRenderer.invoke('notify:groups'),
+  addNotifyGroup: (fields) => ipcRenderer.invoke('notify:add', fields || {}),
+  updateNotifyGroup: (id, fields) => ipcRenderer.invoke('notify:update', { id, fields }),
+  deleteNotifyGroup: (id) => ipcRenderer.invoke('notify:delete', id),
+  setQrAutoDelete: (enabled) => ipcRenderer.invoke('sys:set-qr-auto-delete', enabled),
+  printReceipt: (payload) => ipcRenderer.send('orders:print-receipt', payload || {}),
+  onLive: (cb) => ipcRenderer.on('kitchen:live', (event, state) => cb(state)),
+  onEvent: (cb) => ipcRenderer.on('kitchen:event', (event, evt) => cb(evt)),
+});
+
 // หน้าจอ "สั่งอาหาร" ของโปรแกรม (ผังโต๊ะ + บิล + เพิ่มอาหาร + เช็คบิล)
 contextBridge.exposeInMainWorld('qpageOrders', {
   tables: () => ipcRenderer.invoke('orders:tables'),

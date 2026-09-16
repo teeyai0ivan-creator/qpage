@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>เมนูทั้งหมด</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>เมนูทั้งหมด</h1>
+      <span class="sub">ค้นหา แก้ราคา เปิด/ปิดการขาย และจัดการรูปเมนูของทั้งร้านในที่เดียว</span>
+      <span class="spacer"></span>
+      <span class="stat">เมนู <span class="n" id="nAll">0</span></span>
+      <span class="stat ok">พร้อมขาย <span class="n" id="nOn">0</span></span>
+      <span class="stat wait">ของหมด <span class="n" id="nOff">0</span></span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="filters">
+      <input class="inp" id="q" type="search" placeholder="ค้นหาชื่อเมนู / รายละเอียด" autocomplete="off" style="max-width:280px;">
+      <span class="seg" id="fStatus">
+        <button data-status="all" class="active" type="button">ทั้งหมด</button>
+        <button data-status="on" type="button">พร้อมขาย</button>
+        <button data-status="off" type="button">ของหมด</button>
+      </span>
+      <span class="spacer" style="flex:1;"></span>
+      <button class="btn btn-primary" id="btnAdd" type="button">＋ เพิ่มเมนู</button>
+      <button class="btn" id="btnReload" type="button">⟳ โหลดใหม่</button>
+    </div>
+    <div class="filters" id="catChips" style="margin-top:8px;"></div>
+  </header>
+
+  <main>
+    <div id="list" style="display:flex;flex-direction:column;gap:10px;"><div class="empty">กำลังโหลดเมนู…</div></div>
+  </main>
+
+  <div class="overlay" id="askOverlay">
+    <div class="modal narrow">
+      <h3 id="askTitle">ยืนยัน</h3>
+      <p id="askMsg">—</p>
+      <div class="foot">
+        <button class="btn" id="askCancel" type="button">ยกเลิก</button>
+        <button class="btn btn-danger" id="askOk" type="button">ยืนยัน</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="menu-common.js"></script>
+  <script src="menus.js"></script>
+</body>
+</html>

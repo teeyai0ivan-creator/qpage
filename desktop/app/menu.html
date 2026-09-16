@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>จัดการเมนู</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>จัดการเมนู</h1>
+      <span class="sub">หมวดหมู่และเส้นทางครัว/แคชเชียร์ · เมนูในแต่ละหมวด · กลุ่มตัวเลือก (เช่น ระดับความเผ็ด)</span>
+      <span class="spacer"></span>
+      <span class="stat">หมวดหมู่ <span class="n" id="nCats">0</span></span>
+      <span class="stat">เมนู <span class="n" id="nMenus">0</span></span>
+      <span class="stat">กลุ่มตัวเลือก <span class="n" id="nGroups">0</span></span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="filters">
+      <button class="btn btn-primary" id="btnAddMenu" type="button">＋ เพิ่มเมนู</button>
+      <button class="btn" id="btnReload" type="button">⟳ โหลดใหม่</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="sec-title">หมวดหมู่ + เส้นทางครัว/แคชเชียร์ <span class="line"></span></div>
+      <div class="hint">หมวดที่ตั้งเป็น "แคชเชียร์" รายการอาหารในหมวดนั้นจะไปขึ้นที่หน้าจอแคชเชียร์ (เช่น เครื่องดื่ม) ที่เหลือขึ้นที่ครัว</div>
+      <div id="catList" style="display:flex;flex-direction:column;"></div>
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl" for="newCatName">ชื่อหมวดใหม่</label>
+          <input class="inp" id="newCatName" maxlength="120" placeholder="เช่น ของหวาน">
+        </div>
+        <div class="field">
+          <label class="lbl" for="newCatParent">อยู่ใต้หมวด</label>
+          <select class="inp" id="newCatParent"></select>
+        </div>
+        <div class="field">
+          <label class="lbl" for="newCatStation">เส้นทาง</label>
+          <select class="inp" id="newCatStation">
+            <option value="kitchen">🍳 ครัว</option>
+            <option value="cashier">🧾 แคชเชียร์</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl">&nbsp;</label>
+          <button class="btn btn-primary" id="btnAddCat" type="button">＋ เพิ่มหมวดหมู่</button>
+        </div>
+      </div>
+      <div class="err" id="catErr"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">เมนูในหมวด <span class="line"></span></div>
+      <div class="filters" id="menuChips" style="margin-top:0;"></div>
+      <div id="menuList" style="display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">กลุ่มตัวเลือก (ใช้กับเมนูได้หลายเมนู) <span class="line"></span></div>
+      <div id="groupList" style="display:flex;flex-direction:column;gap:12px;"></div>
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl" for="newGrpName">ชื่อกลุ่มใหม่</label>
+          <input class="inp" id="newGrpName" maxlength="120" placeholder="เช่น ระดับความเผ็ด">
+        </div>
+        <div class="field">
+          <label class="lbl">ตัวเลือกของกลุ่ม</label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding-top:6px;">
+            <label class="sw" style="gap:6px;"><input type="checkbox" id="newGrpRequired"><span class="track"></span><span class="hint" style="margin:0;">บังคับเลือก</span></label>
+            <label class="sw" style="gap:6px;"><input type="checkbox" id="newGrpMulti"><span class="track"></span><span class="hint" style="margin:0;">เลือกได้หลายอย่าง</span></label>
+          </div>
+        </div>
+        <div class="field">
+          <label class="lbl">&nbsp;</label>
+          <button class="btn btn-primary" id="btnAddGroup" type="button">＋ เพิ่มกลุ่มตัวเลือก</button>
+        </div>
+      </div>
+      <div class="err" id="grpErr"></div>
+    </div>
+  </main>
+
+  <div class="overlay" id="askOverlay">
+    <div class="modal narrow">
+      <h3 id="askTitle">ยืนยัน</h3>
+      <p id="askMsg">—</p>
+      <div class="foot">
+        <button class="btn" id="askCancel" type="button">ยกเลิก</button>
+        <button class="btn btn-danger" id="askOk" type="button">ยืนยัน</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="menu-common.js"></script>
+  <script src="menu.js"></script>
+</body>
+</html>

@@ -16,7 +16,8 @@ const { buildOrderItems } = require('../lib/order-builder');
 const notify = require('../lib/notify');
 const printJobs = require('../lib/print-jobs');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 
 const clip = (v, max) => String(v == null ? '' : v).trim().slice(0, max);

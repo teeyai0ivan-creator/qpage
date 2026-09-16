@@ -16,7 +16,8 @@ const express = require('express');
 const { getCurrentUser } = require('../middleware/auth');
 const { isAdminRole, isOwner } = require('../lib/roles');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 const ADMIN_DIR = path.join(__dirname, '..', '..', 'public', 'admin');
 const PAGES = ['index.html', 'otp.html', 'users.html', 'profile.html', 'packages.html', 'payments.html', 'purchase-history.html', 'legal.html', 'site.html'];
 

@@ -11,7 +11,8 @@
 const express = require('express');
 const db = require('../db');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 
 router.get('/robots.txt', (req, res) => {
   const origin = `${req.protocol}://${req.get('host')}`;

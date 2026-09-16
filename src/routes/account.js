@@ -16,7 +16,8 @@ const bcrypt = require('bcryptjs');
 const legal = require('../lib/legal');
 const { COOKIE_NAME } = require('../config');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 const DASHBOARD_FILE = path.join(__dirname, '..', '..', 'public', 'dashboard', 'index.html');
 
 // ---------------------------------------------------------------------------

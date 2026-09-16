@@ -13,7 +13,8 @@ const { isValidEmail, passwordStrengthScore } = require('../lib/validators');
 const mailer = require('../lib/mailer');
 const { rateLimit } = require('../middleware/rate-limit');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 
 // ---------------------------------------------------------------------------
 // API: กู้รหัสผ่าน — ขั้นที่ 1 ส่ง OTP ทางอีเมล

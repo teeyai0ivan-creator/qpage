@@ -17,7 +17,8 @@ const { isValidRole, isAdminRole, isOwner } = require('../lib/roles');
 const { requireAdmin, requireOwner } = require('../middleware/auth');
 const { getGoogleConfig } = require('../lib/google-oauth');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 
 // ลำดับชั้นบทบาท ใช้เทียบว่ากำลัง "ลดระดับ" ตัวเองหรือไม่
 const ROLE_RANK = { user: 0, shop: 1, admin: 2, owner: 3 };

@@ -11,7 +11,8 @@ const realtime = require('../lib/realtime');
 const legal = require('../lib/legal');
 const site = require('../lib/site');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 
 // ข้อมูลทางกฎหมาย (ชื่อผู้ให้บริการ/อีเมลติดต่อ/เวอร์ชันนโยบาย) — ใช้เติมในหน้าถ้อยแถลง
 router.get('/api/public/legal', (req, res) => {

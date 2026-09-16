@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>ตั้งค่าระบบ</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>ตั้งค่าระบบ</h1>
+      <span class="sub">ตั้งค่าการทำงานของระบบร้าน — ตัวเลือกด้านล่างมีผลทันทีทั้งร้าน</span>
+      <span class="spacer"></span>
+      <span class="stat" id="stShop">ร้าน —</span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+        <label class="sw" style="margin-top:2px;">
+          <input type="checkbox" id="swQrAutoDelete">
+          <span class="track"></span>
+        </label>
+        <div style="flex:1;min-width:260px;">
+          <div style="font-weight:800;font-size:15px;">ปิดใช้งาน QR ของโต๊ะทันทีเมื่อเช็คบิล <span class="badge" id="stateBadge">ปิดอยู่</span></div>
+          <div class="hint" id="hint">กำลังโหลด…</div>
+        </div>
+      </div>
+      <div class="hint" style="border-top:1px solid var(--border);padding-top:12px;">
+        <b>เปิดไว้:</b> เมื่อกดเช็คบิล โต๊ะนั้นจะถูกปิดใช้งาน QR ทันที (สแกนไม่ได้อีก และใช้ซ้ำไม่ได้) ต้องออก QR ใหม่ก่อนให้ลูกค้าสั่งครั้งถัดไป<br>
+        <b>ปิดไว้:</b> เช็คบิลแล้วโต๊ะและ QR ยังใช้งานต่อ และระบบเปิดบิลใหม่ให้อัตโนมัติ<br>
+        ไม่ว่าจะเปิดหรือปิด <b>QR และโต๊ะที่ปิดใช้งานแล้วจะไม่ถูกลบ</b> — ดูย้อนหลังได้ในหน้าจอ “ประวัติ” (แท็บ QR โต๊ะที่ปิดใช้งาน)
+      </div>
+      <div class="err" id="err"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" id="btnHistory" type="button">ดูประวัติ QR โต๊ะที่ปิดใช้งาน</button>
+        <button class="btn" id="btnReload" type="button">⟳ โหลดใหม่</button>
+      </div>
+    </div>
+  </main>
+
+  <div class="overlay" id="askOverlay">
+    <div class="modal narrow">
+      <h3 id="askTitle">ยืนยันการเปลี่ยนค่า</h3>
+      <p id="askMsg">—</p>
+      <div class="foot">
+        <button class="btn" id="askCancel" type="button">ยกเลิก</button>
+        <button class="btn btn-primary" id="askOk" type="button">ยืนยัน</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="sys.js"></script>
+</body>
+</html>

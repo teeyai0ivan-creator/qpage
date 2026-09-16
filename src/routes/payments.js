@@ -22,7 +22,8 @@ const { futureMonthsSql, addMonthsSql, toSql, nowSql } = require('../lib/time');
 const { getPaymentSettings, hasAnyChannel, paymentInstructions, emailPackagePurchased, entitlementEndFor } = require('../lib/payments');
 const { getSlipSettings, verifySlip, decideAutoApprove } = require('../lib/slip-verify');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 const clip = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
 const digitsOnly = (v) => String(v == null ? '' : v).replace(/\D/g, '');
 // โดเมนจริงของผู้ใช้ (รองรับ X-Forwarded-Proto ผ่าน trust proxy) — ใช้ทำลิงก์ในอีเมล

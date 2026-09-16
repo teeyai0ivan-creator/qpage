@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>ตั้งค่าข้อมูลร้าน</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>ตั้งค่าข้อมูลร้าน</h1>
+      <span class="sub">ข้อมูลนี้แสดงบนหน้าร้านของลูกค้า ใบเสร็จ และการ์ดเวลาแชร์ลิงก์ร้าน</span>
+      <span class="spacer"></span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="filters">
+      <button class="btn btn-primary" id="btnSave" type="button">💾 บันทึกข้อมูลร้าน</button>
+      <button class="btn" id="btnReload" type="button">⟳ โหลดใหม่</button>
+      <span class="hint" id="savedAt"></span>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="sec-title">ข้อมูลหลัก <span class="line"></span></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+          <img class="thumb-lg" id="logoPreview" alt="โลโก้ร้าน">
+          <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp,image/gif" style="font-size:12.5px;max-width:190px;">
+          <button class="btn btn-sm" id="btnLogoClear" type="button">ลบโลโก้</button>
+          <div class="hint" id="logoHint">รองรับ png/jpeg/webp/gif ไม่เกิน 3MB</div>
+        </div>
+        <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:12px;">
+          <div class="grid2">
+            <div class="field">
+              <label class="lbl" for="fName">ชื่อร้านค้า *</label>
+              <input class="inp" type="text" id="fName" maxlength="120" placeholder="เช่น เด็ดยำ ตำนัวร์">
+            </div>
+            <div class="field">
+              <label class="lbl" for="fPhone">เบอร์โทรร้าน</label>
+              <input class="inp" type="text" id="fPhone" maxlength="30" placeholder="เช่น 0812345678">
+            </div>
+            <div class="field">
+              <label class="lbl" for="fLine">ลิงก์ LINE ร้านค้า</label>
+              <input class="inp" type="text" id="fLine" maxlength="255" placeholder="https://line.me/R/ti/p/@ร้านคุณ">
+            </div>
+            <div class="field">
+              <label class="lbl" for="fMaps">URL Google Maps</label>
+              <input class="inp" type="text" id="fMaps" maxlength="500" placeholder="https://maps.app.goo.gl/…">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">เนื้อหาบน Google และการ์ดแชร์ลิงก์ <span class="line"></span></div>
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl" for="fSeoTitle">หัวข้อ SEO (ชื่อที่อยากให้ขึ้นบน Google)</label>
+          <input class="inp" type="text" id="fSeoTitle" maxlength="160" placeholder="ปล่อยว่าง = ใช้ชื่อร้าน">
+        </div>
+        <div class="field">
+          <label class="lbl" for="fSeoDesc">คำอธิบาย SEO (ข้อความใต้ชื่อเวลาแชร์ลิงก์)</label>
+          <textarea class="inp" id="fSeoDesc" maxlength="400" placeholder="เช่น ยำและกับข้าวรสจัด เปิด 10:00-21:00 สั่งผ่าน QR ที่โต๊ะได้เลย"></textarea>
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl">ลิงก์หน้าร้านของลูกค้า</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input class="inp mono" id="publicUrl" readonly style="flex:1;min-width:240px;">
+          <button class="btn" id="btnCopyUrl" type="button">คัดลอกลิงก์</button>
+        </div>
+        <div class="hint">ลิงก์นี้ใช้แชร์ให้ลูกค้าดูเมนู/สั่งอาหาร (ไม่ใช่ QR ของโต๊ะ)</div>
+      </div>
+      <div class="err" id="err"></div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="setup.js"></script>
+</body>
+</html>

@@ -25,7 +25,8 @@ const roleNote = (role) => (isOwner(role) ? ' (เจ้าของระบบ
 // ปลายทางหลังเข้าสู่ระบบ ตามบทบาทผู้ใช้
 const homeFor = (user) => (isAdminRole(user.role) ? '/admin/' : isShop(user.role) ? '/shop' : '/settings/profile');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 
 // Express 4 ไม่ดัก error จาก async handler ให้เอง — ถ้าไม่ดัก คำขอจะค้างโดยไม่มี response
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

@@ -16,7 +16,8 @@ const { randomToken } = require('../lib/crypto');
 const { addMonthsSql, toSql, nowSql } = require('../lib/time');
 const { getPaymentSettings, hasAnyChannel, paymentInstructions, generateRef, emailPackagePurchased, entitlementEndFor } = require('../lib/payments');
 
-const router = express.Router();
+const { makeRouter } = require('../lib/router');
+const router = makeRouter();
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 const UPLOAD_DIR = path.join(PUBLIC_DIR, 'uploads', 'shops');
 const IMAGE_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };

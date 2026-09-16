@@ -1204,9 +1204,11 @@ async function findOptionItemOwned(id, shopId) {
 async function updateOptionItem(id, shopId, fields) {
   const sets = [];
   const params = [];
-  if (fields.name !== undefined) { sets.push('name = ?'); params.push(fields.name); }
-  if (fields.priceDelta !== undefined) { sets.push('price_delta = ?'); params.push(fields.priceDelta); }
-  if (fields.sortOrder !== undefined) { sets.push('sort_order = ?'); params.push(fields.sortOrder); }
+  // ⚠️ ต้องเขียน oi. ทุกคอลัมน์ — ตาราง option_groups มีคอลัมน์ name เหมือนกัน
+  //    ไม่งั้น MySQL ฟ้อง "Column 'name' in field list is ambiguous" แล้วคำขอค้างไม่ตอบกลับ (เจอจริง)
+  if (fields.name !== undefined) { sets.push('oi.name = ?'); params.push(fields.name); }
+  if (fields.priceDelta !== undefined) { sets.push('oi.price_delta = ?'); params.push(fields.priceDelta); }
+  if (fields.sortOrder !== undefined) { sets.push('oi.sort_order = ?'); params.push(fields.sortOrder); }
   if (!sets.length) return;
   await pool.execute(
     `UPDATE option_items oi JOIN option_groups g ON g.id = oi.group_id
