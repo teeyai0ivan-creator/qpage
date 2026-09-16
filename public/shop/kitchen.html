@@ -221,8 +221,6 @@
       const img = i.image_url
         ? '<img class="k-img" src="' + esc(i.image_url) + '" alt="">'
         : '<div class="k-img k-img-empty"></div>';
-      // ปุ่มพิมพ์ใบสั่งครัวของรายการนี้ (ใช้พิมพ์ซ้ำได้ทุกสถานะ เช่น กระดาษติด)
-      const printBtn = '<button class="mini-btn k-print" data-print="' + i.id + '" type="button" title="พิมพ์ใบสั่งครัวของรายการนี้">🖨</button>';
       return `<div class="k-item ${i.status === 'done' ? 'k-done' : ''}">
         ${img}
         <div class="k-qty">${i.quantity}×</div>
@@ -233,7 +231,7 @@
           <div class="k-time">สั่งเมื่อ ${hhmm(i.created_at)} · ⏱ <span class="k-timer" data-created="${esc(i.created_at)}" data-status="${esc(i.status)}" data-done="${esc(i.done_at || '')}">—</span></div>
         </div>
         <span class="st-badge ${STATUS_CLASS[i.status]}">${STATUS_LABEL[i.status]}</span>
-        <div class="k-actions" style="display:flex;gap:6px;flex-wrap:wrap;">${btn}${printBtn}${cancelBtn}</div>
+        <div class="k-actions" style="display:flex;gap:6px;flex-wrap:wrap;">${btn}${cancelBtn}</div>
       </div>`;
     }
 
@@ -295,12 +293,6 @@
       box.querySelectorAll('[data-start-all]').forEach((b) => b.addEventListener('click', () => {
         b.disabled = true;
         startAndPrint(String(b.dataset.startAll).split(',').map(Number), 'กำลังเตรียมใบสั่งครัว...', () => { b.disabled = false; });
-      }));
-
-      // พิมพ์ซ้ำรายรายการ (ไม่แตะสถานะ)
-      box.querySelectorAll('[data-print]').forEach((b) => b.addEventListener('click', () => {
-        const w = openBlankTab('กำลังเตรียมใบสั่งครัว...');
-        gotoReceipt(w, '/shop/ticket.html?ids=' + b.dataset.print);
       }));
 
       box.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', async () => {

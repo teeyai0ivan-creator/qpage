@@ -350,12 +350,10 @@
 .kitchen-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .k-bill { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; background: var(--surface); }
 .k-bill-head { background: var(--surface-2); padding: 10px 14px; font-weight: 800; font-size: 14.5px; border-bottom: 1px solid var(--border); }
-/* หัวการ์ดครัว: ชื่อโต๊ะ/บิลอยู่ซ้าย · ปุ่มเริ่มทำทั้งโต๊ะชิดขวา บรรทัดเดียวกัน */
-.k-bill-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.k-bill-head .k-bill-title { flex: 1; min-width: 0; }
-.k-bill-head .k-start-all { margin-left: auto; }
-.k-print { font-size: 13px; padding: 5px 9px; }
-@media (max-width: 560px) { .k-bill-head .k-start-all { margin-left: 0; width: 100%; } }
+/* หัวการ์ดครัว: ชื่อโต๊ะ/บิลซ้าย · ปุ่มเริ่มทำทั้งโต๊ะ (ปุ่มเล็ก) ชิดขวา บรรทัดเดียวกันเสมอ */
+.k-bill-head { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.k-bill-head .k-bill-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-bill-head .k-start-all { margin-left: auto; flex: none; font-size: 12px; padding: 4px 10px; white-space: nowrap; }
 .k-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
 .k-item:last-child { border-bottom: none; }
 .k-item.k-done { opacity: 0.55; }

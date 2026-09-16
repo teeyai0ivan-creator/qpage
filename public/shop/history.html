@@ -254,7 +254,10 @@
       document.getElementById('cntBills').textContent = lastOrders.length ? '(' + lastOrders.length + ')' : '';
       const box = document.getElementById('histList');
       if (!lastOrders.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีประวัติ (ยังไม่มีการเช็คบิล)</div>'; return; }
-      box.innerHTML = lastOrders.map((o) => `
+      box.innerHTML = lastOrders.map((o) => {
+        // รายการที่ยังพิมพ์ซ้ำได้ = รายการที่ไม่ถูกยกเลิก (ยกเลิกแล้วไม่ได้ทำจริง จึงไม่ต้องพิมพ์)
+        const printableIds = (o.items || []).filter((it) => it.status !== 'cancelled').map((it) => it.id);
+        return `
         <details class="bill-card">
           <summary>
             <div style="flex:1;min-width:0;">
@@ -275,8 +278,10 @@
           </div>
           <div class="hist-actions">
             <a class="mini-btn primary" href="/shop/receipt.html?order=${o.id}" target="_blank" rel="noopener">🖨 ขอใบเสร็จ (พิมพ์ใหม่)</a>
+            ${printableIds.length ? `<a class="mini-btn" href="/shop/ticket.html?ids=${printableIds.join(',')}" target="_blank" rel="noopener" title="พิมพ์ใบสั่งครัวของบิลนี้อีกครั้ง (ใช้เมื่อกระดาษที่พิมพ์ไปเสียหาย)">🖨 รายการพิมพ์</a>` : ''}
           </div>
-        </details>`).join('');
+        </details>`;
+      }).join('');
     }
 
     document.getElementById('fTable').addEventListener('change', () => loadHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));

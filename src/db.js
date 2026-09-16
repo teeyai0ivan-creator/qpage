@@ -1921,7 +1921,7 @@ async function listTicketItems(shopId, ids) {
        LEFT JOIN \`tables\` t ON t.id = o.table_id
        LEFT JOIN menus m ON m.id = oi.menu_id
        LEFT JOIN categories c ON c.id = m.category_id
-      WHERE oi.id IN (${ph}) AND o.shop_id = ?
+      WHERE oi.id IN (${ph}) AND o.shop_id = ? AND oi.status <> 'cancelled'
       ORDER BY table_code ASC, o.bill_no ASC, oi.id ASC`,
     [...list, shopId]
   );
