@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>เข้าสู่ระบบ</title>
+  <style>
+    /* หน้าเข้าสู่ระบบของ "โปรแกรม" (ไม่ใช่หน้าเว็บ) — ไม่มีปุ่มสมัครสมาชิก */
+    :root {
+      --bg: #eef0f8; --card: #ffffff; --border: #e4e7ec; --text: #101828; --muted: #667085;
+      --accent: #4f46e5; --accent-2: #8b5cf6; --danger: #dc2626; --danger-bg: #fef2f2;
+      --ok: #059669; --ok-bg: #ecfdf5; --warn-bg: #fffbeb; --warn: #b45309;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: radial-gradient(1100px 520px at 50% -10%, #dfe4fb 0%, var(--bg) 60%);
+      color: var(--text); font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; font-size: 14px;
+      display: grid; place-items: center; padding: 26px;
+    }
+    .card {
+      width: min(430px, 100%); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: 0 18px 50px rgba(16,24,40,.12); padding: 30px 28px 26px; display: flex; flex-direction: column; gap: 16px;
+    }
+    .brand { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+    .brand img { width: 84px; height: 84px; border-radius: 22px; box-shadow: 0 8px 22px rgba(79,70,229,.22); background: #fff; }
+    .brand h1 { margin: 2px 0 0; font-size: 22px; font-weight: 800; letter-spacing: .2px; }
+    .brand .sub { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+    label.lbl { font-size: 12.5px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 6px; }
+    .inp {
+      font-family: inherit; font-size: 14.5px; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--border);
+      background: #fbfbfe; color: var(--text); width: 100%;
+    }
+    .inp:focus { outline: 2px solid #c7d2fe; border-color: var(--accent); background: #fff; }
+    .field { display: flex; flex-direction: column; }
+
+    .btn {
+      font-family: inherit; font-size: 15px; font-weight: 800; padding: 13px 16px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); cursor: pointer; width: 100%;
+    }
+    .btn:hover { background: #f8f9fd; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; box-shadow: 0 8px 20px rgba(79,70,229,.25); }
+    .btn-sm { font-size: 13px; padding: 10px 12px; font-weight: 700; }
+
+    .msg { border-radius: 12px; padding: 11px 13px; font-size: 13px; font-weight: 700; display: none; }
+    .msg.show { display: block; }
+    .msg.error { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+    .msg.blocked { background: var(--warn-bg); color: var(--warn); border: 1px solid #fde68a; font-weight: 600; line-height: 1.6; }
+    .msg.ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #a7f3d0; }
+
+    .foot { text-align: center; font-size: 11.5px; color: var(--muted); line-height: 1.7; }
+    .row { display: flex; gap: 8px; }
+    .row .btn { flex: 1; }
+    .hidden { display: none !important; }
+    .spinner {
+      width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%;
+      display: inline-block; margin-right: 8px; vertical-align: -2px; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <!-- โลโก้อยู่ที่โฟลเดอร์หลักของโปรแกรม (ไฟล์นี้อยู่ใน app/) -->
+      <img id="logo" src="../icon-256.png" alt="QPage" onerror="this.style.visibility='hidden'">
+      <h1>เข้าสู่ระบบ</h1>
+      <p class="sub" id="brandSub">โปรแกรมร้านค้า QPage</p>
+    </div>
+
+    <div class="msg error" id="msgErr"></div>
+    <div class="msg blocked" id="msgBlocked"></div>
+
+    <div id="formArea" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label class="lbl" for="email">อีเมล</label>
+        <input class="inp" id="email" type="email" autocomplete="username" placeholder="owner@example.com">
+      </div>
+      <div class="field">
+        <label class="lbl" for="password">รหัสผ่าน</label>
+        <input class="inp" id="password" type="password" autocomplete="current-password" placeholder="รหัสผ่านของคุณ">
+      </div>
+      <button class="btn btn-primary" id="btnLogin" type="button">เข้าสู่ระบบ</button>
+    </div>
+
+    <div id="blockArea" class="hidden" style="flex-direction:column;gap:10px;">
+      <button class="btn btn-primary" id="btnPurchase" type="button">ซื้อ / ต่ออายุแพ็กเกจร้านค้า</button>
+      <div class="row">
+        <button class="btn btn-sm" id="btnRetry" type="button">ตรวจสอบสิทธิ์อีกครั้ง</button>
+        <button class="btn btn-sm" id="btnLogout" type="button">ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <div class="foot" id="footText">ใช้ได้เฉพาะบัญชีที่มีร้านค้าและแพ็กเกจที่ยังไม่หมดอายุ</div>
+  </div>
+
+  <script src="login.js"></script>
+</body>
+</html>

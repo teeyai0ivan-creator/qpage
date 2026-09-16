@@ -9,6 +9,16 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
+// หน้าจอเข้าสู่ระบบของโปรแกรม (บัญชีต้องมีร้าน + แพ็กเกจที่ยังไม่หมดอายุ)
+contextBridge.exposeInMainWorld('qpageLogin', {
+  state: () => ipcRenderer.invoke('login:state'),
+  login: (payload) => ipcRenderer.invoke('login:do', payload || {}),
+  logout: () => ipcRenderer.invoke('login:logout'),
+  recheck: () => ipcRenderer.invoke('login:state'),
+  enterApp: () => ipcRenderer.invoke('login:enter'),
+  openPurchase: () => ipcRenderer.invoke('login:open-purchase'),
+});
+
 contextBridge.exposeInMainWorld('qpageDesktop', {
   // หน้าเว็บเรียกแทน window.print() → โปรแกรมจะพิมพ์เงียบไปเครื่องที่ตั้งไว้
   silentPrint: () => ipcRenderer.send('print-now'),

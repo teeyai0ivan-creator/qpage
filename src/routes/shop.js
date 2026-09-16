@@ -200,12 +200,21 @@ router.post('/api/shop/purchase', requireLogin, async (req, res) => {
 });
 
 // ข้อมูลร้านของฉัน + ข้อมูลเมนูทั้งหมด (ใช้ในหน้าจัดการ)
+// แนบ "สิทธิ์ใช้งาน" (วันหมดอายุแพ็กเกจ) มาด้วย — โปรแกรม Windows ใช้ตัดสินว่าให้เข้าใช้หรือไม่
 router.get('/api/shop/me', requireShop, async (req, res) => {
   const shop = await db.findShopByUserId(req.user.id);
+  const entitlementEnd = await entitlementEndFor(req.user);
+  const entitlement = {
+    role: req.user.role,
+    entitlement_end: entitlementEnd ? entitlementEnd.toISOString() : null,
+    // มีสิทธิ์ใช้ระบบร้าน = มีวันหมดอายุที่ยังไม่ผ่าน (ของขวัญจากแอดมิน หรือแพ็กเกจที่ซื้อไว้)
+    entitled: !!entitlementEnd && entitlementEnd.getTime() > Date.now(),
+  };
   if (!shop) {
     return res.json({
       ok: true, shop: null, categories: [], menus: [], optionGroups: [], optionItems: [], menuGroups: [],
       purchase: await db.findLatestShopPurchase(req.user.id),
+      ...entitlement,
     });
   }
   const [categories, menus, optionGroups, optionItems, menuGroups] = await Promise.all([
@@ -219,6 +228,7 @@ router.get('/api/shop/me', requireShop, async (req, res) => {
     ok: true, shop, categories, menus, optionGroups, optionItems, menuGroups,
     publicUrl: '/s/' + shop.public_code,
     purchase: await db.findLatestShopPurchase(req.user.id),
+    ...entitlement,
   });
 });
 

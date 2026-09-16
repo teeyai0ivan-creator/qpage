@@ -35,37 +35,56 @@ let statusTimer = null;
 
 // หน้าแรกของโปรแกรม (ใช้ทั้งตอนเปิดโปรแกรมและตอนกลับจากหน้าเว็บไซต์)
 const APP_HOME = '/shop/kitchen.html';
-const LOGIN_URL = '/login.html?next=' + encodeURIComponent(APP_HOME);
+const LOGIN_URL = '/login.html';           // หน้าจอเข้าสู่ระบบของโปรแกรมเอง (ไม่ใช่หน้าเว็บ)
 
-/** ตรวจว่าล็อกอินอยู่หรือยัง (ใช้ session ของโปรแกรม) + ชื่อร้านไว้แสดงบนแถบเครื่องมือ */
-async function checkLogin() {
+/**
+ * สถานะการเข้าใช้โปรแกรม
+ * = ล็อกอินอยู่ + มีร้านค้า + มีแพ็กเกจที่ยังไม่หมดอายุ (เซิร์ฟเวอร์เป็นคนตัดสินส่ง `entitled` มาให้)
+ * ถ้าไม่ครบ → เข้าโปรแกรมไม่ได้ แต่ข้อมูลร้าน/ลูกค้ายังอยู่ครบที่เซิร์ฟเวอร์
+ */
+async function loginState() {
   const sess = session.fromPartition(PARTITION);
   const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
   const headers = { 'X-QPage-Device': settingsLib.get().deviceId };
   try {
     const res = await sess.fetch(base + '/api/me', { headers });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return { loggedIn: false };
-    let name = '';
-    // ชื่อร้านมาจากอีกเส้นทางหนึ่ง (/api/me ให้แค่ข้อมูลผู้ใช้)
-    if (data.user && data.user.role === 'shop') {
-      try {
-        const r2 = await sess.fetch(base + '/api/shop/me', { headers });
-        const d2 = await r2.json().catch(() => ({}));
-        if (r2.ok && d2.ok && d2.shop) name = d2.shop.name || '';
-      } catch (e) { /* ยังไม่มีร้าน ก็ไม่เป็นไร */ }
+    if (!res.ok || !data.ok) return { loggedIn: false, entitled: false, reason: 'login' };
+    const user = data.user || {};
+    const out = { loggedIn: true, email: user.email || '', role: user.role || '', name: '', shopName: '', entitlementEnd: null, entitled: false, reason: '', message: '' };
+    try {
+      const r2 = await sess.fetch(base + '/api/shop/me', { headers });
+      const d2 = await r2.json().catch(() => ({}));
+      if (r2.ok && d2.ok) {
+        out.shopName = (d2.shop && d2.shop.name) || '';
+        out.name = out.shopName;
+        out.entitlementEnd = d2.entitlement_end || null;
+        out.entitled = !!(d2.entitled && d2.shop);
+        out.reason = !d2.shop ? 'no_shop' : (d2.entitled ? '' : (out.entitlementEnd ? 'expired' : 'no_package'));
+      } else {
+        out.message = d2.message || ('เซิร์ฟเวอร์ตอบกลับผิดพลาด (HTTP ' + r2.status + ')');
+        out.reason = r2.status === 403 ? (/หมดอายุ/.test(out.message) ? 'expired' : 'not_shop') : 'server';
+      }
+    } catch (err) {
+      out.message = err.message;
+      out.reason = 'server';
     }
-    return { loggedIn: true, email: data.user.email, role: data.user.role, name };
+    return out;
   } catch (err) {
-    return { loggedIn: false, error: err.message };
+    return { loggedIn: false, entitled: false, reason: 'server', message: err.message };
   }
 }
 
-/** ที่อยู่ที่จะเปิดตอนเริ่มโปรแกรม: ล็อกอินแล้วเข้าหน้าครัวเลย ยังไม่ล็อกอินก็เข้าหน้าล็อกอิน */
+/** ตรวจว่าล็อกอินอยู่หรือยัง (ใช้ session ของโปรแกรม) + ชื่อร้านไว้แสดงบนแถบเครื่องมือ */
+async function checkLogin() {
+  return loginState();
+}
+
+/** ที่อยู่ที่จะเปิดตอนเริ่มโปรแกรม: เข้าใช้ได้ก็เข้าหน้าครัว · ไม่ได้ก็เข้าหน้าจอเข้าสู่ระบบของโปรแกรม */
 async function startUrl() {
   const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
-  const me = await checkLogin();
-  return base + (me.loggedIn ? APP_HOME : LOGIN_URL);
+  const me = await loginState();
+  return base + (me.loggedIn && me.entitled ? APP_HOME : LOGIN_URL);
 }
 
 let settingsWindow = null;
@@ -156,6 +175,8 @@ const NATIVE_PAGES = {
   '/shop/setup.html': { file: 'app/setup.html' },
   '/shop/notify.html': { file: 'app/notify.html' },
   '/shop/settings.html': { file: 'app/sys.html' },
+  // หน้าเข้าสู่ระบบของโปรแกรมเอง (ไม่มีปุ่มสมัครสมาชิก — ใช้เฉพาะบัญชีที่มีร้านและแพ็กเกจ)
+  '/login.html': { file: 'app/login.html' },
 };
 
 const SHELL_WIDTH = 226;          // ความกว้างแถบเมนูด้านซ้าย (px)
@@ -300,15 +321,22 @@ function setShellVisible(on) {
   startupLog('แถบเมนูด้านซ้าย: ' + (shellVisible ? 'แสดง' : 'ซ่อน') + ' (ยังไม่/เข้าสู่ระบบแล้ว)');
 }
 
+/** หน้าจอของโปรแกรมที่ตรงกับ path นี้ไหม (ตัด query ทิ้ง เช่น '/login.html?next=…') */
+function nativePageOf(p) {
+  if (!p) return null;
+  const key = String(p).split('?')[0];
+  return NATIVE_PAGES[key] || null;
+}
+
 /** เปิดหน้าของโปรแกรม (path = '/shop/kitchen.html' …) · ส่ง null = ใช้หน้าเริ่มต้นตามสถานะล็อกอิน */
 function loadAppPage(p) {
   if (!contentView) return;
   const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
-  const native = p ? NATIVE_PAGES[p] : null;
+  const native = nativePageOf(p);
   if (native) {
     // หน้าจอที่โปรแกรมวาดเอง (ไฟล์ในเครื่อง) — รับข้อมูลผ่าน IPC จาก main
     contentView.webContents.loadFile(path.join(__dirname, native.file), native.query ? { query: native.query } : undefined);
-    startKitchenLive();
+    if (String(p).indexOf('/login.html') === 0) stopKitchenLive(); else startKitchenLive();
     // ส่งสถานะสายอัปเดตสดให้หน้าจอใหม่ (ไม่งั้นป้ายค้างที่ "กำลังเชื่อมต่อ…")
     contentView.webContents.once('did-finish-load', pushLiveState);
     return;
@@ -318,11 +346,12 @@ function loadAppPage(p) {
   startUrl()
     .then((url) => {
       if (!contentView) return;
-      // หน้าเริ่มต้น (ครัว) เป็นหน้าจอของโปรแกรมเองแล้ว
-      if (url === base + APP_HOME && NATIVE_PAGES[APP_HOME]) { loadAppPage(APP_HOME); return; }
+      // หน้าเริ่มต้น (ครัว หรือหน้าเข้าสู่ระบบ) เป็นหน้าจอของโปรแกรมเองทั้งคู่
+      const path0 = url.slice(base.length) || '/';
+      if (nativePageOf(path0)) { loadAppPage(path0); return; }
       contentView.webContents.loadURL(url);
     })
-    .catch(() => { if (contentView) contentView.webContents.loadURL(base + LOGIN_URL); });
+    .catch(() => { if (contentView) loadAppPage(LOGIN_URL); });
 }
 
 /** เปิด/ปิดสายอัปเดตสด (SSE) ให้หน้าจอครัวของโปรแกรม */
@@ -397,12 +426,13 @@ async function pushStatus() {
     }
   } catch (err) { /* ออฟไลน์/ยังไม่ล็อกอิน = 0 */ }
   const me = await checkLogin();
-  setShellVisible(!!me.loggedIn);   // ซ่อนแถบเมนูจนกว่าจะเข้าสู่ระบบ
+  // แถบเมนูแสดงเมื่อ "เข้าใช้โปรแกรมได้จริง" = ล็อกอินแล้ว + มีร้าน + แพ็กเกจยังไม่หมดอายุ
+  setShellVisible(!!me.loggedIn && !!me.entitled);
   const printerNames = await listPrinterDisplayNames();
   const configured = (s.printers && s.printers.ticket && s.printers.ticket.device) || '';
   shellView.webContents.send('shell-status', {
     path,
-    loggedIn: !!me.loggedIn,
+    loggedIn: !!me.loggedIn && !!me.entitled,
     email: me.email || '',
     shopName: me.name || '',
     silent: s.silent !== false,
@@ -676,8 +706,56 @@ ipcMain.on('shell:collapse-toggle', () => {
   if (shellView && !shellView.webContents.isDestroyed()) shellView.webContents.send('shell-collapsed', collapsed);
   pushStatus();
 });
-ipcMain.on('shell:logout', async () => {
-  startupLog('กดออกจากระบบ');
+// ---------------------------------------------------------------------------
+// IPC — หน้าจอ "เข้าสู่ระบบ" ของโปรแกรม (บัญชีต้องมีร้าน + แพ็กเกจที่ยังไม่หมดอายุ)
+// ---------------------------------------------------------------------------
+/** สถานะสำหรับหน้าจอเข้าสู่ระบบ (blocked = ล็อกอินได้แต่ยังใช้โปรแกรมไม่ได้) */
+ipcMain.handle('login:state', async () => {
+  const st = await loginState();
+  return Object.assign({}, st, { blocked: !!(st.loggedIn && !st.entitled) });
+});
+ipcMain.handle('login:do', async (event, payload) => {
+  const sess = session.fromPartition(PARTITION);
+  const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+  const email = String((payload && payload.email) || '').trim();
+  const password = String((payload && payload.password) || '');
+  try {
+    const res = await sess.fetch(base + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-QPage-Device': settingsLib.get().deviceId },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      startupLog('เข้าสู่ระบบไม่สำเร็จ: ' + (data.message || ('HTTP ' + res.status)));
+      return { ok: false, message: data.message || 'เข้าสู่ระบบไม่สำเร็จ' };
+    }
+    await flushCookies();                       // ให้เซสชันอยู่ต่อหลังปิดโปรแกรม
+    startupLog('เข้าสู่ระบบแล้ว: ' + email);
+    const st = await loginState();
+    return Object.assign({ ok: true, message: data.message || 'เข้าสู่ระบบสำเร็จ' }, st, { blocked: !st.entitled });
+  } catch (err) {
+    startupLog('เข้าสู่ระบบไม่สำเร็จ: ' + err.message);
+    return { ok: false, message: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: ' + err.message };
+  }
+});
+/** ตรวจสิทธิ์ซ้ำแล้วเข้าโปรแกรม (ใช้กับปุ่ม "ตรวจสอบสิทธิ์อีกครั้ง") */
+ipcMain.handle('login:enter', async () => {
+  const st = await loginState();
+  if (!st.loggedIn || !st.entitled) return Object.assign({ ok: false }, st, { blocked: st.loggedIn ? true : false });
+  loadAppPage(null);
+  setTimeout(() => pushStatus(), 600);
+  return Object.assign({ ok: true }, st, { blocked: false });
+});
+/** เปิดหน้าซื้อ/ต่ออายุแพ็กเกจในเบราว์เซอร์ของเครื่อง (ไม่ใช่ในหน้าต่างโปรแกรม) */
+ipcMain.handle('login:open-purchase', async () => {
+  const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
+  const url = base + '/shop/purchase.html';
+  try { await shell.openExternal(url); startupLog('เปิดหน้าซื้อแพ็กเกจ: ' + url); return { ok: true, url }; }
+  catch (err) { return { ok: false, message: err.message }; }
+});
+/** ออกจากระบบให้จบทั้งฝั่งเซิร์ฟเวอร์และในเครื่อง แล้วกลับไปหน้าจอเข้าสู่ระบบ */
+async function doLogout() {
   const sess = session.fromPartition(PARTITION);
   const base = String(settingsLib.get().serverUrl || '').replace(/\/+$/, '');
   try {
@@ -691,6 +769,11 @@ ipcMain.on('shell:logout', async () => {
   loadAppPage(LOGIN_URL);
   setTimeout(() => pushStatus(), 800);
   setTimeout(() => pushStatus(), 2500);
+}
+ipcMain.handle('login:logout', async () => { await doLogout(); return { ok: true }; });
+ipcMain.on('shell:logout', async () => {
+  startupLog('กดออกจากระบบ');
+  await doLogout();
 });
 ipcMain.handle('shell:toggle-theme', async () => {
   if (!contentView) return { theme: 'light' };
