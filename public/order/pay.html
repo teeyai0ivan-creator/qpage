@@ -40,7 +40,10 @@
       <h2 style="margin:0 0 8px;font-size:16px;">แนบสลิปการโอน</h2>
       <p class="sub" style="font-size:13px;margin:0 0 10px;">ถ่าย/แคปสลิปให้เห็น QR และยอดเงินชัดเจน ระบบจะตรวจกับธนาคารให้ทันที</p>
       <input type="file" id="slipFile" accept="image/png,image/jpeg,image/webp" style="font-size:13px;">
-      <img id="slipPreview" alt="" style="display:none;max-width:100%;border-radius:12px;border:1px solid var(--border);margin-top:10px;">
+      <div id="slipPreviewBox" style="display:none;margin-top:10px;text-align:center;">
+        <img id="slipPreview" alt="" style="max-width:100%;max-height:150px;width:auto;object-fit:contain;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);">
+        <div class="sub" style="font-size:12px;margin-top:4px;">ภาพสลิปที่เลือก (ย่อไว้ดูตัวอย่าง)</div>
+      </div>
       <div class="error-msg" id="slipErr" style="display:none;margin-top:10px;"></div>
       <button class="mini-btn primary" id="slipSend" type="button" style="width:100%;padding:13px;font-size:15px;margin-top:12px;display:none;">ยืนยันแนบสลิป</button>
     </div>
@@ -49,11 +52,12 @@
       <div style="font-size:44px;">✅</div>
       <h2 style="margin:6px 0;font-size:18px;" id="doneTitle">ชำระเงินสำเร็จ</h2>
       <p class="sub" id="doneMsg" style="font-size:13.5px;">กำลังส่งออเดอร์เข้าครัว</p>
-      <div id="rcptWrap" style="display:none;margin-top:12px;text-align:left;">
-        <img id="rcptImg" alt="ใบเสร็จ" style="width:100%;max-width:420px;display:block;margin:0 auto;border:1px solid var(--border);border-radius:12px;background:#fff;">
+      <div id="rcptWrap" style="display:none;margin-top:12px;">
+        <img id="rcptImg" alt="ใบเสร็จ" style="width:100%;max-width:420px;height:auto;display:block;margin:0 auto;border:1px solid var(--border);border-radius:12px;background:#fff;">
         <div class="sub" style="font-size:12px;text-align:center;margin-top:6px;">ใบเสร็จนี้ดูในหน้าจอได้ (พิมพ์ไม่ได้) — กดปุ่มด้านล่างเพื่อบันทึกเป็นภาพ</div>
-        <a class="mini-btn primary" id="rcptSave" download="receipt.png" style="display:block;text-align:center;padding:12px;margin-top:8px;text-decoration:none;">⬇ บันทึกภาพใบเสร็จ</a>
+        <a class="mini-btn primary" id="rcptSave" download="receipt.png" style="display:block;box-sizing:border-box;width:100%;text-align:center;padding:13px;margin-top:10px;text-decoration:none;font-size:14px;">⬇ บันทึกภาพใบเสร็จ</a>
       </div>
+      <button class="mini-btn" id="backShopBtn" type="button" style="display:block;box-sizing:border-box;width:100%;text-align:center;padding:13px;margin-top:8px;font-size:14px;">🛒 กลับไปหน้าสั่งอาหาร</button>
     </div>
 
     <div id="cancelCard" class="pay-card" style="display:none;text-align:center;">
@@ -97,9 +101,14 @@
       if (P && !P.paid && !P.cancelled) uiAlert({ title: 'ยังชำระเงินไม่เสร็จ', message: 'หน้านี้ต้องแนบสลิปให้เสร็จก่อน ไม่งั้นออเดอร์จะถูกยกเลิกเมื่อหมดเวลา' });
     });
 
-    function paint() {
+    /** หัวเรื่อง (ชื่อร้าน + เลขบิล) — แสดงทุกสถานะรวมหน้าจ่ายสำเร็จ */
+    function paintHead() {
       $('shopName').textContent = P.shop.name || 'ร้านค้า';
       $('billLine').textContent = 'บิล #' + (P.bill_no || '-') + ' · ' + (P.order_type === 'delivery' ? 'จัดส่งที่บ้าน' : 'รับที่ร้าน') + (P.customer_name ? ' · ' + P.customer_name : '');
+    }
+
+    function paint() {
+      paintHead();
       $('amount').textContent = money(P.total);
       const r = P.receiver || {};
       if (P.qr_url) { $('qrImg').src = P.qr_url; $('qrImg').style.display = ''; }
@@ -162,17 +171,17 @@
       showReceipt();
     }
 
-    // เลือกไฟล์สลิป → พรีวิว
+    // เลือกไฟล์สลิป → พรีวิว (ย่อภาพให้เล็ก ไม่แสดงเต็มจอ)
     $('slipFile').addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];
-      if (!file) { slipData = null; $('slipPreview').style.display = 'none'; $('slipSend').style.display = 'none'; return; }
+      if (!file) { slipData = null; $('slipPreviewBox').style.display = 'none'; $('slipSend').style.display = 'none'; return; }
       if (file.size > 2 * 1024 * 1024) { $('slipErr').textContent = 'ไฟล์ใหญ่เกิน 2MB กรุณาย่อรูปก่อนแนบ'; $('slipErr').style.display = 'block'; e.target.value = ''; return; }
       const reader = new FileReader();
       reader.onload = () => {
         slipData = String(reader.result);
         $('slipErr').style.display = 'none';
         $('slipPreview').src = slipData;
-        $('slipPreview').style.display = '';
+        $('slipPreviewBox').style.display = '';
         $('slipSend').style.display = '';
       };
       reader.readAsDataURL(file);
@@ -204,10 +213,17 @@
       location.href = back || '/';
     });
 
+    // กลับไปหน้าสั่งอาหารของลูกค้า (จำหน้านั้นไว้ตอนกดสั่ง) — ไม่มีก็กลับหน้าแรก
+    $('backShopBtn').addEventListener('click', () => {
+      let back = '';
+      try { back = sessionStorage.getItem('qpage_back_url') || ''; } catch (e) { /* ข้าม */ }
+      location.href = back || '/';
+    });
+
     (async () => {
       try {
         P = await api('/api/public/pay/' + encodeURIComponent(REF));
-        if (P.paid) { donePaint('บิลนี้ชำระเงินแล้ว — ร้านกำลังทำอาหาร'); return; }
+        if (P.paid) { paintHead(); donePaint('บิลนี้ชำระเงินแล้ว — ร้านกำลังทำอาหาร'); return; }
         if (P.cancelled) { done = true; $('head').style.display = ''; $('cancelCard').style.display = ''; return; }
         paint();
         $('countBox').style.display = '';

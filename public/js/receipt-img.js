@@ -45,8 +45,9 @@
       : (r.payment_method === 'transfer' ? 'รอชำระเงิน (โอน)' : 'เก็บเงินปลายทาง')));
     if (r.trans_ref) infoLines.push('รายการโอน: ' + r.trans_ref);
 
-    const footerH = 58;
-    const H = headH + infoLines.length * lineH + 26 + items.length * perItemH + 78 + footerH;
+    const footerH = 96;   // เผื่อขอบล่างให้บรรทัดท้ายไม่ถูกตัด
+    const rows = Math.max(items.length, 1);   // 0 รายการก็ยังวาดบรรทัด "ไม่มีรายการ" 1 บรรทัด
+    const H = headH + infoLines.length * lineH + 26 + rows * perItemH + 78 + footerH;
 
     const c = document.createElement('canvas');
     c.width = W;

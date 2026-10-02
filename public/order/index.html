@@ -636,7 +636,7 @@
         + (r.order_type === 'delivery' ? ' กรุณาเตรียมเงินสดตอนรับอาหาร' : ' กรุณารับอาหารที่ร้าน') + '</p>'
         + '<div class="sub" style="font-size:12px;">ใบเสร็จนี้ดูในหน้าจอได้ (พิมพ์ไม่ได้) — กดปุ่มด้านล่างเพื่อบันทึกเป็นภาพ</div>'
         + (url ? '<img src="' + url + '" alt="ใบเสร็จ" style="width:100%;border:1px solid var(--border);border-radius:12px;background:#fff;margin-top:8px;">' : '')
-        + (url ? '<a class="mini-btn primary" download="receipt-' + esc(String(data.bill_no || '')) + '.png" href="' + url + '" style="display:block;text-align:center;padding:12px;margin-top:10px;text-decoration:none;">⬇ บันทึกภาพใบเสร็จ</a>' : '')
+        + (url ? '<a class="mini-btn primary" download="receipt-' + esc(String(data.bill_no || '')) + '.png" href="' + url + '" style="display:block;box-sizing:border-box;width:100%;text-align:center;padding:13px;margin-top:10px;text-decoration:none;font-size:14px;">⬇ บันทึกภาพใบเสร็จ</a>' : '')
         + '<div class="modal-foot" style="margin-top:8px;"><button class="mini-btn" type="button" data-close-ok>ปิด</button></div>'
         + '</div>';
       document.body.appendChild(wrap);
