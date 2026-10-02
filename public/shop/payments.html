@@ -183,6 +183,9 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // เมนูด้านซ้าย (เปิด/ปิดบนมือถือ) — ใช้ตัวช่วยร่วมจาก shop-ui.js
+    window.qpageWireShopMenu();
+
     let toastTimer = null;
     function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
     async function api(path, opts) {

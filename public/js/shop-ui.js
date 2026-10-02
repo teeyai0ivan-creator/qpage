@@ -207,3 +207,58 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
   else inject();
 })();
+
+/* ---------------------------------------------------------------------------
+   เปิด/ปิดเมนูด้านซ้ายของร้าน (มือถือ/จอแคบ) — ใช้ร่วมกันได้ทุกหน้า
+   หน้าที่มีสคริปต์ของตัวเองอยู่แล้วไม่ต้องเรียก · หน้าที่สร้างใหม่ให้เรียก
+   window.qpageWireShopMenu() เพื่อให้ปุ่ม ☰ และฉากมืดทำงาน
+   --------------------------------------------------------------------------- */
+window.qpageWireShopMenu = function () {
+  const KEY = 'qpage_shop_menu';
+  const btn = document.getElementById('menuToggle');
+  if (!btn || btn.dataset.menuWired) return;
+  btn.dataset.menuWired = '1';
+  const apply = (open) => {
+    document.body.classList.toggle('side-menu-closed', !open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  const save = (open) => { try { localStorage.setItem(KEY, open ? 'open' : 'closed'); } catch (e) { /* ข้าม */ } };
+  let saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) { /* ข้าม */ }
+  apply(saved ? saved === 'open' : window.innerWidth > 900);
+  btn.addEventListener('click', () => { const open = document.body.classList.contains('side-menu-closed'); apply(open); save(open); });
+
+  // ฉากมืดหลังเมนู — ใช้ของที่มีอยู่ ไม่งั้นสร้างให้
+  let back = document.querySelector('.side-menu-backdrop');
+  if (!back) { back = document.createElement('div'); back.className = 'side-menu-backdrop'; document.body.appendChild(back); }
+  back.addEventListener('click', () => { apply(false); save(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { apply(false); save(false); } });
+
+  // ความสูงจริงของแถบหัว → จุดเริ่มของแผงเมนู
+  const syncNavHeight = () => {
+    const nav = document.querySelector('.site-nav');
+    if (nav) document.documentElement.style.setProperty('--nav-h', Math.round(nav.getBoundingClientRect().height) + 'px');
+  };
+  syncNavHeight();
+  window.addEventListener('resize', syncNavHeight);
+
+  // ไฮไลต์เมนูของหน้าที่เปิดอยู่
+  const here = location.pathname.replace(/\/+$/, '');
+  document.querySelectorAll('.shop-side .menu-item[data-path]').forEach((a) => {
+    if (a.dataset.path === here) a.classList.add('active');
+  });
+  // ปุ่มออกจากร้านค้า
+  const out = document.getElementById('logoutBtn');
+  if (out) out.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try { await fetch('/api/logout', { method: 'POST' }); } catch (err) { /* ข้าม */ }
+    location.href = '/login.html';
+  });
+  // ลิงก์ "ดูร้าน"
+  const view = document.getElementById('viewShopLink');
+  if (view) {
+    fetch('/api/shop/me').then((r) => r.json()).then((d) => {
+      if (d && d.shop && d.shop.public_code) view.href = '/s/' + d.shop.public_code;
+    }).catch(() => { /* ข้าม */ });
+  }
+};
