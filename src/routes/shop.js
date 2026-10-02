@@ -424,6 +424,7 @@ router.post('/api/shop/option-groups', requireShop, async (req, res) => {
     shopId: shop.id, name,
     required: req.body?.required ? 1 : 0,
     multi: req.body?.multi ? 1 : 0,
+    deliveryEnabled: req.body?.deliveryEnabled === undefined ? 1 : (req.body.deliveryEnabled ? 1 : 0),
     sortOrder: Number(req.body?.sortOrder) || 0,
   });
   res.json({ ok: true, message: 'เพิ่มกลุ่มตัวเลือกแล้ว', id });
@@ -442,6 +443,7 @@ router.put('/api/shop/option-groups/:id', requireShop, async (req, res) => {
   }
   if (req.body?.required !== undefined) fields.required = req.body.required ? 1 : 0;
   if (req.body?.multi !== undefined) fields.multi = req.body.multi ? 1 : 0;
+  if (req.body?.deliveryEnabled !== undefined) fields.deliveryEnabled = req.body.deliveryEnabled ? 1 : 0;
   if (req.body?.sortOrder !== undefined) fields.sortOrder = Number(req.body.sortOrder) || 0;
   await db.updateOptionGroup(id, shop.id, fields);
   res.json({ ok: true, message: 'บันทึกกลุ่มตัวเลือกแล้ว' });

@@ -402,6 +402,8 @@ async function initSchema() {
   // ตัวเลือกลบ QR ของโต๊ะทันทีเมื่อเช็คบิล (ปิดไว้เป็นค่าเริ่มต้น)
   // หมายเหตุ: ตัวเลือกนี้ "ปิดใช้งาน" QR ไม่ได้ลบทิ้ง — โต๊ะยังถูกเก็บไว้ในประวัติ (tables.retired_at)
   await ensureColumn('shops', 'delete_qr_on_checkout', 'delete_qr_on_checkout TINYINT(1) NOT NULL DEFAULT 0');
+  // กลุ่มตัวเลือก: ใช้กับออเดอร์เดลิเวอร์รี่หรือไม่ (ปิด = ลูกค้าที่สั่งเดลิเวอร์รี่จะไม่เห็นกลุ่มนี้ เช่น "วิธีการทาน")
+  await ensureColumn('option_groups', 'delivery_enabled', 'delivery_enabled TINYINT(1) NOT NULL DEFAULT 1');
   // พิมพ์ใบสั่งครัวอัตโนมัติเมื่อกด "เริ่มทำ" ในหน้าครัว/แคชเชียร์ (เปิดไว้เป็นค่าเริ่มต้น)
   await ensureColumn('shops', 'print_on_start', 'print_on_start TINYINT(1) NOT NULL DEFAULT 1');
   // เนื้อหา SEO ของร้าน (กรอกที่หน้าตั้งค่าข้อมูลร้าน) — ใช้เป็นชื่อ/คำอธิบายในการ์ดพรีวิวเวลาแชร์ลิงก์
@@ -1182,10 +1184,10 @@ async function findOptionGroupById(id, shopId) {
   return rows[0] || null;
 }
 
-async function createOptionGroup({ shopId, name, required = 0, multi = 0, sortOrder = 0 }) {
+async function createOptionGroup({ shopId, name, required = 0, multi = 0, sortOrder = 0, deliveryEnabled = 1 }) {
   const [result] = await pool.execute(
-    'INSERT INTO option_groups (shop_id, name, required, multi, sort_order) VALUES (?, ?, ?, ?, ?)',
-    [shopId, name, required ? 1 : 0, multi ? 1 : 0, sortOrder]
+    'INSERT INTO option_groups (shop_id, name, required, multi, sort_order, delivery_enabled) VALUES (?, ?, ?, ?, ?, ?)',
+    [shopId, name, required ? 1 : 0, multi ? 1 : 0, sortOrder, deliveryEnabled ? 1 : 0]
   );
   return Number(result.insertId);
 }
@@ -1196,6 +1198,7 @@ async function updateOptionGroup(id, shopId, fields) {
   if (fields.name !== undefined) { sets.push('name = ?'); params.push(fields.name); }
   if (fields.required !== undefined) { sets.push('required = ?'); params.push(fields.required ? 1 : 0); }
   if (fields.multi !== undefined) { sets.push('multi = ?'); params.push(fields.multi ? 1 : 0); }
+  if (fields.deliveryEnabled !== undefined) { sets.push('delivery_enabled = ?'); params.push(fields.deliveryEnabled ? 1 : 0); }
   if (fields.sortOrder !== undefined) { sets.push('sort_order = ?'); params.push(fields.sortOrder); }
   if (sets.length) await pool.execute(`UPDATE option_groups SET ${sets.join(', ')} WHERE id = ? AND shop_id = ?`, [...params, id, shopId]);
 }

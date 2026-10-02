@@ -17,9 +17,11 @@ function fail(message, status = 400) {
 /**
  * @param {number} shopId
  * @param {Array<{menuId:number, quantity?:number, optionItemIds?:number[]}>} rawItems
+ * @param {{forDelivery?:boolean}} [opts] forDelivery = ออเดอร์เดลิเวอร์รี่/รับที่ร้าน → ข้ามกลุ่มตัวเลือกที่ตั้ง "ปิดสำหรับเดลิเวอร์รี่"
  * @returns {Promise<Array>} รายการที่พร้อมบันทึกลง order_items
  */
-async function buildOrderItems(shopId, rawItems) {
+async function buildOrderItems(shopId, rawItems, opts) {
+  const forDelivery = !!(opts && opts.forDelivery);
   if (!Array.isArray(rawItems) || !rawItems.length) throw fail('ไม่มีรายการที่สั่ง');
   if (rawItems.length > 50) throw fail('รายการเยอะเกินไปในครั้งเดียว');
 
@@ -32,6 +34,11 @@ async function buildOrderItems(shopId, rawItems) {
   optionGroups.forEach((g) => { groupById[g.id] = g; });
   const itemsByGroup = {};
   optionItems.forEach((i) => { (itemsByGroup[i.group_id] || (itemsByGroup[i.group_id] = [])).push(i); });
+  // กลุ่มที่ร้านปิดไว้สำหรับเดลิเวอร์รี่ → ไม่นับเป็นตัวเลือกของออเดอร์นี้เลย (ไม่บังคับเลือก ไม่คิดราคา)
+  const offForDelivery = (gid) => {
+    const g = groupById[gid];
+    return forDelivery && g && Number(g.delivery_enabled) === 0;
+  };
 
   const prepared = [];
   for (const raw of rawItems) {
@@ -39,7 +46,9 @@ async function buildOrderItems(shopId, rawItems) {
     if (!menu || Number(menu.available) !== 1) throw fail('มีเมนูที่ไม่พร้อมขายอยู่ในรายการ กรุณาโหลดหน้าใหม่');
 
     const qty = Math.max(1, Math.min(99, Number(raw?.quantity) || 1));
-    const linkedGroupIds = menuGroups.filter((g) => g.menu_id === menu.id).map((g) => g.group_id);
+    const linkedGroupIds = menuGroups
+      .filter((g) => g.menu_id === menu.id && !offForDelivery(g.group_id))
+      .map((g) => g.group_id);
     const selectedIds = (Array.isArray(raw?.optionItemIds) ? raw.optionItemIds : []).map(Number);
     const chosen = [];
     const chosenIds = [];

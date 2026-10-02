@@ -235,6 +235,11 @@ router.get('/api/public/delivery/:token', async (req, res) => {
     db.listOptionItems(shop.id),
     db.listMenuOptionGroups(shop.id),
   ]);
+  // กลุ่มตัวเลือกที่ร้านปิดไว้สำหรับเดลิเวอร์รี่ (เช่น "วิธีการทาน") → ไม่ส่งไปให้ลูกค้าเห็นเลย
+  const offIds = new Set(optionGroups.filter((g) => Number(g.delivery_enabled) === 0).map((g) => Number(g.id)));
+  const dlvGroups = optionGroups.filter((g) => !offIds.has(Number(g.id)));
+  const dlvItems = optionItems.filter((i) => !offIds.has(Number(i.group_id)));
+  const dlvMenuGroups = menuGroups.filter((mg) => !offIds.has(Number(mg.group_id)));
   res.json({
     ok: true,
     mode: 'delivery',
@@ -250,7 +255,8 @@ router.get('/api/public/delivery/:token', async (req, res) => {
       note: shop.pay_note || '',
       expire_minutes: Number(shop.pay_expire_minutes) || 10,
     },
-    categories, menus, optionGroups, optionItems, menuGroups,
+    categories, menus,
+    optionGroups: dlvGroups, optionItems: dlvItems, menuGroups: dlvMenuGroups,
   });
 });
 
@@ -281,7 +287,7 @@ router.post('/api/public/delivery/:token/order', async (req, res) => {
 
   let prepared;
   try {
-    prepared = await buildOrderItems(shop.id, req.body?.items);
+    prepared = await buildOrderItems(shop.id, req.body?.items, { forDelivery: true });   // ข้ามกลุ่มตัวเลือกที่ปิดสำหรับเดลิเวอร์รี่
   } catch (err) {
     return res.status(err.status || 400).json({ ok: false, message: err.message });
   }

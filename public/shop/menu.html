@@ -412,6 +412,11 @@
         return `<div class="opt-group">
           <div class="g-head">
             <span class="n">${esc(g.name)} <small style="color:var(--muted);font-weight:500;">(${g.required ? 'บังคับ' : 'ไม่บังคับ'}${g.multi ? ' · หลายอย่าง' : ' · เลือก 1'})</small></span>
+            <label class="switch" title="เปิด = ลูกค้าที่สั่งเดลิเวอร์รี่/รับที่ร้านเห็นกลุ่มนี้ · ปิด = ไม่แสดงกลุ่มนี้กับออเดอร์เดลิเวอร์รี่">
+              <input type="checkbox" data-dlven="${g.id}" ${Number(g.delivery_enabled) === 0 ? '' : 'checked'}>
+              <span class="track"></span>
+            </label>
+            <span style="font-size:12px;color:var(--muted);white-space:nowrap;">ใช้กับเดลิเวอร์รี่</span>
             <button class="mini-btn danger" data-delgrp="${g.id}" type="button">ลบกลุ่ม</button>
           </div>
           <div class="chips">
@@ -430,6 +435,19 @@
         </div>`;
       }).join('');
 
+      // สวิตช์ "ใช้กับเดลิเวอร์รี่" — ปิดแล้วลูกค้าที่สั่งเดลิเวอร์รี่จะไม่เห็นกลุ่มนี้
+      box.querySelectorAll('[data-dlven]').forEach((el) => el.addEventListener('change', async () => {
+        const on = el.checked;
+        el.disabled = true;
+        try {
+          const r = await api('/api/shop/option-groups/' + el.dataset.dlven, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deliveryEnabled: on }) });
+          toast(r.message || 'บันทึกแล้ว');
+          await refresh();
+        } catch (e) {
+          el.checked = !on;
+          uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message });
+        } finally { el.disabled = false; }
+      }));
       box.querySelectorAll('[data-delgrp]').forEach((b) => b.addEventListener('click', async () => {
         const okDel = await uiConfirm({ title: 'ลบกลุ่มตัวเลือกนี้?', message: 'ตัวเลือกทั้งหมดในกลุ่มนี้จะถูกลบไปด้วย', okText: 'ลบ', danger: true });
         if (!okDel) return;

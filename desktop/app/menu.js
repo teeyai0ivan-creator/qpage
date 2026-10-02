@@ -192,6 +192,11 @@ function renderGroups() {
         ${Number(g.multi) === 1 ? '<span class="badge cook">เลือกได้หลายอย่าง</span>' : '<span class="badge cook">เลือก 1 อย่าง</span>'}
         <span class="hint" style="margin:0;">ใช้กับ ${usedBy} เมนู</span>
         <span class="spacer" style="flex:1;"></span>
+        <label class="sw" title="เปิด = ลูกค้าที่สั่งเดลิเวอร์รี่/รับที่ร้านเห็นกลุ่มนี้ · ปิด = ไม่แสดงกลุ่มนี้กับออเดอร์เดลิเวอร์รี่">
+          <input type="checkbox" data-dlven="${g.id}" ${Number(g.delivery_enabled) === 0 ? '' : 'checked'}>
+          <span class="track"></span>
+        </label>
+        <span class="hint" style="margin:0;white-space:nowrap;">ใช้กับเดลิเวอร์รี่</span>
         <button class="btn btn-sm" data-rengrp="${g.id}" data-name="${K.esc(g.name)}" data-req="${Number(g.required) === 1 ? 1 : 0}" data-multi="${Number(g.multi) === 1 ? 1 : 0}" type="button">แก้ไขกลุ่ม</button>
         <button class="btn btn-sm btn-danger" data-delgrp="${g.id}" data-name="${K.esc(g.name)}" type="button">ลบกลุ่ม</button>
       </div>
@@ -264,6 +269,19 @@ function renderGroups() {
     } catch (err) { sw.checked = !sw.checked; K.toast('บันทึกไม่สำเร็จ: ' + err.message); sw.disabled = false; }
   }));
   // แก้ไขกลุ่ม (ชื่อ/บังคับ/หลายอย่าง)
+  box.querySelectorAll('[data-dlven]').forEach((el) => el.addEventListener('change', async () => {
+    const on = el.checked;
+    el.disabled = true;
+    try {
+      const r = await API.updateOptionGroup(Number(el.dataset.dlven), { deliveryEnabled: on });
+      K.toast(r.message || 'บันทึกแล้ว');
+      await load();
+    } catch (err) {
+      el.checked = !on;
+      K.toast('บันทึกไม่สำเร็จ: ' + err.message);
+      el.disabled = false;
+    }
+  }));
   box.querySelectorAll('[data-rengrp]').forEach((b) => b.addEventListener('click', async () => {
     const r = await K.askForm('แก้ไขกลุ่มตัวเลือก', [
       { key: 'name', label: 'ชื่อกลุ่ม', value: b.dataset.name, required: true },
