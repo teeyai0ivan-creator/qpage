@@ -166,6 +166,7 @@ const NATIVE_PAGES = {
   '/shop/kitchen.html': { file: 'app/kitchen.html', query: { station: 'kitchen' } },
   '/shop/cashier.html': { file: 'app/kitchen.html', query: { station: 'cashier' } },
   '/shop/orders.html': { file: 'app/orders.html' },
+  '/shop/delivery.html': { file: 'app/delivery.html' },
   '/shop/history.html': { file: 'app/history.html' },
   // ประวัติสั่งครัว = แท็บที่ 3 ของหน้าจอประวัติ (แบบเดียวกับหน้าเว็บที่มีปุ่มเชื่อมกัน)
   '/shop/kitchen-history.html': { file: 'app/history.html', query: { tab: 'prints' } },
@@ -514,6 +515,7 @@ function buildMenu() {
         { label: 'สั่งอาหาร', click: go('/shop/orders.html') },
         { label: 'ครัว', click: go('/shop/kitchen.html') },
         { label: 'แคชเชียร์', click: go('/shop/cashier.html') },
+        { label: 'รับที่บ้าน', click: go('/shop/delivery.html') },
         { label: 'ประวัติ', click: go('/shop/history.html') },
         { label: 'ประวัติสั่งครัว', click: go('/shop/kitchen-history.html') },
         { type: 'separator' },

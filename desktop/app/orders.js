@@ -381,18 +381,14 @@ const askConfirm = (title, message, okText) => ask(title, message, okText, true)
 const showInfo = (title, message) => ask(title, message, 'ปิด', false);
 
 // ---------------------------------------------------------------------------
-// เดลิเวอร์รี่ / รับที่ร้าน (QR เดียวต่อร้าน + บิลที่ยังเปิดอยู่)
+// QR เดลิเวอร์รี่ / รับที่ร้าน (คิวบิลอยู่ที่หน้าจอ "รับที่บ้าน" แล้ว)
 // ---------------------------------------------------------------------------
-let remoteList = [];
 let dlvInfo = null;      // { dataUrl, url, token, hours, transferReady }
 
 async function loadDelivery() {
   try {
-    const [qr, remote] = await Promise.all([API.deliveryQr(), API.remoteOrders()]);
-    dlvInfo = qr;
-    remoteList = remote.orders || [];
+    dlvInfo = await API.deliveryQr();
     renderDelivery();
-    renderRemoteBills();
   } catch (err) {
     $('dlvState').textContent = 'โหลดไม่สำเร็จ';
     $('dlvSub').textContent = err.message;
@@ -413,62 +409,6 @@ function renderDelivery() {
   $('dlvPay').textContent = dlvInfo.transferReady
     ? 'รับชำระเงินโอนแล้ว (ตรวจสลิปอัตโนมัติ) — ลูกค้าแนบสลิปแล้วออเดอร์เข้าครัวทันที'
     : 'ยังไม่เปิดรับโอนเงิน — ลูกค้าชำระเงินสดเท่านั้น (ตั้งค่าได้ที่หน้าจอ "การชำระเงิน")';
-}
-
-function renderRemoteBills() {
-  const box = $('remoteBills');
-  if (!remoteList.length) {
-    box.innerHTML = '<div class="empty-state" style="padding:18px;">ยังไม่มีบิลเดลิเวอร์รี่/รับที่ร้านที่เปิดอยู่</div>';
-    return;
-  }
-  box.innerHTML = remoteList.map((o) => {
-    const isDelivery = o.order_type === 'delivery';
-    const paid = o.payment_status === 'paid';
-    const plates = (o.items || []).filter((i) => i.status !== 'cancelled').reduce((s, i) => s + (Number(i.quantity) || 0), 0);
-    return `<div class="remote-item">
-      <div style="flex:1;min-width:200px;">
-        <div class="t">${isDelivery ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน'} · บิล ${billNo(o.bill_no)}</div>
-        <div class="s">${esc(o.customer_name || '')} · ${esc(o.customer_phone || '')} · ${plates} จาน · ${money(o.total)}</div>
-        ${o.customer_address ? `<div class="s" style="margin-top:2px;">📍 ${esc(o.customer_address)}</div>` : ''}
-      </div>
-      <span class="badge ${paid ? 'ok' : 'wait'}">${paid ? 'โอนแล้ว' : (o.payment_method === 'cash' ? 'เก็บเงินปลายทาง' : 'รอชำระเงิน')}</span>
-      <div class="acts" style="display:flex;gap:7px;flex-wrap:wrap;">
-        <button class="btn btn-sm" data-remote-view="${o.id}" type="button">ดูรายการ</button>
-        <button class="btn btn-sm" data-remote-close="${o.id}" data-code="${esc(o.customer_name || '')}" type="button">ปิดบิล</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  box.querySelectorAll('[data-remote-view]').forEach((b) => b.addEventListener('click', () => {
-    const o = remoteList.find((x) => Number(x.id) === Number(b.dataset.remoteView));
-    if (!o) return;
-    const lines = (o.items || []).map((i) => `${Number(i.quantity) || 0}× ${i.menu_name} — ${money(i.line_total)}`).join('\n');
-    const payText = o.payment_status === 'paid' ? '(ชำระเงินโอนแล้ว)' : (o.payment_method === 'cash' ? '(เก็บเงินปลายทาง)' : '(ยังไม่ชำระเงิน)');
-    showInfo(
-      (o.order_type === 'delivery' ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน') + ' · บิล ' + billNo(o.bill_no),
-      [o.customer_name || '', o.customer_phone || ''].filter(Boolean).join(' · ')
-        + (o.customer_address ? '\n📍 ' + o.customer_address : '')
-        + (o.customer_note ? '\n📝 ' + o.customer_note : '')
-        + '\n\n' + lines
-        + '\n\nรวม ' + money(o.total) + ' ' + payText
-    );
-  }));
-  box.querySelectorAll('[data-remote-close]').forEach((b) => b.addEventListener('click', () => closeRemote(Number(b.dataset.remoteClose), b)));
-}
-
-async function closeRemote(orderId, btn) {
-  const okClose = await askConfirm('ปิดบิล', 'ปิดบิลนี้และพิมพ์ใบเสร็จ? (ปิดได้เมื่อครัวเคลียร์รายการครบแล้ว)', 'ปิดบิล + พิมพ์ใบเสร็จ');
-  if (!okClose) return;
-  if (btn) btn.disabled = true;
-  try {
-    const r = await API.closeRemote(orderId);
-    toast('ปิดบิลแล้ว');
-    if (r.closed) API.printReceipt({ orderId: r.closed.order_id, url_path: '/shop/receipt.html?order=' + r.closed.order_id });
-    await loadAll();
-  } catch (err) {
-    toast('ปิดบิลไม่สำเร็จ: ' + err.message);
-    if (btn) btn.disabled = false;
-  }
 }
 
 

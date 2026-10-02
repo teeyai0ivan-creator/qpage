@@ -1961,6 +1961,7 @@ async function addOrderItems(orderId, items) {
  *  ยกเว้นรายการที่ "เสร็จแล้ว" จะจมไปล่างสุดเสมอ และรายการใหม่ต่อท้ายคิว (เหนือกลุ่มที่เสร็จแล้ว) */
 async function listKitchenItems(shopId, station = 'kitchen') {
   const st = station === 'cashier' ? 'cashier' : 'kitchen';
+  // เดลิเวอร์รี่/รับที่ร้าน = งานของ "ครัว" เสมอ (ไม่โผล่ที่แคชเชียร์) · บิลโต๊ะใช้เส้นทางตามหมวดหมู่อาหาร
   const [rows] = await pool.execute(
     `SELECT oi.id, oi.order_id, oi.menu_id, oi.menu_name, oi.quantity, oi.options_json, oi.status,
             oi.created_at, oi.started_at, oi.done_at, o.bill_no,
@@ -1973,9 +1974,11 @@ async function listKitchenItems(shopId, station = 'kitchen') {
        LEFT JOIN menus m ON m.id = oi.menu_id
        LEFT JOIN categories c ON c.id = m.category_id
       WHERE o.shop_id = ? AND o.status = 'open' AND oi.status <> 'cancelled'
-        AND COALESCE(c.station, 'kitchen') = ?
+        AND (CASE WHEN COALESCE(o.order_type,'dine_in') = 'dine_in'
+                  THEN COALESCE(c.station, 'kitchen') = ?
+                  ELSE ? = 'kitchen' END)
       ORDER BY (oi.status = 'done') ASC, oi.id ASC`,
-    [shopId, st]
+    [shopId, st, st]
   );
   return rows;
 }
@@ -2320,16 +2323,49 @@ async function listOpenOrders(shopId) {
  */
 async function listOpenRemoteOrders(shopId) {
   const [rows] = await pool.execute(
-    `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no, o.order_type,
+    `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no, o.order_type, o.status,
             o.customer_name, o.customer_phone, o.customer_address, o.customer_note,
             o.customer_lat, o.customer_lng, o.payment_method, o.payment_status, o.paid_at, o.pay_ref, o.pay_expires_at,
             (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
        FROM orders o
-      WHERE o.shop_id = ? AND o.status = 'open' AND o.order_type <> 'dine_in'
+      WHERE o.shop_id = ? AND o.status IN ('open', 'awaiting_payment') AND o.order_type <> 'dine_in'
       ORDER BY o.id DESC`,
     [shopId]
   );
   return rows.map((r) => ({ ...r, item_count: Number(r.item_count) || 0 }));
+}
+
+/**
+ * ปิดบิลเดลิเวอร์รี่/รับที่ร้านอัตโนมัติ เมื่อครัวเคลียร์รายการครบและ "ชำระเงินโอนแล้ว"
+ * (บิลเงินสดไม่ปิดเอง — รอพนักงานกด "รับแล้ว" ตอนเก็บเงิน)
+ * คืนข้อมูลบิลเมื่อปิดสำเร็จ · คืน null เมื่อยังปิดไม่ได้
+ */
+async function maybeAutoClosePrepaidRemoteOrder(orderId) {
+  const [rows] = await pool.execute(
+    `SELECT id, shop_id, bill_no, order_type, payment_method, payment_status, status, customer_name, total
+       FROM orders WHERE id = ? LIMIT 1`,
+    [Number(orderId)]
+  );
+  const o = rows[0];
+  if (!o) return null;
+  if (!o.order_type || o.order_type === 'dine_in') return null;
+  if (o.status !== 'open' || o.payment_status !== 'paid') return null;
+  const [left] = await pool.execute(
+    "SELECT COUNT(*) AS n FROM order_items WHERE order_id = ? AND status IN ('pending', 'cooking')",
+    [o.id]
+  );
+  if (Number(left[0].n) > 0) return null;
+  await closeOrder(o.id);
+  return o;
+}
+
+/** บิลเงินสดของเดลิเวอร์รี่/รับที่ร้าน — บันทึกว่า "รับเงินแล้ว" (ใช้ตอนพนักงานกด "รับแล้ว") */
+async function markRemoteCashPaid(orderId) {
+  await pool.execute(
+    "UPDATE orders SET payment_status = 'paid', paid_at = COALESCE(paid_at, UTC_TIMESTAMP())"
+    + " WHERE id = ? AND payment_method = 'cash' AND payment_status <> 'paid'",
+    [Number(orderId)]
+  );
 }
 
 /**
@@ -2530,7 +2566,7 @@ module.exports = {
   listClosedOrders,
   // เดลิเวอร์รี่ / รับที่ร้าน + การชำระเงินของบิล
   findDeliveryShopByToken, setShopDeliveryToken, createRemoteOrder,
-  listOpenRemoteOrders,
+  listOpenRemoteOrders, maybeAutoClosePrepaidRemoteOrder, markRemoteCashPaid,
   listRemoteOrders, findOrderByPayRef, expireStaleOrderPayments,
   setOrderSlip, markOrderPaid, findOrderBySlipHash, findOrderBySlipFile,
   listItemsForOrders,

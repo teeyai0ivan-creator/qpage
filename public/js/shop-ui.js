@@ -185,21 +185,29 @@
 })();
 
 /* ---------------------------------------------------------------------------
-   เมนูด้านซ้ายของร้าน — เติมรายการ "การชำระเงิน" ให้ทุกหน้าอัตโนมัติ
+   เมนูด้านซ้ายของร้าน — เติมรายการ "รับที่บ้าน" และ "การชำระเงิน" ให้ทุกหน้าอัตโนมัติ
    (หน้าเว็บของร้านมีเมนูฝังในแต่ละไฟล์ การเติมจากที่เดียวจึงไม่ต้องแก้ทีละหน้า)
    --------------------------------------------------------------------------- */
 (function () {
   if (typeof document === 'undefined') return;
+  const DLV_ITEM = '<a class="menu-item" href="/shop/delivery.html" data-path="/shop/delivery.html">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h10v9H3zM13 10h4l4 4v2h-8z" stroke-linejoin="round"/><circle cx="7" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>'
+    + 'รับที่บ้าน</a>';
   const PAY_ITEM = '<a class="menu-item" href="/shop/payments.html" data-path="/shop/payments.html">'
     + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20" stroke-linecap="round"/><path d="M6 15h4" stroke-linecap="round"/></svg>'
     + 'การชำระเงิน</a>';
   function inject() {
     const side = document.querySelector('.shop-side');
-    if (!side || side.querySelector('a[href="/shop/payments.html"]')) return;
-    const anchor = side.querySelector('a[href="/shop/setup.html"]');   // ต่อจาก "ตั้งค่าข้อมูลร้าน"
-    if (!anchor) return;
-    anchor.insertAdjacentHTML('afterend', PAY_ITEM);
-    // มาร์คเมนูที่กำลังเปิดอยู่ (หน้าเพย์เมนต์ตั้ง data-path ไว้ให้เองอยู่แล้ว)
+    if (!side) return;
+    if (!side.querySelector('a[href="/shop/delivery.html"]')) {          // ต่อจาก "แคชเชียร์"
+      const anchor = side.querySelector('a[href="/shop/cashier.html"]');
+      if (anchor) anchor.insertAdjacentHTML('afterend', DLV_ITEM);
+    }
+    if (!side.querySelector('a[href="/shop/payments.html"]')) {          // ต่อจาก "ตั้งค่าข้อมูลร้าน"
+      const anchor = side.querySelector('a[href="/shop/setup.html"]');
+      if (anchor) anchor.insertAdjacentHTML('afterend', PAY_ITEM);
+    }
+    // มาร์คเมนูที่กำลังเปิดอยู่ (หน้าที่ตั้ง data-path ไว้ให้เองอยู่แล้ว)
     side.querySelectorAll('.menu-item[data-path]').forEach(function (a) {
       if (a.dataset.path === location.pathname) a.classList.add('active');
     });

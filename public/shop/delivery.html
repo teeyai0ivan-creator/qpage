@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รับที่บ้าน / รับที่ร้าน | ระบบสมาชิก</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/settings.css">
+  <link rel="stylesheet" href="/css/shop.css">
+  <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
+  <style>
+    .dlvq-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .dlvq-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
+    .dlvq-card { border: 1px solid var(--border); border-left: 4px solid #4f46e5; border-radius: 14px; padding: 14px 16px; background: var(--surface-2); margin-bottom: 12px; }
+    .dlvq-card.ready { border-left-color: #059669; }
+    .dlvq-card.cash { border-left-color: #d97706; }
+    .dlvq-card.unpaid { border-left-color: #94a3b8; opacity: .92; }
+    .dlvq-top { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+    .dlvq-title { font-size: 15.5px; font-weight: 800; }
+    .dlvq-sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.7; }
+    .dlvq-items { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 9px; display: flex; flex-direction: column; gap: 5px; }
+    .dlvq-item { display: flex; gap: 8px; font-size: 13px; }
+    .dlvq-item .q { font-weight: 800; min-width: 30px; }
+    .dlvq-item .st { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+    .dlvq-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .dlvq-foot .tot { font-weight: 800; font-size: 15px; }
+    .dlvq-badge { font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; }
+    .dlvq-badge.paid { background: rgba(5,150,105,.14); color: #059669; }
+    .dlvq-badge.cash { background: rgba(217,119,6,.15); color: #b45309; }
+    .dlvq-badge.unpaid { background: rgba(100,116,139,.15); color: var(--muted); }
+    .dlvq-badge.cook { background: rgba(79,70,229,.13); color: #4f46e5; }
+    .dlvq-badge.ready { background: rgba(5,150,105,.14); color: #059669; }
+  </style>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+</head>
+
+<body>
+  <nav class="site-nav">
+    <a class="brand" href="/shop">
+      <div class="brand-logo"><img src="/img/logo.svg" alt="QPage"></div>
+      <span class="brand-name" id="shopName">ร้านของฉัน</span>
+    </a>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="เปิด/ปิดเมนู" aria-expanded="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="/settings/profile">บัญชีของฉัน</a>
+      <a href="#" id="logoutBtn">ออกจากระบบ</a>
+    </div>
+  </nav>
+
+  <div class="side-menu-backdrop" id="menuBackdrop"></div>
+
+  <div class="shop-shell">
+    <aside class="settings-menu shop-side">
+        <div class="menu-title">ร้านค้า</div>
+        <a class="menu-item" href="/shop/orders.html" data-path="/shop/orders.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/></svg>
+          สั่งอาหาร
+        </a>
+        <a class="menu-item" href="/shop/kitchen.html" data-path="/shop/kitchen.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10h16v6a4 4 0 01-4 4H8a4 4 0 01-4-4v-6z"/><path d="M6 10V7a2 2 0 012-2h8a2 2 0 012 2v3"/></svg>
+          ครัว
+        </a>
+        <a class="menu-item" href="/shop/cashier.html" data-path="/shop/cashier.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h.01M12 11h.01M15 11h.01M9 15h.01M12 15h.01M15 15h.01"/></svg>
+          แคชเชียร์
+        </a>
+        <a class="menu-item" href="/shop/delivery.html" data-path="/shop/delivery.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h10v9H3zM13 10h4l4 4v2h-8z" stroke-linejoin="round"/><circle cx="7" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>
+          รับที่บ้าน
+        </a>
+        <a class="menu-item" href="/shop/history.html" data-path="/shop/history.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1015.5-6.2M3 4v4h4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8v4l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ประวัติ
+        </a>
+        <a class="menu-item" href="/shop/kitchen-history.html" data-path="/shop/kitchen-history.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V3h12v6a4 4 0 01-4 4h-4a4 4 0 01-4-4z" stroke-linejoin="round"/><path d="M6 5H4v3a3 3 0 003 3M18 5h2v3a3 3 0 01-3 3M9 17h6M12 13v4M8 21h8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ประวัติสั่งครัว
+        </a>
+        <a class="menu-item" href="/shop/menu.html" data-path="/shop/menu.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2V5z" stroke-linejoin="round"/><path d="M8 7h8M8 11h5" stroke-linecap="round"/></svg>
+          จัดการเมนู
+        </a>
+        <a class="menu-item" href="/shop/menus.html" data-path="/shop/menus.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg>
+          เมนูทั้งหมด
+        </a>
+        <a class="menu-item" href="/shop/setup.html" data-path="/shop/setup.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke-linejoin="round"/><path d="M3 6h18M16 10a4 4 0 01-8 0" stroke-linecap="round"/></svg>
+          ตั้งค่าข้อมูลร้าน
+        </a>
+        <a class="menu-item" href="/shop/payments.html" data-path="/shop/payments.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20" stroke-linecap="round"/><path d="M6 15h4" stroke-linecap="round"/></svg>
+          การชำระเงิน
+        </a>
+        <a class="menu-item" href="/shop/notify.html" data-path="/shop/notify.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 01-3.4 0" stroke-linecap="round"/></svg>
+          แจ้งเตือน
+        </a>
+        <a class="menu-item" href="/shop/settings.html" data-path="/shop/settings.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" stroke-linejoin="round"/></svg>
+          ตั้งค่าระบบ
+        </a>
+        <a class="menu-item" href="#" data-path="#" id="viewShopLink" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>
+          ดูร้าน
+        </a>
+        <div class="menu-divider"></div>
+        <a class="menu-item" href="/settings/profile" data-path="/settings/profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ออกจากร้านค้า
+        </a>
+      </aside>
+
+    <div class="shop-wrap">
+      <div class="shop-head">
+        <h1>รับที่บ้าน / รับที่ร้าน</h1>
+        <p>ออเดอร์เดลิเวอร์รี่และรับที่ร้านที่ยังไม่ปิดบิล — กด "รับแล้ว" เมื่อส่งอาหาร/ลูกค้ามารับและเก็บเงินเรียบร้อย (บิลโอนเงินปิดเองเมื่อครัวทำครบ)</p>
+      </div>
+
+      <div class="shop-card">
+        <div class="dlvq-head">
+          <h2 style="margin:0;">คิวงาน <span class="count" id="qCount"></span></h2>
+          <span class="spacer" style="flex:1;"></span>
+          <button class="mini-btn" id="qReload" type="button">รีเฟรช</button>
+        </div>
+        <div class="dlvq-filters">
+          <button class="mini-btn primary" data-f="all" type="button">ทั้งหมด</button>
+          <button class="mini-btn" data-f="cook" type="button">กำลังทำ</button>
+          <button class="mini-btn" data-f="ready" type="button">พร้อมส่ง/รับ</button>
+          <button class="mini-btn" data-f="cash" type="button">รอเก็บเงิน</button>
+        </div>
+        <div id="qList"><div class="cat-empty">กำลังโหลด…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let toastTimer = null;
+    let orders = [];
+    let filter = 'all';
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let data; try { data = await res.json(); } catch (e) { const err = new Error('HTTP ' + res.status); err.status = res.status; throw err; }
+      if (!data.ok) { const err = new Error(data.message || 'เกิดข้อผิดพลาด'); err.status = res.status; throw err; }
+      return data;
+    }
+    function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500); }
+
+    function mapLinkOf(o) {
+      if (o.customer_lat != null && o.customer_lng != null && o.customer_lat !== '' && o.customer_lng !== '') {
+        return 'https://maps.google.com/?q=' + encodeURIComponent(o.customer_lat + ',' + o.customer_lng);
+      }
+      const m = String(o.customer_address || '').match(/https?:\/\/\S+/);
+      return m ? m[0] : '';
+    }
+
+    function payBadge(o) {
+      if (o.status === 'awaiting_payment') return '<span class="dlvq-badge unpaid">รอชำระเงิน (โอน)</span>';
+      if (o.payment_status === 'paid') return '<span class="dlvq-badge paid">' + (o.payment_method === 'cash' ? 'เงินสด (รับแล้ว)' : 'โอนแล้ว') + '</span>';
+      return '<span class="dlvq-badge cash">เก็บเงินปลายทาง</span>';
+    }
+    function stateBadge(o) {
+      const p = o.progress || {};
+      if (o.status === 'awaiting_payment') return '<span class="dlvq-badge unpaid">ยังไม่เข้าครัว</span>';
+      if (p.ready) return '<span class="dlvq-badge ready">อาหารครบ · พร้อมส่ง/รับ</span>';
+      return '<span class="dlvq-badge cook">กำลังทำ ' + (p.done || 0) + '/' + (p.plates || 0) + ' จาน</span>';
+    }
+
+    function matches(o) {
+      const p = o.progress || {};
+      if (filter === 'ready') return o.status === 'open' && p.ready;
+      if (filter === 'cook') return o.status === 'open' && !p.ready;
+      if (filter === 'cash') return o.status === 'open' && o.payment_method === 'cash' && o.payment_status !== 'paid';
+      return true;
+    }
+
+    function render() {
+      const list = orders.filter(matches);
+      document.getElementById('qCount').textContent = list.length ? '(' + list.length + ')' : '';
+      const box = document.getElementById('qList');
+      if (!list.length) {
+        box.innerHTML = '<div class="cat-empty">' + (orders.length ? 'ไม่มีออเดอร์ในตัวกรองนี้' : 'ยังไม่มีออเดอร์เดลิเวอร์รี่/รับที่ร้านที่ต้องจัดการ') + '</div>';
+        return;
+      }
+      box.innerHTML = list.map(function (o) {
+        const isD = o.order_type === 'delivery';
+        const p = o.progress || {};
+        const ready = o.status === 'open' && p.ready;
+        const cls = o.status === 'awaiting_payment' ? 'unpaid' : (ready ? 'ready' : (o.payment_method === 'cash' && o.payment_status !== 'paid' ? 'cash' : ''));
+        const map = mapLinkOf(o);
+        const items = (o.items || []).filter(function (i) { return i.status !== 'cancelled'; }).map(function (i) {
+          const st = i.status === 'done' ? 'เสร็จแล้ว' : (i.status === 'cooking' ? 'กำลังทำ' : 'รอทำ');
+          return '<div class="dlvq-item"><span class="q">' + (Number(i.quantity) || 0) + '×</span><span>' + esc(i.menu_name) + '</span><span class="st">' + st + '</span></div>';
+        }).join('');
+        const btn = o.status === 'open'
+          ? '<button class="mini-btn ' + (ready ? 'primary' : '') + '" data-recv="' + o.id + '" type="button"' + (ready ? '' : ' disabled') + '>✅ รับแล้ว</button>'
+          : '<span class="hist-sub">รอลูกค้าชำระเงินก่อน</span>';
+        return '<div class="dlvq-card ' + cls + '">'
+          + '<div class="dlvq-top">'
+          + '<div style="flex:1;min-width:220px;">'
+          + '<div class="dlvq-title">' + (isD ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน') + ' · บิล ' + billNoFmt(o.bill_no) + ' · ' + esc(o.customer_name || '') + '</div>'
+          + '<div class="dlvq-sub">' + dt(o.opened_at) + ' · เบอร์ <a href="tel:' + esc(o.customer_phone || '') + '">' + esc(o.customer_phone || '-') + '</a>' + (p.plates ? ' · ' + p.plates + ' จาน' : '') + '</div>'
+          + (o.customer_address ? '<div class="dlvq-sub">📍 ' + esc(o.customer_address) + (map ? ' — <a href="' + esc(map) + '" target="_blank" rel="noopener">แผนที่</a>' : '') + '</div>' : '')
+          + (o.customer_note ? '<div class="dlvq-sub">📝 ' + esc(o.customer_note) + '</div>' : '')
+          + '</div>'
+          + '<div style="text-align:right;">' + payBadge(o) + '<div style="margin-top:6px;">' + stateBadge(o) + '</div></div>'
+          + '</div>'
+          + (items ? '<div class="dlvq-items">' + items + '</div>' : '')
+          + '<div class="dlvq-foot">'
+          + '<span class="tot">' + money(o.total) + '</span>'
+          + '<span class="spacer" style="flex:1;"></span>'
+          + '<a class="mini-btn" href="/shop/receipt.html?order=' + o.id + '" target="_blank" rel="noopener">🖨 ใบเสร็จ</a>'
+          + (o.slip_url ? '<a class="mini-btn" href="/api/shop/order-slips/' + encodeURIComponent(String(o.slip_url).split('/').pop()) + '" target="_blank" rel="noopener">ดูสลิป</a>' : '')
+          + btn
+          + '</div>'
+          + '</div>';
+      }).join('');
+      box.querySelectorAll('[data-recv]').forEach(function (b) { b.addEventListener('click', function () { receive(Number(b.dataset.recv), b); }); });
+    }
+
+    async function receive(orderId, btn) {
+      const o = orders.find(function (x) { return Number(x.id) === orderId; });
+      const isCash = o && o.payment_method === 'cash' && o.payment_status !== 'paid';
+      const ok = await uiConfirm({
+        title: 'รับแล้ว',
+        message: 'ยืนยันว่า' + (o && o.order_type === 'delivery' ? 'ส่งอาหารให้ลูกค้าแล้ว' : 'ลูกค้ามารับอาหารแล้ว')
+          + (isCash ? ' และเก็บเงินสด ' + money(o.total) + ' เรียบร้อย' : '')
+          + '?\n\nระบบจะปิดบิลและพิมพ์ใบเสร็จ',
+        okText: 'รับแล้ว · ปิดบิล',
+      });
+      if (!ok) return;
+      btn.disabled = true;
+      try {
+        await api('/api/shop/orders/' + orderId + '/close', { method: 'POST' });
+        toast('ปิดบิลแล้ว');
+        await load();
+      } catch (e) {
+        toast('ทำรายการไม่สำเร็จ: ' + e.message);
+        btn.disabled = false;
+      }
+    }
+
+    async function load() {
+      try {
+        const data = await api('/api/shop/orders/remote');
+        orders = data.orders || [];
+        render();
+      } catch (e) {
+        document.getElementById('qList').innerHTML = '<div class="cat-empty">โหลดไม่สำเร็จ: ' + esc(e.message) + '</div>';
+      }
+    }
+
+    document.querySelectorAll('.dlvq-filters [data-f]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        filter = b.dataset.f;
+        document.querySelectorAll('.dlvq-filters [data-f]').forEach(function (x) { x.classList.toggle('primary', x === b); });
+        render();
+      });
+    });
+    document.getElementById('qReload').addEventListener('click', function () { load().then(function () { toast('อัปเดตแล้ว'); }); });
+
+    (async function () {
+      try {
+        const me = await api('/api/shop/me');
+        if (me.shop && me.shop.name) document.getElementById('shopName').textContent = me.shop.name;
+      } catch (e) { /* ใช้ชื่อเดิม */ }
+      if (window.qpageWireShopMenu) window.qpageWireShopMenu();
+      await load();
+      setInterval(load, 15000);
+    })();
+  </script>
+</body>
+</html>

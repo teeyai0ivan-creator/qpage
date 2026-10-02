@@ -152,11 +152,6 @@
     </div>
 
     <div class="shop-card">
-      <h2>บิลเดลิเวอร์รี่ / รับที่ร้านที่เปิดอยู่ <span class="count" id="remoteCount"></span></h2>
-      <div id="remoteList"></div>
-    </div>
-
-    <div class="shop-card">
       <h2>โต๊ะ &amp; QR <span class="count" id="tableCount"></span></h2>
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px;">
         <button class="mini-btn primary" id="newQrBtn" type="button">＋ เพิ่มโต๊ะใหม่</button>
@@ -523,10 +518,10 @@
 
     // โหลดบิลก่อน แล้วค่อยวาดรายการโต๊ะ (บล็อกโต๊ะใช้ข้อมูลบิลที่เปิดอยู่ด้วย)
     // โหลดข้อมูลให้ครบก่อนวาดตาราง: ชื่อโต๊ะ/โซน ต้องมาก่อน เพราะตารางหน้าแรกใช้ทั้งชื่อและสถานะบิล
-    // ---------- QR เดลิเวอร์รี่ + บิลเดลิเวอร์รี่/รับที่ร้าน ----------
+    // ---------- QR เดลิเวอร์รี่ / รับที่ร้าน (คิวบิลอยู่ที่หน้า "รับที่บ้าน") ----------
     async function loadDelivery() {
       try {
-        const [qr, remote] = await Promise.all([api("/api/shop/delivery-qr"), api("/api/shop/orders/remote")]);
+        const qr = await api("/api/shop/delivery-qr");
         document.getElementById("dlvQr").src = qr.qr_path + "&t=" + Date.now();
         document.getElementById("dlvUrl").value = qr.url || "";
         document.getElementById("dlvPrint").href = "/shop/delivery-qr.html?token=" + encodeURIComponent(qr.token || "");
@@ -536,25 +531,9 @@
         document.getElementById("dlvHint").textContent = h.open
           ? (h.open_time ? ("เปิด " + h.open_time + "–" + h.close_time + " · " + h.open_days_text) : "เปิดให้สั่งทุกวัน — ลูกค้าสแกน QR นี้แล้วเลือกจัดส่ง/รับที่ร้านได้")
           : ((h.message || "ร้านปิดอยู่") + " — ลูกค้าจะสั่งอาหารไม่ได้จนกว่าจะเปิดร้าน");
-        renderRemote(remote.orders || []);
       } catch (err) {
         document.getElementById("dlvHint").textContent = "โหลด QR ไม่สำเร็จ: " + err.message;
       }
-    }
-    function renderRemote(orders) {
-      const box = document.getElementById("remoteList");
-      document.getElementById("remoteCount").textContent = orders.length ? "(" + orders.length + ")" : "";
-      if (!orders.length) { box.innerHTML = "<div class=\"cat-empty\">ยังไม่มีบิลเดลิเวอร์รี่/รับที่ร้านที่เปิดอยู่</div>"; return; }
-      box.innerHTML = orders.map(function (o) {
-        const isD = o.order_type === "delivery";
-        const dishes = (o.items || []).filter(function (i) { return i.status !== "cancelled"; }).reduce(function (s, i) { return s + (Number(i.quantity) || 0); }, 0);
-        const pay = o.payment_status === "paid" ? "โอนแล้ว" : (o.payment_method === "cash" ? "เก็บเงินปลายทาง" : "รอชำระเงิน");
-        return "<div class=\"hist-sub\" style=\"border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;\">"
-          + "<b>" + (isD ? "🛵 เดลิเวอร์รี่" : "🏠 รับที่ร้าน") + " · บิล " + billNoFmt(o.bill_no) + "</b> · " + esc(o.customer_name || "") + " · " + esc(o.customer_phone || "")
-          + "<br>" + dishes + " จาน · " + money(o.total) + " · " + pay
-          + (o.customer_address ? "<br>📍 " + esc(o.customer_address) : "")
-          + "</div>";
-      }).join("");
     }
     document.getElementById("dlvCopy").addEventListener("click", async function () {
       const v = document.getElementById("dlvUrl").value;

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>รับที่บ้าน</title>
+  <style>
+    /* หน้าจอ "รับที่บ้าน / รับที่ร้าน" ของโปรแกรม — คิวออเดอร์เดลิเวอร์รี่ที่ยังไม่ปิดบิล */
+    :root {
+      --bg: #f4f5fb; --card: #ffffff; --card-2: #f8f9fd; --border: #e4e7ec; --text: #101828; --muted: #667085;
+      --accent: #4f46e5; --accent-2: #8b5cf6; --ok: #059669; --ok-bg: #ecfdf5; --wait: #b45309; --wait-bg: #fffbeb;
+      --cash: #b45309; --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; font-size: 14px; line-height: 1.5; }
+
+    header.pg-head { position: sticky; top: 0; z-index: 5; background: rgba(244,245,251,.93); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border); padding: 14px 18px 12px; }
+    .pg-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .pg-title h1 { font-size: 20px; margin: 0; font-weight: 800; }
+    .pg-title .sub { color: var(--muted); font-size: 12.5px; }
+    .pg-title .spacer { flex: 1; min-width: 0; }
+    .stat { display: inline-flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; }
+    .stat .n { font-size: 15px; font-weight: 800; }
+    .stat.ready { background: var(--ok-bg); border-color: #a7f3d0; color: #047857; }
+    .stat.cash { background: var(--wait-bg); border-color: #fde68a; color: var(--cash); }
+    .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .live .dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+    .live.open .dot { background: #34d399; } .live.error .dot { background: #f87171; }
+
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+    .chip { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+    .chip.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .chip .c { opacity: .8; margin-left: 5px; }
+    .btn { font-family: inherit; font-size: 13px; font-weight: 700; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; }
+    .btn:hover { background: var(--card-2); }
+    .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; }
+    .btn.ok { background: linear-gradient(135deg, #059669, #10b981); border-color: transparent; color: #fff; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    main { padding: 16px 18px 40px; display: flex; flex-direction: column; gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 14px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+    .card.ready { border-left-color: var(--ok); }
+    .card.cash { border-left-color: #d97706; }
+    .card.unpaid { border-left-color: #94a3b8; opacity: .92; }
+    .card .top { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .card .t { font-size: 15.5px; font-weight: 800; }
+    .card .s { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+    .badge { font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+    .badge.paid { background: var(--ok-bg); color: #047857; }
+    .badge.cash { background: var(--wait-bg); color: var(--cash); }
+    .badge.unpaid { background: #f1f5f9; color: var(--muted); }
+    .badge.cook { background: #eef2ff; color: #4338ca; }
+    .badge.ready { background: var(--ok-bg); color: #047857; }
+    .items { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 9px; display: flex; flex-direction: column; gap: 5px; }
+    .it { display: flex; gap: 8px; font-size: 13px; }
+    .it .q { font-weight: 800; min-width: 30px; }
+    .it .st { margin-left: auto; color: var(--muted); font-size: 11.5px; }
+    .foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .foot .tot { font-weight: 800; font-size: 15px; }
+    .empty-state { color: var(--muted); padding: 22px; text-align: center; background: var(--card); border: 1px dashed var(--border); border-radius: 14px; }
+
+    .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); background: #101828; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; opacity: 0; transition: .18s; pointer-events: none; z-index: 30; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .overlay { position: fixed; inset: 0; background: rgba(16,24,40,.5); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 20; }
+    .overlay.show { display: flex; }
+    .modal { width: 100%; max-width: 420px; background: var(--card); border-radius: 16px; padding: 20px; box-shadow: 0 20px 44px rgba(16,24,40,.25); }
+    .modal h3 { margin: 0 0 10px; font-size: 17px; font-weight: 800; }
+    .ask-msg { font-size: 13.5px; color: #475467; white-space: pre-line; line-height: 1.75; }
+    .modal .foot { justify-content: flex-end; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>รับที่บ้าน / รับที่ร้าน</h1>
+      <span class="sub">คิวเดลิเวอร์รี่ที่ยังไม่ปิดบิล — กด "รับแล้ว" เมื่อส่งอาหาร/เก็บเงินเรียบร้อย</span>
+      <span class="spacer"></span>
+      <span class="stat ready">พร้อมส่ง/รับ <span class="n" id="nReady">0</span></span>
+      <span class="stat cash">รอเก็บเงิน <span class="n" id="nCash">0</span></span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="toolbar">
+      <button class="chip active" data-f="all" type="button">ทั้งหมด <span class="c" id="cAll"></span></button>
+      <button class="chip" data-f="cook" type="button">กำลังทำ <span class="c" id="cCook"></span></button>
+      <button class="chip" data-f="ready" type="button">พร้อมส่ง/รับ <span class="c" id="cReady"></span></button>
+      <button class="chip" data-f="cash" type="button">รอเก็บเงิน <span class="c" id="cCash"></span></button>
+      <span class="spacer" style="flex:1;"></span>
+      <button class="btn" id="btnReload" type="button">⟳ รีเฟรช</button>
+    </div>
+  </header>
+
+  <main id="list"><div class="empty-state">กำลังโหลด…</div></main>
+
+  <div class="toast" id="toast"></div>
+  <div class="overlay" id="askOverlay">
+    <div class="modal">
+      <h3 id="askTitle">ยืนยัน</h3>
+      <div id="askMsg" class="ask-msg">—</div>
+      <div class="foot">
+        <button class="btn" id="askCancel" type="button">ยกเลิก</button>
+        <button class="btn btn-primary" id="askOk" type="button">ยืนยัน</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="delivery.js"></script>
+</body>
+</html>

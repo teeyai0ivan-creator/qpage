@@ -453,19 +453,57 @@ router.get('/api/shop/delivery/qr.png', requireShop, async (req, res) => {
   }
 });
 
-/** บิลเดลิเวอร์รี่/รับที่ร้านที่ยังเปิดอยู่ (ให้หน้าจอ "สั่งอาหาร" แสดงเป็นอีกส่วนหนึ่ง) */
+/** นับความคืบหน้าของบิล (จานทั้งหมด/เสร็จ/รอทำ/กำลังทำ) — ให้หน้าจอ "รับที่บ้าน" รู้ว่าพร้อมส่งหรือยัง */
+function progressOf(items) {
+  const active = items.filter((i) => i.status !== 'cancelled');
+  const plates = (list) => list.reduce((n, i) => n + (Number(i.quantity) || 0), 0);
+  const pending = active.filter((i) => i.status === 'pending');
+  const cooking = active.filter((i) => i.status === 'cooking');
+  return {
+    plates: plates(active),
+    done: plates(active.filter((i) => i.status === 'done')),
+    pending: plates(pending),
+    cooking: plates(cooking),
+    ready: active.length > 0 && !pending.length && !cooking.length,   // อาหารครบแล้ว
+  };
+}
+
+/** แจ้งเตือน "ปิดบิล" ของเดลิเวอร์รี่/รับที่ร้าน (ใช้ทั้งปิดเองและครัวเคลียร์ครบแล้วปิดอัตโนมัติ) */
+function notifyRemoteClosed(shop, order, items) {
+  realtime.publish(shop.id, 'checkout', { order_type: order.order_type });
+  void notify.notifyShop(shop.id, 'checkout', notify.buildCheckoutText({
+    shopName: shop.name,
+    tableCode: (order.order_type === 'delivery' ? 'เดลิเวอร์รี่ · ' : 'รับที่ร้าน · ') + (order.customer_name || ''),
+    billNo: order.bill_no,
+    total: Number(order.total),
+    items: items || [],
+  }));
+}
+
+/** ครัวเคลียร์รายการครบ → ปิดบิลเดลิเวอร์รี่/รับที่ร้านที่ "โอนแล้ว" ให้อัตโนมัติ (ไม่พิมพ์ใบเสร็จ) */
+async function autoClosePrepaidIfDone(shop, orderId) {
+  const closed = await db.maybeAutoClosePrepaidRemoteOrder(orderId);
+  if (!closed) return false;
+  notifyRemoteClosed(shop, closed, await db.listOrderItems(closed.id));
+  return true;
+}
+
+/** บิลเดลิเวอร์รี่/รับที่ร้านที่ยังไม่ปิด (คิวงานของหน้า "รับที่บ้าน") */
 router.get('/api/shop/orders/remote', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
   await db.expireStaleOrderPayments(shop.id);   // บิลรอโอนที่หมดเวลา → ยกเลิกก่อนแสดง
   const orders = await db.listOpenRemoteOrders(shop.id);
   const withItems = [];
-  for (const o of orders) withItems.push(Object.assign({}, o, { items: await db.listOrderItems(o.id) }));
+  for (const o of orders) {
+    const items = await db.listOrderItems(o.id);
+    withItems.push(Object.assign({}, o, { items, progress: progressOf(items) }));
+  }
   res.set('Cache-Control', 'no-store');
   res.json({ ok: true, orders: withItems, hours: shopHours.openState(shop), transfer_ready: orderPay.canTransfer(shop) });
 });
 
-/** ปิดบิลเดลิเวอร์รี่/รับที่ร้าน (เทียบเท่าเช็คบิลของโต๊ะ — ต้องเคลียร์รายการครบก่อน) */
+/** ปิดบิลเดลิเวอร์รี่/รับที่ร้าน (ปุ่ม "รับแล้ว" — ต้องเคลียร์รายการครบก่อน · บิลเงินสด = บันทึกรับเงินด้วย) */
 router.post('/api/shop/orders/:id/close', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
@@ -476,17 +514,11 @@ router.post('/api/shop/orders/:id/close', requireShop, async (req, res) => {
   const items = await db.listOrderItems(order.id);
   const uncleared = items.filter((i) => i.status === 'pending' || i.status === 'cooking').reduce((n, i) => n + (Number(i.quantity) || 0), 0);
   if (uncleared) {
-    return res.status(409).json({ ok: false, message: `ยังเช็คบิลไม่ได้ — ยังมีรายการไม่เคลียร์ ${uncleared} รายการ` });
+    return res.status(409).json({ ok: false, message: `ยังปิดบิลไม่ได้ — ยังมีรายการไม่เคลียร์ ${uncleared} รายการ` });
   }
+  if (order.payment_method === 'cash' && order.payment_status !== 'paid') await db.markRemoteCashPaid(order.id);
   await db.closeOrder(order.id);
-  realtime.publish(shop.id, 'checkout', { order_type: order.order_type });
-  void notify.notifyShop(shop.id, 'checkout', notify.buildCheckoutText({
-    shopName: shop.name,
-    tableCode: (order.order_type === 'delivery' ? 'เดลิเวอร์รี่ · ' : 'รับที่ร้าน · ') + (order.customer_name || ''),
-    billNo: order.bill_no,
-    total: Number(order.total),
-    items,
-  }));
+  notifyRemoteClosed(shop, order, items);
   const closed = {
     order_id: order.id, table_code: '', bill_no: order.bill_no, total: Number(order.total),
     item_count: items.filter((i) => i.status !== 'cancelled').reduce((n, i) => n + (Number(i.quantity) || 0), 0),
@@ -696,6 +728,7 @@ router.post('/api/shop/order-items/:id/status', requireShop, async (req, res) =>
     void notify.notifyShop(shop.id, 'item_cancel', notify.buildItemCancelText({
       shopName: shop.name, tableCode: item.table_code, item, reason,
     }));
+    await autoClosePrepaidIfDone(shop, item.order_id);   // ยกเลิกจนไม่เหลือรายการค้าง → ปิดบิลที่โอนแล้วให้เลย
     return res.json({ ok: true, message: `ยกเลิกรายการแล้ว (${reason})` });
   }
 
@@ -705,6 +738,7 @@ router.post('/api/shop/order-items/:id/status', requireShop, async (req, res) =>
     void notify.notifyShop(shop.id, 'item_done', notify.buildItemDoneText({
       shopName: shop.name, tableCode: item.table_code, item,
     }));
+    await autoClosePrepaidIfDone(shop, item.order_id);   // เช็คบิลแล้วอาหารครบ → บิลโอนปิดเอง (บิลเงินสดรอกด "รับแล้ว")
   }
   res.json({ ok: true, message: msg });
 });
