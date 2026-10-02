@@ -324,6 +324,22 @@ router.post('/api/public/delivery/:token/order', async (req, res) => {
     realtime.publish(shop.id, 'order_new', { order_type: orderType, bill_no: created.billNo });
   }
 
+  // ข้อมูลสำหรับ "ใบเสร็จ" ที่หน้าจอลูกค้า (ใช้กับออเดอร์เงินสด — โอนจะไปแสดงที่หน้าจ่ายเงิน)
+  const receiptItems = await db.listOrderItems(created.id);
+  const receipt = {
+    shop: { name: shop.name, phone: shop.phone || '', logo_url: shop.logo_url || '' },
+    bill_no: created.billNo,
+    date: new Date().toISOString(),
+    order_type: orderType,
+    customer_name: name,
+    customer_phone: phone,
+    address: orderType === 'delivery' ? address : '',
+    items: receiptItems.filter((i) => i.status !== 'cancelled').map((i) => ({ menu_name: i.menu_name, quantity: Number(i.quantity) || 0, line_total: Number(i.line_total) || 0 })),
+    total: receiptItems.filter((i) => i.status !== 'cancelled').reduce((s, i) => s + Number(i.line_total || 0), 0),
+    payment_method: method,
+    payment_status: 'unpaid',
+    trans_ref: '',
+  };
   res.json({
     ok: true,
     order_id: created.id,
@@ -333,6 +349,7 @@ router.post('/api/public/delivery/:token/order', async (req, res) => {
     pay_ref: payRef,
     expires_at: expiresAt,
     minutes,
+    receipt,
     message: method === 'cash' ? 'รับออเดอร์แล้ว — กำลังส่งเข้าครัว' : 'สร้างบิลแล้ว กรุณาโอนเงินภายใน ' + minutes + ' นาที',
   });
 });

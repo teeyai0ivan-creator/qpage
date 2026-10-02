@@ -2332,6 +2332,26 @@ async function listOpenRemoteOrders(shopId) {
   return rows.map((r) => ({ ...r, item_count: Number(r.item_count) || 0 }));
 }
 
+/**
+ * บิลเดลิเวอร์รี่/รับที่ร้านทั้งหมด (ทุกสถานะ) — สำหรับแท็บ "ประวัติเดลิเวอร์รี่"
+ * status: '' = ทั้งหมด · 'paid' = ชำระแล้ว · 'cancelled' = ถูกยกเลิก/หมดเวลาชำระ · 'open' = กำลังดำเนินการ
+ */
+async function listRemoteOrders(shopId, { limit = 100, status = '' } = {}) {
+  const lim = Math.max(1, Math.min(200, Number(limit) || 100));
+  let sql = 'SELECT o.id, o.bill_no, o.status, o.order_type, o.total, o.opened_at, o.closed_at,'
+    + ' o.customer_name, o.customer_phone, o.customer_address, o.customer_note,'
+    + ' o.payment_method, o.payment_status, o.paid_at, o.trans_ref, o.pay_ref, o.slip_status, o.slip_url,'
+    + " (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count"
+    + " FROM orders o WHERE o.shop_id = ? AND o.order_type <> 'dine_in'";
+  const params = [shopId];
+  if (status === 'paid') sql += " AND o.payment_status = 'paid' AND o.status <> 'cancelled'";
+  else if (status === 'cancelled') sql += " AND o.status = 'cancelled'";
+  else if (status === 'open') sql += " AND o.status IN ('open', 'awaiting_payment')";
+  sql += ` ORDER BY o.id DESC LIMIT ${lim}`;
+  const [rows] = await pool.execute(sql, params);
+  return rows.map((r) => Object.assign({}, r, { item_count: Number(r.item_count) || 0, total: Number(r.total) || 0 }));
+}
+
 // ประวัติบิลที่ปิดแล้ว (ดูย้อนหลัง) — กรองตามโต๊ะได้
 // หมายเหตุ: ใช้ชื่อโต๊ะที่เก็บไว้ในบิล (o.table_code) เพราะบิลที่เช็คบิลแล้วต้องอยู่ต่อแม้โต๊ะ/QR ถูกลบ
 async function listClosedOrders(shopId, { tableId = null, limit = 50, paymentMethod = null } = {}) {
@@ -2510,7 +2530,8 @@ module.exports = {
   listClosedOrders,
   // เดลิเวอร์รี่ / รับที่ร้าน + การชำระเงินของบิล
   findDeliveryShopByToken, setShopDeliveryToken, createRemoteOrder,
-  listOpenRemoteOrders, findOrderByPayRef, expireStaleOrderPayments,
+  listOpenRemoteOrders,
+  listRemoteOrders, findOrderByPayRef, expireStaleOrderPayments,
   setOrderSlip, markOrderPaid, findOrderBySlipHash, findOrderBySlipFile,
   listItemsForOrders,
   recalcOrderTotal,

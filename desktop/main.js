@@ -659,6 +659,7 @@ ipcMain.on('nav:go', (event, target) => {
 // IPC — หน้าจอ "ประวัติ" ของโปรแกรม (บิลที่ปิดแล้ว + QR โต๊ะที่ปิดใช้งาน)
 // ---------------------------------------------------------------------------
 ipcMain.handle('history:bills', (event, payload) => api.history(payload || {}));
+ipcMain.handle('history:delivery', (event, opts) => api.deliveryHistory(opts || {}));
 ipcMain.handle('history:prints', (event, limit) => api.kitchenPrints(limit));
 ipcMain.handle('history:retired', () => api.retiredTables());
 ipcMain.handle('history:qr', (event, tableId) => api.qrImage(tableId));

@@ -61,13 +61,79 @@ function showTab(which) {
   document.querySelectorAll('.chip[data-tab]').forEach((c) => c.classList.toggle('active', c.dataset.tab === which));
   setPane($('paneBills'), which === 'bills');
   setPane($('paneQr'), which === 'qr');
+  setPane($('paneDlv'), which === 'delivery');
   setPane($('panePrints'), which === 'prints');
   $('btnExport').textContent = which === 'qr' ? '⬇ ออกรายการ QR (CSV)'
-    : which === 'prints' ? '⬇ ออกรายการรอบพิมพ์ (CSV)'
-      : '⬇ ออกรายการ (CSV)';
+    : which === 'delivery' ? '⬇ ออกรายการเดลิเวอร์รี่ (CSV)'
+      : which === 'prints' ? '⬇ ออกรายการรอบพิมพ์ (CSV)'
+        : '⬇ ออกรายการ (CSV)';
   if (which === 'prints' && !prints.length && !printsTried) loadPrints().catch(() => { /* แจ้งในหน้าจอแล้ว */ });
+  if (which === 'delivery' && !dlvOrders.length && !dlvTried) loadDeliveryHistory().catch(() => { /* แจ้งในหน้าจอแล้ว */ });
 }
 document.querySelectorAll('.chip[data-tab]').forEach((c) => c.addEventListener('click', () => showTab(c.dataset.tab)));
+
+// ---------------------------------------------------------------------------
+// แท็บ 4: ประวัติเดลิเวอร์รี่ / รับที่ร้าน (ทุกสถานะ รวมที่ถูกยกเลิก/หมดเวลาชำระ)
+// ---------------------------------------------------------------------------
+let dlvOrders = [];
+let dlvTried = false;
+const dlvPayText = (o) => {
+  if (o.status === 'cancelled') return o.payment_status === 'expired' ? 'ยกเลิก (หมดเวลาชำระ)' : 'ยกเลิก';
+  if (o.payment_status === 'paid') return o.payment_method === 'transfer' ? 'โอนแล้ว' : 'เงินสด (รับแล้ว)';
+  if (o.status === 'awaiting_payment') return 'รอชำระเงิน (โอน)';
+  return o.payment_method === 'cash' ? 'เก็บเงินปลายทาง' : 'ค้างชำระ';
+};
+
+function renderDeliveryHistory() {
+  $('cntDlv').textContent = dlvOrders.length ? '(' + dlvOrders.length + ')' : '';
+  const paidTotal = dlvOrders.filter((o) => o.payment_status === 'paid' && o.status !== 'cancelled').reduce((s, o) => s + Number(o.total || 0), 0);
+  $('sumDlv').textContent = dlvOrders.length ? ('แสดง ' + dlvOrders.length + ' รายการ · รับชำระแล้ว ' + money(paidTotal)) : '';
+  const box = $('dlvList');
+  if (!dlvOrders.length) {
+    box.innerHTML = '<div class="empty">ยังไม่มีออเดอร์เดลิเวอร์รี่/รับที่ร้าน<br>(บิลที่ชำระเงินแล้ว ยกเลิก หรือหมดเวลาชำระ จะมาแสดงที่นี่)</div>';
+    return;
+  }
+  box.innerHTML = dlvOrders.map((o) => {
+    const isD = o.order_type === 'delivery';
+    const cancelled = o.status === 'cancelled';
+    const paidOk = o.payment_status === 'paid' && !cancelled;
+    return `<section class="bill" style="${cancelled ? 'opacity:.75;' : ''}">
+      <div class="bill-head" style="${paidOk ? 'background:#ecfdf5;' : ''}">
+        <span class="t">${isD ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน'}</span>
+        <span class="b">· บิล ${billNo(o.bill_no)} · ${esc(o.customer_name || '-')}</span>
+        <span class="spacer"></span>
+        <span class="badge ${paidOk ? 'ok' : (cancelled ? 'cancel' : 'wait')}">${esc(dlvPayText(o))}</span>
+        <span class="amt" style="font-size:16px;">${money(o.total)}</span>
+      </div>
+      <div class="bill-items">
+        <div class="row"><div class="info"><div class="opts">${dt(o.opened_at)}${o.closed_at ? ' → ' + dt(o.closed_at) : ''} · ${o.item_count} จาน · เบอร์ ${esc(o.customer_phone || '-')}</div></div></div>
+        ${o.customer_address ? `<div class="row"><div class="info"><div class="opts">📍 ${esc(o.customer_address)}</div></div></div>` : ''}
+        ${o.customer_note ? `<div class="row"><div class="info"><div class="opts">📝 ${esc(o.customer_note)}</div></div></div>` : ''}
+        <div class="row"><div class="info"><div class="opts">วิธีชำระที่เลือก: ${o.payment_method === 'transfer' ? 'โอนเงิน' : (o.payment_method === 'cash' ? 'เงินสด' : '—')}${o.trans_ref ? ' · รายการโอน ' + esc(o.trans_ref) : ''}${o.status === 'awaiting_payment' ? ' · รหัสชำระ ' + esc(o.pay_ref || '') : ''}</div></div></div>
+      </div>
+      <div class="bill-foot">
+        <button class="btn btn-sm btn-primary" data-dlv-receipt="${o.id}" type="button">🖨 พิมพ์ใบเสร็จ</button>
+      </div>
+    </section>`;
+  }).join('');
+
+  box.querySelectorAll('[data-dlv-receipt]').forEach((b) => b.addEventListener('click', () => {
+    const id = Number(b.dataset.dlvReceipt);
+    API.printReceipt({ orderId: id, url_path: '/shop/receipt.html?order=' + id });
+    toast('กำลังพิมพ์ใบเสร็จของบิลนี้');
+  }));
+}
+
+async function loadDeliveryHistory() {
+  try {
+    dlvTried = true;
+    dlvOrders = await API.deliveryHistory({ status: $('fDlvStatus').value || '', limit: $('fDlvLimit').value || 50 });
+    renderDeliveryHistory();
+  } catch (err) {
+    dlvTried = true;
+    $('dlvList').innerHTML = '<div class="empty">โหลดประวัติเดลิเวอร์รี่ไม่สำเร็จ: ' + esc(err.message) + '</div>';
+  }
+}
 
 // ---------------------------------------------------------------------------
 // แท็บ 1: ประวัติบิล
@@ -372,6 +438,13 @@ async function exportCsv() {
       rows = [['โต๊ะ', 'โซน', 'สร้าง QR', 'ปิดใช้งานเมื่อ', 'บิลที่ปิดแล้ว', 'ยอดรวม']];
       for (const t of retired) rows.push([t.code, t.zone_name || '', t.created_at || '', t.retired_at || '', t.bill_count, Number(t.total_sales)]);
       name = 'qpage-qr-history.csv';
+    } else if (tab === 'delivery') {
+      if (!dlvOrders.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
+      rows = [['บิล', 'ประเภท', 'วันที่', 'ชื่อ', 'เบอร์', 'ที่อยู่', 'จำนวนจาน', 'ยอดรวม', 'วิธีชำระ', 'สถานะชำระ', 'สถานะบิล', 'เลขรายการโอน']];
+      for (const o of dlvOrders) {
+        rows.push([billNo(o.bill_no), o.order_type === 'delivery' ? 'เดลิเวอร์รี่' : 'รับที่ร้าน', o.opened_at || '', o.customer_name || '', o.customer_phone || '', o.customer_address || '', o.item_count, Number(o.total || 0), o.payment_method || '', o.payment_status || '', o.status, o.trans_ref || '']);
+      }
+      name = 'qpage-delivery-history.csv';
     } else if (tab === 'prints') {
       if (!prints.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
       rows = [['รอบที่', 'โต๊ะ', 'บิล', 'จุดที่พิมพ์', 'พิมพ์เมื่อ', 'จำนวนรายการ', 'จำนวนจาน', 'รายการอาหาร']];
@@ -405,6 +478,8 @@ async function exportCsv() {
 $('fTable').addEventListener('change', () => loadBills().catch((e) => toast('โหลดไม่สำเร็จ: ' + e.message)));
 $('fLimit').addEventListener('change', () => loadBills().catch((e) => toast('โหลดไม่สำเร็จ: ' + e.message)));
 $('fPay').addEventListener('change', () => loadAll().then(() => toast('กรองตามการชำระแล้ว')).catch((e) => toast('โหลดไม่สำเร็จ: ' + e.message)));
+$('fDlvStatus').addEventListener('change', () => loadDeliveryHistory().then(() => toast('กรองตามสถานะแล้ว')).catch(() => { /* แจ้งในหน้าจอแล้ว */ }));
+$('fDlvLimit').addEventListener('change', () => loadDeliveryHistory().then(() => toast('อัปเดตแล้ว')).catch(() => { /* แจ้งในหน้าจอแล้ว */ }));
 $('fLimitPrints').addEventListener('change', () => loadPrints().then(() => toast('อัปเดตแล้ว')).catch(() => { /* แจ้งในหน้าจอแล้ว */ }));
 $('btnReload').addEventListener('click', () => loadAll().then(() => toast('อัปเดตแล้ว')));
 $('btnExport').addEventListener('click', exportCsv);

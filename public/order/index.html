@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
   <script src="/js/shop-ui.js"></script>
+  <script src="/js/receipt-img.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -611,7 +612,7 @@
           location.href = '/pay/' + encodeURIComponent(data.pay_ref);
           return;
         }
-        uiAlert({ title: 'รับออเดอร์แล้ว 🎉', message: 'บิล #' + data.bill_no + ' — ร้านได้รับออเดอร์และส่งเข้าครัวแล้ว' + (DELIVERY.orderType === 'delivery' ? ' กรุณาเตรียมเงินสดตอนรับอาหาร' : ' กรุณารับอาหารที่ร้าน') });
+        showCashReceipt(data);
         render();
       } catch (e) {
         err.textContent = e.message || 'ส่งออเดอร์ไม่สำเร็จ';
@@ -621,6 +622,26 @@
       }
     }
     document.getElementById('shipOk').addEventListener('click', submitDeliveryOrder);
+
+    /** หน้าสำเร็จหลังสั่งแบบเงินสด — แสดงใบเสร็จเป็นภาพ (ดูได้อย่างเดียว) + ปุ่มบันทึกภาพ */
+    function showCashReceipt(data) {
+      const r = data.receipt || { shop: { name: S.shop.name }, bill_no: data.bill_no, total: 0, items: [] };
+      let url = '';
+      try { url = window.qpageReceiptImage(r); } catch (e) { url = ''; }
+      const wrap = document.createElement('div');
+      wrap.className = 'modal-overlay show';
+      wrap.innerHTML = '<div class="modal" style="max-width:460px;">'
+        + '<h3>รับออเดอร์แล้ว 🎉</h3>'
+        + '<p class="sub">บิล #' + esc(String(data.bill_no || '')) + ' — ร้านได้รับออเดอร์และส่งเข้าครัวแล้ว'
+        + (r.order_type === 'delivery' ? ' กรุณาเตรียมเงินสดตอนรับอาหาร' : ' กรุณารับอาหารที่ร้าน') + '</p>'
+        + '<div class="sub" style="font-size:12px;">ใบเสร็จนี้ดูในหน้าจอได้ (พิมพ์ไม่ได้) — กดปุ่มด้านล่างเพื่อบันทึกเป็นภาพ</div>'
+        + (url ? '<img src="' + url + '" alt="ใบเสร็จ" style="width:100%;border:1px solid var(--border);border-radius:12px;background:#fff;margin-top:8px;">' : '')
+        + (url ? '<a class="mini-btn primary" download="receipt-' + esc(String(data.bill_no || '')) + '.png" href="' + url + '" style="display:block;text-align:center;padding:12px;margin-top:10px;text-decoration:none;">⬇ บันทึกภาพใบเสร็จ</a>' : '')
+        + '<div class="modal-foot" style="margin-top:8px;"><button class="mini-btn" type="button" data-close-ok>ปิด</button></div>'
+        + '</div>';
+      document.body.appendChild(wrap);
+      wrap.querySelector('[data-close-ok]').addEventListener('click', () => wrap.remove());
+    }
 
     // ---------- โมดัล "รายการทั้งหมด" (บิลของโต๊ะ) ----------
     const billModal = document.getElementById('billModal');

@@ -512,6 +512,17 @@ router.get('/api/shop/order-slips/:name', requireShop, async (req, res) => {
   res.sendFile(full);
 });
 
+
+/** ประวัติบิลเดลิเวอร์รี่/รับที่ร้าน (ทุกสถานะ — รวมที่ถูกยกเลิก/หมดเวลาชำระ) */
+router.get('/api/shop/orders/delivery-history', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  await db.expireStaleOrderPayments(shop.id);   // มาร์กบิลที่เลยกำหนดชำระก่อนแสดง
+  const orders = await db.listRemoteOrders(shop.id, { limit: req.query.limit, status: String(req.query.status || '') });
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, orders });
+});
+
 // ---------------------------------------------------------------------------
 // API ฝั่งร้าน: บิลที่เปิดอยู่ + เช็คบิล
 // ---------------------------------------------------------------------------

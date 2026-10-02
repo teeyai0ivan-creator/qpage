@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/css/shop.css">
   <script src="/js/theme.js"></script>
   <script src="/js/shop-ui.js"></script>
+  <script src="/js/receipt-img.js"></script>
   <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
 </head>
 <body>
@@ -48,6 +49,11 @@
       <div style="font-size:44px;">✅</div>
       <h2 style="margin:6px 0;font-size:18px;" id="doneTitle">ชำระเงินสำเร็จ</h2>
       <p class="sub" id="doneMsg" style="font-size:13.5px;">กำลังส่งออเดอร์เข้าครัว</p>
+      <div id="rcptWrap" style="display:none;margin-top:12px;text-align:left;">
+        <img id="rcptImg" alt="ใบเสร็จ" style="width:100%;max-width:420px;display:block;margin:0 auto;border:1px solid var(--border);border-radius:12px;background:#fff;">
+        <div class="sub" style="font-size:12px;text-align:center;margin-top:6px;">ใบเสร็จนี้ดูในหน้าจอได้ (พิมพ์ไม่ได้) — กดปุ่มด้านล่างเพื่อบันทึกเป็นภาพ</div>
+        <a class="mini-btn primary" id="rcptSave" download="receipt.png" style="display:block;text-align:center;padding:12px;margin-top:8px;text-decoration:none;">⬇ บันทึกภาพใบเสร็จ</a>
+      </div>
     </div>
 
     <div id="cancelCard" class="pay-card" style="display:none;text-align:center;">
@@ -129,6 +135,22 @@
       try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
     }
 
+    /** แสดงใบเสร็จเป็นภาพในหน้าสำเร็จ (ดูได้อย่างเดียว ไม่พิมพ์ — มีปุ่มบันทึกภาพ) */
+    function showReceipt() {
+      try {
+        const url = window.qpageReceiptImage({
+          shop: P.shop, bill_no: P.bill_no, date: new Date(), order_type: P.order_type,
+          customer_name: P.customer_name, customer_phone: '', address: '',
+          items: (P.items || []).map((i) => ({ menu_name: i.menu_name, quantity: i.quantity, line_total: i.line_total })),
+          total: P.total, payment_method: P.payment_method, payment_status: 'paid', trans_ref: P.trans_ref || '',
+        });
+        $('rcptImg').src = url;
+        $('rcptSave').href = url;
+        $('rcptSave').download = 'receipt-' + (P.bill_no || P.ref) + '.png';
+        $('rcptWrap').style.display = '';
+      } catch (e) { /* วาดภาพไม่ได้ ก็ยังเห็นข้อความสำเร็จ */ }
+    }
+
     function donePaint(msg) {
       done = true;
       clearInterval(timer);
@@ -137,6 +159,7 @@
       $('slipCard').style.display = 'none';
       $('doneCard').style.display = '';
       $('doneMsg').textContent = msg || 'กำลังส่งออเดอร์เข้าครัว';
+      showReceipt();
     }
 
     // เลือกไฟล์สลิป → พรีวิว

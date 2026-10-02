@@ -129,6 +129,15 @@ async function history(opts) {
   return data.orders || [];
 }
 
+/** ประวัติบิลเดลิเวอร์รี่/รับที่ร้าน (ทุกสถานะ) — ใช้ที่แท็บ 'ประวัติเดลิเวอร์รี่' */
+async function deliveryHistory(opts) {
+  const q = new URLSearchParams();
+  if (opts && opts.status) q.set('status', String(opts.status));
+  if (opts && opts.limit) q.set('limit', String(opts.limit));
+  const data = await call('/api/shop/orders/delivery-history' + (q.toString() ? '?' + q.toString() : ''));
+  return data.orders || [];
+}
+
 /** ประวัติการพิมพ์ใบสั่งครัว แยกรอบ (มีสำเนารายการที่พิมพ์ไปจริงในแต่ละรอบ) */
 async function kitchenPrints(limit) {
   const data = await call('/api/shop/kitchen-prints?limit=' + (Number(limit) || 100));
@@ -387,7 +396,7 @@ module.exports = {
   call, openEvents, shopInfo,
   kitchenItems, startItems, setItemStatus, cancelItem,
   tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
-  history, kitchenPrints, retiredTables, qrImage,
+  history, deliveryHistory, kitchenPrints, retiredTables, qrImage,
   deliveryQrImage, remoteOrders, closeRemoteOrder,
   shopPaymentSettings, saveShopPaymentSettings, testSlipConnection, saveShopHours, setCloseToday,
   shopAll, saveShop, uploadImage, imageDataUrl,

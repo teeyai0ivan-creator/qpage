@@ -41,6 +41,7 @@ contextBridge.exposeInMainWorld('qpageKitchen', {
 contextBridge.exposeInMainWorld('qpageHistory', {
   bills: (opts) => ipcRenderer.invoke('history:bills', opts || {}),
   prints: (limit) => ipcRenderer.invoke('history:prints', limit),
+  deliveryHistory: (opts) => ipcRenderer.invoke('history:delivery', opts || {}),
   retired: () => ipcRenderer.invoke('history:retired'),
   qr: (tableId) => ipcRenderer.invoke('history:qr', tableId),
   saveCsv: (payload) => ipcRenderer.invoke('history:save-csv', payload || {}),

@@ -150,7 +150,29 @@
     <div class="hist-tabs">
       <button class="hist-tab active" id="tabBills" type="button">ประวัติบิล <span id="cntBills"></span></button>
       <button class="hist-tab" id="tabQr" type="button">QR โต๊ะที่ปิดใช้งาน <span id="cntQr"></span></button>
+      <button class="hist-tab" id="tabDlv" type="button">ประวัติเดลิเวอร์รี่ <span id="cntDlv"></span></button>
       <a class="hist-tab" href="/shop/kitchen-history.html">ประวัติสั่งครัว</a>
+    </div>
+
+    <div id="paneDlv" hidden>
+      <div class="hist-filter">
+        <label for="fDlvStatus">สถานะ</label>
+        <select class="mini-input" id="fDlvStatus">
+          <option value="">ทั้งหมด</option>
+          <option value="paid">ชำระเงินแล้ว</option>
+          <option value="open">กำลังดำเนินการ</option>
+          <option value="cancelled">ถูกยกเลิก / หมดเวลาชำระ</option>
+        </select>
+        <label for="fDlvLimit">จำนวนล่าสุด</label>
+        <select class="mini-input" id="fDlvLimit">
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+        <button class="mini-btn" id="dlvReloadBtn" type="button">รีเฟรช</button>
+        <button class="mini-btn" id="dlvExportBtn" type="button">ออกรายการ (CSV)</button>
+      </div>
+      <div id="dlvList"></div>
     </div>
 
     <div id="paneBills">
@@ -239,14 +261,83 @@
     }
 
     function showTab(which) {
-      const isQr = which === 'qr';
-      document.getElementById('tabBills').classList.toggle('active', !isQr);
-      document.getElementById('tabQr').classList.toggle('active', isQr);
-      document.getElementById('paneBills').hidden = isQr;
-      document.getElementById('paneQr').hidden = !isQr;
+      const tabs = ['bills', 'qr', 'dlv'];
+      tabs.forEach((k) => {
+        const btn = document.getElementById(k === 'bills' ? 'tabBills' : (k === 'qr' ? 'tabQr' : 'tabDlv'));
+        btn.classList.toggle('active', k === which);
+        const pane = document.getElementById(k === 'bills' ? 'paneBills' : (k === 'qr' ? 'paneQr' : 'paneDlv'));
+        if (pane) pane.hidden = k !== which;
+      });
+      if (which === 'dlv') loadDeliveryHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }));
     }
     document.getElementById('tabBills').addEventListener('click', () => showTab('bills'));
     document.getElementById('tabQr').addEventListener('click', () => showTab('qr'));
+    document.getElementById('tabDlv').addEventListener('click', () => showTab('dlv'));
+
+    // ---------- แท็บ "ประวัติเดลิเวอร์รี่" (ทุกสถานะ รวมที่ถูกยกเลิก/หมดเวลาชำระ) ----------
+    let dlvOrders = [];
+    const dlvPayText = (o) => {
+      if (o.status === 'cancelled') return o.payment_status === 'expired' ? 'ยกเลิก (หมดเวลาชำระ)' : 'ยกเลิก';
+      if (o.payment_status === 'paid') return o.payment_method === 'transfer' ? 'โอนแล้ว' : 'เงินสด (รับแล้ว)';
+      if (o.status === 'awaiting_payment') return 'รอชำระเงิน (โอน)';
+      return o.payment_method === 'cash' ? 'เก็บเงินปลายทาง' : 'ค้างชำระ';
+    };
+    function renderDeliveryHistory() {
+      const box = document.getElementById('dlvList');
+      document.getElementById('cntDlv').textContent = dlvOrders.length ? '(' + dlvOrders.length + ')' : '';
+      if (!dlvOrders.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีออเดอร์เดลิเวอร์รี่/รับที่ร้าน</div>'; return; }
+      box.innerHTML = dlvOrders.map((o) => {
+        const isD = o.order_type === 'delivery';
+        const cancelled = o.status === 'cancelled';
+        const paidOk = o.payment_status === 'paid' && !cancelled;
+        const cls = paidOk ? 'st-done' : (cancelled ? 'st-cancelled' : 'st-pending');
+        return '<details class="bill-card"' + (cancelled ? ' style="opacity:.75;"' : '') + '>'
+          + '<summary>'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div class="table-code">' + (isD ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน') + ' · บิล ' + billNoFmt(o.bill_no) + ' · ' + esc(o.customer_name || '') + '</div>'
+          + '<div class="hist-sub">' + dt(o.opened_at) + (o.closed_at ? ' → ' + dt(o.closed_at) : '') + ' · ' + o.item_count + ' จาน · เบอร์ ' + esc(o.customer_phone || '-') + '</div>'
+          + '<div class="hist-sub"><span class="st-badge ' + cls + '">' + esc(dlvPayText(o)) + '</span>'
+          + (o.trans_ref ? ' · รายการโอน ' + esc(o.trans_ref) : '')
+          + (o.status === 'awaiting_payment' ? ' · รหัสชำระ ' + esc(o.pay_ref || '') : '') + '</div>'
+          + '</div>'
+          + '<div class="bill-total">' + money(o.total) + '</div>'
+          + '</summary>'
+          + '<div class="hist-items">'
+          + (o.customer_address ? '<div class="bill-item"><span>📍 ' + esc(o.customer_address) + '</span><span></span></div>' : '')
+          + (o.customer_note ? '<div class="bill-item"><span>📝 ' + esc(o.customer_note) + '</span><span></span></div>' : '')
+          + '<div class="bill-item"><span>วิธีชำระที่เลือก</span><span>' + (o.payment_method === 'transfer' ? 'โอนเงิน' : (o.payment_method === 'cash' ? 'เงินสด' : '—')) + '</span></div>'
+          + '<div class="bill-item"><span>สถานะบิล</span><span>' + esc(o.status) + '</span></div>'
+          + '</div>'
+          + '<div class="hist-actions">'
+          + '<a class="mini-btn primary" href="/shop/receipt.html?order=' + o.id + '" target="_blank" rel="noopener">🖨 ใบเสร็จ</a>'
+          + (o.slip_url ? ' · <span class="hist-sub" style="margin:0;">มีสลิปแนบไว้</span>' : '')
+          + '</div>'
+          + '</details>';
+      }).join('');
+    }
+    async function loadDeliveryHistory() {
+      const qs = new URLSearchParams();
+      const st = document.getElementById('fDlvStatus').value;
+      if (st) qs.set('status', st);
+      qs.set('limit', document.getElementById('fDlvLimit').value || 50);
+      const data = await api('/api/shop/orders/delivery-history?' + qs.toString());
+      dlvOrders = data.orders || [];
+      renderDeliveryHistory();
+    }
+    document.getElementById('dlvReloadBtn').addEventListener('click', () => loadDeliveryHistory().then(() => toast('อัปเดตแล้ว')).catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
+    document.getElementById('fDlvStatus').addEventListener('change', () => loadDeliveryHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
+    document.getElementById('fDlvLimit').addEventListener('change', () => loadDeliveryHistory().catch((e) => uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message })));
+    document.getElementById('dlvExportBtn').addEventListener('click', () => {
+      if (!dlvOrders.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
+      const rows = [['บิล', 'ประเภท', 'วันที่', 'ชื่อ', 'เบอร์', 'ที่อยู่', 'จำนวนจาน', 'ยอดรวม', 'วิธีชำระ', 'สถานะชำระ', 'สถานะบิล', 'เลขรายการโอน']];
+      dlvOrders.forEach((o) => rows.push([billNoFmt(o.bill_no), o.order_type === 'delivery' ? 'เดลิเวอร์รี่' : 'รับที่ร้าน', o.opened_at || '', o.customer_name || '', o.customer_phone || '', o.customer_address || '', o.item_count, o.total, o.payment_method || '', o.payment_status || '', o.status, o.trans_ref || '']));
+      const csv = '\ufeff' + rows.map((r) => r.map((c) => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      a.download = 'delivery-history.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
 
     async function loadHistory() {
       const tableId = document.getElementById('fTable').value;
