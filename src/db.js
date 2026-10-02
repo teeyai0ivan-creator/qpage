@@ -1961,7 +1961,7 @@ async function addOrderItems(orderId, items) {
  *  ยกเว้นรายการที่ "เสร็จแล้ว" จะจมไปล่างสุดเสมอ และรายการใหม่ต่อท้ายคิว (เหนือกลุ่มที่เสร็จแล้ว) */
 async function listKitchenItems(shopId, station = 'kitchen') {
   const st = station === 'cashier' ? 'cashier' : 'kitchen';
-  // เดลิเวอร์รี่/รับที่ร้าน = งานของ "ครัว" เสมอ (ไม่โผล่ที่แคชเชียร์) · บิลโต๊ะใช้เส้นทางตามหมวดหมู่อาหาร
+  // ทุกบิล (โต๊ะ/เดลิเวอร์รี่/รับที่ร้าน) ใช้เส้นทางตามหมวดหมู่อาหารเหมือนกัน — เครื่องดื่มที่ตั้งเป็นแคชเชียร์ก็ไปแคชเชียร์
   const [rows] = await pool.execute(
     `SELECT oi.id, oi.order_id, oi.menu_id, oi.menu_name, oi.quantity, oi.options_json, oi.status,
             oi.created_at, oi.started_at, oi.done_at, o.bill_no,
@@ -1974,11 +1974,9 @@ async function listKitchenItems(shopId, station = 'kitchen') {
        LEFT JOIN menus m ON m.id = oi.menu_id
        LEFT JOIN categories c ON c.id = m.category_id
       WHERE o.shop_id = ? AND o.status = 'open' AND oi.status <> 'cancelled'
-        AND (CASE WHEN COALESCE(o.order_type,'dine_in') = 'dine_in'
-                  THEN COALESCE(c.station, 'kitchen') = ?
-                  ELSE ? = 'kitchen' END)
+        AND COALESCE(c.station, 'kitchen') = ?
       ORDER BY (oi.status = 'done') ASC, oi.id ASC`,
-    [shopId, st, st]
+    [shopId, st]
   );
   return rows;
 }
