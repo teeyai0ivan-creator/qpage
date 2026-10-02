@@ -281,6 +281,12 @@ async function setPrintOnStart(enabled) {
   return { enabled: !!data.enabled, message: data.message || '' };
 }
 
+/** เปิด/ปิด "แสดงเมนูที่ลูกค้าเดลิเวอร์รี่สั่งในครัว/แคชเชียร์" */
+async function setDeliveryOnStations(enabled) {
+  const data = await call('/api/shop/delivery-on-stations', { method: 'PUT', body: { enabled: !!enabled } });
+  return { enabled: !!data.enabled, message: data.message || '' };
+}
+
 // ---------------------------------------------------------------------------
 // เดลิเวอร์รี่ / รับที่ร้าน + การชำระเงินของร้าน (หน้าจอในโปรแกรม)
 // ---------------------------------------------------------------------------
@@ -298,7 +304,7 @@ async function deliveryQrImage() {
 /** บิลเดลิเวอร์รี่/รับที่ร้านที่ยังเปิดอยู่ */
 async function remoteOrders() {
   const data = await call('/api/shop/orders/remote');
-  return { orders: data.orders || [], hours: data.hours || null, transferReady: !!data.transfer_ready };
+  return { orders: data.orders || [], hours: data.hours || null, transferReady: !!data.transfer_ready, requireReady: data.require_ready !== false };
 }
 /** ปิดบิลเดลิเวอร์รี่/รับที่ร้าน (เทียบเท่าเช็คบิลของโต๊ะ) */
 async function closeRemoteOrder(orderId) {
@@ -414,5 +420,5 @@ module.exports = {
   addCategory, updateCategory, deleteCategory,
   addMenu, updateMenu, deleteMenu, setMenuGroups,
   addOptionGroup, updateOptionGroup, deleteOptionGroup, addOptionItem, updateOptionItem, deleteOptionItem,
-  notifyGroups, addNotifyGroup, updateNotifyGroup, deleteNotifyGroup, setQrAutoDelete, setPrintOnStart,
+  notifyGroups, addNotifyGroup, updateNotifyGroup, deleteNotifyGroup, setQrAutoDelete, setPrintOnStart, setDeliveryOnStations,
 };

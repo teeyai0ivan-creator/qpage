@@ -84,6 +84,7 @@ contextBridge.exposeInMainWorld('qpageShop', {
   deleteNotifyGroup: (id) => ipcRenderer.invoke('notify:delete', id),
   setQrAutoDelete: (enabled) => ipcRenderer.invoke('sys:set-qr-auto-delete', enabled),
   setPrintOnStart: (enabled) => ipcRenderer.invoke('sys:set-print-on-start', enabled),
+  setDeliveryOnStations: (enabled) => ipcRenderer.invoke('sys:set-delivery-on-stations', enabled),
   paymentSettings: () => ipcRenderer.invoke('shop:payment-settings'),
   savePayment: (fields) => ipcRenderer.invoke('shop:save-payment', fields || {}),
   testSlipConnection: () => ipcRenderer.invoke('shop:test-slip'),

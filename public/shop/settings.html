@@ -189,6 +189,25 @@
           </div>
           <div class="error-msg" id="printErr" style="display:none;"></div>
         </div>
+
+        <div class="set-card">
+          <div class="set-row">
+            <label class="switch" title="เปิด = ออเดอร์เดลิเวอร์รี่แสดงในครัว/แคชเชียร์ให้กดเริ่มทำ · ปิด = แสดงแค่หน้าสั่งอาหาร">
+              <input type="checkbox" id="deliveryOnStations">
+              <span class="track"></span>
+            </label>
+            <div style="flex:1;min-width:0;">
+              <div class="set-title">แสดงเมนูที่ลูกค้าเดลิเวอร์รี่สั่งในหน้าครัว/แคชเชียร์ <span class="set-state off" id="dlvState">กำลังโหลด…</span></div>
+              <div class="set-sub" id="dlvHint">กำลังโหลด...</div>
+            </div>
+          </div>
+          <div class="set-sub" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            เปิดไว้: ออเดอร์เดลิเวอร์รี่/รับที่ร้านจะขึ้นในหน้าครัวและแคชเชียร์ให้กดเริ่มทำตามปกติ<br>
+            ปิดไว้: ออเดอร์เดลิเวอร์รี่จะ <strong>ไม่แสดงในครัวและแคชเชียร์เลย</strong> (ไม่มีรายการให้กดเริ่มทำ) — ดูรายการอาหารและกด <strong>“นำส่ง”</strong> ได้ที่หน้าสั่งอาหารเท่านั้น และกดนำส่งได้ทันทีโดยไม่ต้องรอเคลียร์รายการ<br>
+            <strong>มีผลกับออเดอร์เดลิเวอร์รี่/รับที่ร้านเท่านั้น</strong> — บิลโต๊ะในร้านไม่กระทบ
+          </div>
+          <div class="error-msg" id="dlvErr" style="display:none;"></div>
+        </div>
       </div>
 
   <div class="toast" id="toast"></div>
@@ -196,6 +215,7 @@
   <script>
     let enabled = false;
     let printOnStart = true;
+    let deliveryOnStations = true;
     let toastTimer = null;
 
     function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
@@ -253,12 +273,51 @@
         paint();
         printOnStart = Number(me.shop.print_on_start) === 0 ? false : true;   // ค่าเริ่มต้น = เปิด
         paintPrint();
+        deliveryOnStations = Number(me.shop.delivery_on_stations) === 0 ? false : true;   // ค่าเริ่มต้น = เปิด
+        paintDlvStations();
         paintShopState(me.hours);
       } catch (e) {
         if (e.status === 403) { location.href = '/shop'; return; }
         showErr(e.message);
       }
     })();
+
+    // ---------- สวิตช์ "แสดงเมนูที่ลูกค้าเดลิเวอร์รี่สั่งในครัว/แคชเชียร์" ----------
+    function paintDlvStations() {
+      const el = document.getElementById('deliveryOnStations');
+      if (el) el.checked = deliveryOnStations;
+      const st = document.getElementById('dlvState');
+      st.textContent = deliveryOnStations ? 'เปิดอยู่' : 'ปิดอยู่';
+      st.className = 'set-state ' + (deliveryOnStations ? 'on' : 'off');
+      document.getElementById('dlvHint').textContent = deliveryOnStations
+        ? 'เปิดอยู่ — ออเดอร์เดลิเวอร์รี่ขึ้นในครัว/แคชเชียร์ให้กดเริ่มทำตามปกติ'
+        : 'ปิดอยู่ — ออเดอร์เดลิเวอร์รี่ไม่แสดงในครัว/แคชเชียร์ (ดูและกด "นำส่ง" ที่หน้าสั่งอาหารเท่านั้น)';
+    }
+    document.getElementById('deliveryOnStations').addEventListener('change', async (e) => {
+      const el = e.currentTarget;
+      const on = el.checked;
+      const okToggle = await uiConfirm({
+        title: (on ? 'เปิด' : 'ปิด') + ' “แสดงเมนูที่ลูกค้าเดลิเวอร์รี่สั่งในครัว/แคชเชียร์” ?',
+        message: on
+          ? 'ออเดอร์เดลิเวอร์รี่จะกลับมาแสดงในหน้าครัวและแคชเชียร์ให้กดเริ่มทำ และต้องเคลียร์รายการครบก่อนจึงกด "นำส่ง" ได้'
+          : 'ออเดอร์เดลิเวอร์รี่จะไม่แสดงในครัวและแคชเชียร์เลย — เห็นและกด "นำส่ง" ได้ที่หน้าสั่งอาหารเท่านั้น (กดได้ทันทีโดยไม่ต้องเคลียร์รายการ)',
+        okText: on ? 'เปิดใช้งาน' : 'ปิดใช้งาน',
+      });
+      if (!okToggle) { el.checked = !on; return; }
+      el.disabled = true;
+      const errEl = document.getElementById('dlvErr');
+      errEl.style.display = 'none';
+      try {
+        const r = await api('/api/shop/delivery-on-stations', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }) });
+        deliveryOnStations = !!r.enabled;
+        paintDlvStations();
+        toast(r.message || 'บันทึกแล้ว');
+      } catch (err) {
+        el.checked = !on;
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+      } finally { el.disabled = false; }
+    });
 
     // ---------- สวิตช์ "พิมพ์ใบสั่งครัวเมื่อกดเริ่มทำ" ----------
     function paintPrint() {

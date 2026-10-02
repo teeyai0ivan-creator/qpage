@@ -73,6 +73,25 @@
       </div>
       <div class="err" id="printErr"></div>
     </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+        <label class="sw" style="margin-top:2px;">
+          <input type="checkbox" id="swDeliveryOnStations">
+          <span class="track"></span>
+        </label>
+        <div style="flex:1;min-width:260px;">
+          <div style="font-weight:800;font-size:15px;">แสดงเมนูที่ลูกค้าเดลิเวอร์รี่สั่งในครัว/แคชเชียร์ <span class="badge" id="dlvBadge">กำลังโหลด…</span></div>
+          <div class="hint" id="dlvHint">กำลังโหลด…</div>
+        </div>
+      </div>
+      <div class="hint" style="border-top:1px solid var(--border);padding-top:12px;">
+        <b>เปิดไว้:</b> ออเดอร์เดลิเวอร์รี่/รับที่ร้านขึ้นในหน้าจอครัวและแคชเชียร์ให้กดเริ่มทำตามปกติ<br>
+        <b>ปิดไว้:</b> ออเดอร์เดลิเวอร์รี่จะ <b>ไม่แสดงในครัวและแคชเชียร์เลย</b> — ดูรายการอาหารและกด <b>“นำส่ง”</b> ได้ที่หน้าจอสั่งอาหารเท่านั้น (กดได้ทันที ไม่ต้องรอเคลียร์รายการ)<br>
+        <b>มีผลกับออเดอร์เดลิเวอร์รี่/รับที่ร้านเท่านั้น</b> — บิลโต๊ะในร้านไม่กระทบ
+      </div>
+      <div class="err" id="dlvErr"></div>
+    </div>
   </main>
 
   <div class="overlay" id="askOverlay">

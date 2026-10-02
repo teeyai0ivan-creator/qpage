@@ -333,6 +333,22 @@ router.put('/api/shop/print-on-start', requireShop, async (req, res) => {
   });
 });
 
+// เปิด/ปิด "แสดงเมนูที่ลูกค้าเดลิเวอร์รี่สั่งในหน้าครัว/แคชเชียร์"
+router.put('/api/shop/delivery-on-stations', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const enabled = !!req.body?.enabled;
+  await db.updateShop(shop.id, { deliveryOnStations: enabled ? 1 : 0 });
+  console.log(`🍳 ตั้งค่า "${shop.name}": แสดงออเดอร์เดลิเวอร์รี่ในครัว/แคชเชียร์ = ${enabled ? 'เปิด' : 'ปิด'}`);
+  res.json({
+    ok: true,
+    enabled,
+    message: enabled
+      ? 'เปิดแล้ว — ออเดอร์เดลิเวอร์รี่จะแสดงในหน้าครัว/แคชเชียร์ให้กดเริ่มทำตามปกติ'
+      : 'ปิดแล้ว — ออเดอร์เดลิเวอร์รี่จะไม่แสดงในครัว/แคชเชียร์ (ดูและกด "นำส่ง" ได้ที่หน้าสั่งอาหารเท่านั้น)',
+  });
+});
+
 router.post('/api/shop/tables', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
@@ -527,10 +543,14 @@ router.get('/api/shop/orders/remote', requireShop, async (req, res) => {
     withItems.push(Object.assign({}, o, { items, progress: progressOf(items) }));
   }
   res.set('Cache-Control', 'no-store');
-  res.json({ ok: true, orders: withItems, hours: shopHours.openState(shop), transfer_ready: orderPay.canTransfer(shop) });
+  res.json({
+    ok: true, orders: withItems, hours: shopHours.openState(shop), transfer_ready: orderPay.canTransfer(shop),
+    // require_ready = ต้องรอครัว/แคชเชียร์เคลียร์ครบก่อนจึงกด "นำส่ง" ได้ (ปิดสวิตช์ครัว/แคชเชียร์ → กดได้เลย)
+    require_ready: Number(shop.delivery_on_stations) !== 0,
+  });
 });
 
-/** ปิดบิลเดลิเวอร์รี่/รับที่ร้าน (ปุ่ม "รับแล้ว" — ต้องเคลียร์รายการครบก่อน · บิลเงินสด = บันทึกรับเงินด้วย) */
+/** ปิดบิลเดลิเวอร์รี่/รับที่ร้าน (ปุ่ม "นำส่ง"/"รับแล้ว" — บิลเงินสด = บันทึกรับเงินด้วย) */
 router.post('/api/shop/orders/:id/close', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
@@ -539,9 +559,13 @@ router.post('/api/shop/orders/:id/close', requireShop, async (req, res) => {
   if (order.status !== 'open') return res.status(400).json({ ok: false, message: 'บิลนี้ปิดไปแล้วหรือยังไม่เปิดใช้งาน' });
 
   const items = await db.listOrderItems(order.id);
-  const uncleared = items.filter((i) => i.status === 'pending' || i.status === 'cooking').reduce((n, i) => n + (Number(i.quantity) || 0), 0);
-  if (uncleared) {
-    return res.status(409).json({ ok: false, message: `ยังปิดบิลไม่ได้ — ยังมีรายการไม่เคลียร์ ${uncleared} รายการ` });
+  // ปกติต้องเคลียร์รายการครบก่อน · แต่ถ้าร้านปิด "แสดงออเดอร์เดลิเวอร์รี่ในครัว/แคชเชียร์"
+  // จะไม่มีใครเคลียร์ได้ → ให้ปิดบิลได้เลย (เจ้าของร้านกด "นำส่ง" เมื่อพร้อม)
+  if (Number(shop.delivery_on_stations) !== 0) {
+    const uncleared = items.filter((i) => i.status === 'pending' || i.status === 'cooking').reduce((n, i) => n + (Number(i.quantity) || 0), 0);
+    if (uncleared) {
+      return res.status(409).json({ ok: false, message: `ยังปิดบิลไม่ได้ — ยังมีรายการไม่เคลียร์ ${uncleared} รายการ` });
+    }
   }
   if (order.payment_method === 'cash' && order.payment_status !== 'paid') await db.markRemoteCashPaid(order.id);
   await db.closeOrder(order.id);
@@ -744,7 +768,7 @@ router.get('/api/shop/kitchen', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
   const station = req.query.station === 'cashier' ? 'cashier' : 'kitchen';
-  const items = await db.listKitchenItems(shop.id, station);
+  const items = await db.listKitchenItems(shop.id, station, { hideDelivery: Number(shop.delivery_on_stations) === 0 });
   res.json({ ok: true, station, items });
 });
 

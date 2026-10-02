@@ -9,6 +9,7 @@ const NAV = window.qpageNav;
 const $ = (id) => document.getElementById(id);
 let enabled = false;
 let printOnStart = true;
+let deliveryOnStations = true;
 let busy = false;
 
 function toast(msg) {
@@ -48,11 +49,14 @@ async function load() {
     $('stShop').textContent = 'ร้าน ' + ((data.shop && data.shop.name) || '—');
     enabled = data.shop ? Number(data.shop.delete_qr_on_checkout) === 1 : false;
     printOnStart = data.shop ? Number(data.shop.print_on_start) !== 0 : true;   // ค่าเริ่มต้น = เปิด
+    deliveryOnStations = data.shop ? Number(data.shop.delivery_on_stations) !== 0 : true;   // ค่าเริ่มต้น = เปิด
     paintShopState(data.hours);
     $('err').textContent = '';
     paint();
     $('printErr').textContent = '';
     paintPrint();
+    $('dlvErr').textContent = '';
+    paintDlv();
   } catch (err) {
     $('err').textContent = 'โหลดค่าตั้งไม่สำเร็จ: ' + err.message;
   }
@@ -68,6 +72,45 @@ function paintPrint() {
     ? 'เปิดอยู่ — กด “เริ่มทำ” ที่ครัว/แคชเชียร์ แล้วระบบพิมพ์ใบสั่งครัวให้ทันที'
     : 'ปิดอยู่ — กด “เริ่มทำ” จะไม่พิมพ์ออกมา (เริ่มทำอย่างเดียว ไม่มีกระดาษรบกวน)';
 }
+
+// สวิตช์ "แสดงเมนูที่ลูกค้าเดลิเวอร์รี่สั่งในครัว/แคชเชียร์"
+function paintDlv() {
+  $('swDeliveryOnStations').checked = deliveryOnStations;
+  const b = $('dlvBadge');
+  b.textContent = deliveryOnStations ? 'เปิดอยู่' : 'ปิดอยู่';
+  b.className = 'badge ' + (deliveryOnStations ? 'ok' : 'wait');
+  $('dlvHint').textContent = deliveryOnStations
+    ? 'เปิดอยู่ — ออเดอร์เดลิเวอร์รี่ขึ้นในครัว/แคชเชียร์ให้กดเริ่มทำตามปกติ'
+    : 'ปิดอยู่ — ออเดอร์เดลิเวอร์รี่ไม่แสดงในครัว/แคชเชียร์ (ดูและกด "นำส่ง" ที่หน้าสั่งอาหารเท่านั้น)';
+}
+
+$('swDeliveryOnStations').addEventListener('change', async (e) => {
+  if (busy) return;
+  const el = e.currentTarget;
+  const on = el.checked;
+  const okToggle = await ask(
+    (on ? 'เปิด' : 'ปิด') + ' “แสดงเมนูที่ลูกค้าเดลิเวอร์รี่สั่งในครัว/แคชเชียร์” ?',
+    on
+      ? 'ออเดอร์เดลิเวอร์รี่จะกลับมาแสดงในครัวและแคชเชียร์ให้กดเริ่มทำ และต้องเคลียร์รายการครบก่อนจึงกด "นำส่ง" ได้'
+      : 'ออเดอร์เดลิเวอร์รี่จะไม่แสดงในครัวและแคชเชียร์เลย — เห็นและกด "นำส่ง" ได้ที่หน้าสั่งอาหารเท่านั้น (กดได้ทันที ไม่ต้องเคลียร์รายการ)',
+    on ? 'เปิดใช้งาน' : 'ปิดใช้งาน'
+  );
+  if (!okToggle) { el.checked = !on; return; }
+  busy = true;
+  el.disabled = true;
+  try {
+    const r = await API.setDeliveryOnStations(on);
+    deliveryOnStations = r.enabled;
+    paintDlv();
+    toast(r.message || 'บันทึกแล้ว');
+  } catch (err) {
+    el.checked = !on;
+    $('dlvErr').textContent = err.message;
+  } finally {
+    busy = false;
+    el.disabled = false;
+  }
+});
 
 $('swPrintOnStart').addEventListener('change', async (e) => {
   if (busy) return;

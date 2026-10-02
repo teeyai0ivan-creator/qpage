@@ -402,6 +402,8 @@ async function initSchema() {
   // ตัวเลือกลบ QR ของโต๊ะทันทีเมื่อเช็คบิล (ปิดไว้เป็นค่าเริ่มต้น)
   // หมายเหตุ: ตัวเลือกนี้ "ปิดใช้งาน" QR ไม่ได้ลบทิ้ง — โต๊ะยังถูกเก็บไว้ในประวัติ (tables.retired_at)
   await ensureColumn('shops', 'delete_qr_on_checkout', 'delete_qr_on_checkout TINYINT(1) NOT NULL DEFAULT 0');
+  // แสดงรายการที่ลูกค้าเดลิเวอร์รี่สั่งในหน้าครัว/แคชเชียร์หรือไม่ (ปิด = จัดการที่หน้าสั่งอาหารเท่านั้น)
+  await ensureColumn('shops', 'delivery_on_stations', 'delivery_on_stations TINYINT(1) NOT NULL DEFAULT 1');
   // กลุ่มตัวเลือก: ใช้กับออเดอร์เดลิเวอร์รี่หรือไม่ (ปิด = ลูกค้าที่สั่งเดลิเวอร์รี่จะไม่เห็นกลุ่มนี้ เช่น "วิธีการทาน")
   await ensureColumn('option_groups', 'delivery_enabled', 'delivery_enabled TINYINT(1) NOT NULL DEFAULT 1');
   // พิมพ์ใบสั่งครัวอัตโนมัติเมื่อกด "เริ่มทำ" ในหน้าครัว/แคชเชียร์ (เปิดไว้เป็นค่าเริ่มต้น)
@@ -1066,6 +1068,7 @@ async function updateShop(id, fields) {
     seoTitle: 'seo_title', seoDescription: 'seo_description',
     deleteQrOnCheckout: 'delete_qr_on_checkout',
     printOnStart: 'print_on_start',
+    deliveryOnStations: 'delivery_on_stations',
     // เวลาเปิด–ปิดร้าน + วันเปิดทำการ + วันที่กด "ปิดร้านวันนี้"
     openTime: 'open_time', closeTime: 'close_time', openDays: 'open_days', closedDate: 'closed_date',
     // การชำระเงินของร้าน (ร้านตั้งเองได้ทั้งหมด รวมคีย์ EasySlip)
@@ -1074,7 +1077,7 @@ async function updateShop(id, fields) {
     payNote: 'pay_note', payExpireMinutes: 'pay_expire_minutes',
     slipApiKey: 'slip_api_key', slipAutoApprove: 'slip_auto_approve',
   };
-  const bools = ['deleteQrOnCheckout', 'printOnStart', 'payEnabled', 'slipAutoApprove'];
+  const bools = ['deleteQrOnCheckout', 'printOnStart', 'deliveryOnStations', 'payEnabled', 'slipAutoApprove'];
   const sets = [];
   const params = [];
   for (const key of Object.keys(map)) {
@@ -1978,8 +1981,10 @@ async function addOrderItems(orderId, items) {
 /** รายการในบิลที่เปิดอยู่ แยกตามจุดแสดงผล: station = 'kitchen' (ครัว) | 'cashier' (แคชเชียร์)
  *  เรียงตามลำดับที่ลูกค้าสั่ง (คิวก่อน-หลัง) — เปลี่ยนสถานะแล้วตำแหน่งไม่ขยับ
  *  ยกเว้นรายการที่ "เสร็จแล้ว" จะจมไปล่างสุดเสมอ และรายการใหม่ต่อท้ายคิว (เหนือกลุ่มที่เสร็จแล้ว) */
-async function listKitchenItems(shopId, station = 'kitchen') {
+async function listKitchenItems(shopId, station = 'kitchen', opts) {
   const st = station === 'cashier' ? 'cashier' : 'kitchen';
+  // hideDelivery = ร้านปิด "แสดงเมนูเดลิเวอร์รี่ในครัว/แคชเชียร์" → ไม่ส่งออเดอร์เดลิเวอร์รี่/รับที่ร้านมาให้กดเริ่มทำ
+  const hideDelivery = opts && opts.hideDelivery ? 1 : 0;
   // ทุกบิล (โต๊ะ/เดลิเวอร์รี่/รับที่ร้าน) ใช้เส้นทางตามหมวดหมู่อาหารเหมือนกัน — เครื่องดื่มที่ตั้งเป็นแคชเชียร์ก็ไปแคชเชียร์
   const [rows] = await pool.execute(
     `SELECT oi.id, oi.order_id, oi.menu_id, oi.menu_name, oi.quantity, oi.options_json, oi.status,
@@ -1993,9 +1998,10 @@ async function listKitchenItems(shopId, station = 'kitchen') {
        LEFT JOIN menus m ON m.id = oi.menu_id
        LEFT JOIN categories c ON c.id = m.category_id
       WHERE o.shop_id = ? AND o.status = 'open' AND oi.status <> 'cancelled'
+        AND (COALESCE(o.order_type, 'dine_in') = 'dine_in' OR ? = 0)
         AND COALESCE(c.station, 'kitchen') = ?
       ORDER BY (oi.status = 'done') ASC, oi.id ASC`,
-    [shopId, st]
+    [shopId, hideDelivery, st]
   );
   return rows;
 }

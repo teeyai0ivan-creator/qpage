@@ -395,12 +395,14 @@ const showInfo = (title, message) => ask(title, message, 'ปิด', false);
 // ---------------------------------------------------------------------------
 let dlvInfo = null;      // { dataUrl, url, token, hours, transferReady }
 let remoteList = [];
+let remoteRequireReady = true;   // ต้องรอครัว/แคชเชียร์เคลียร์ครบก่อนจึงกด "นำส่ง" ได้
 
 async function loadDelivery() {
   try {
     const [qr, remote] = await Promise.all([API.deliveryQr(), API.remoteOrders()]);
     dlvInfo = qr;
     remoteList = remote.orders || [];
+    remoteRequireReady = remote.requireReady !== false;
     renderDelivery();
     renderRemoteBills();
   } catch (err) {
@@ -443,16 +445,22 @@ function renderRemoteBills() {
     const isD = o.order_type === 'delivery';
     const p = o.progress || {};
     const ready = o.status === 'open' && p.ready;
-    const items = (o.items || []).filter((i) => i.status !== 'cancelled').map((i) =>
+    const items = (o.items || []).filter((i) => i.status !== 'cancelled');
+    const itemRows = items.map((i) =>
       `<div class="s" style="display:flex;gap:8px;align-items:center;padding:2px 0;">
         <span style="flex:1;">${Number(i.quantity) || 0}× ${esc(i.menu_name)} <small>(${STN_LABEL[i.station] || 'ครัว'})</small>
           <span class="badge ${i.status === 'done' ? 'ok' : 'wait'}" style="font-size:10.5px;padding:1px 7px;">${ST_LABEL[i.status] || i.status}</span></span>
         <span>${money(i.line_total)}</span>
       </div>`).join('');
+    const ids = items.map((i) => i.id);
+    const printBtn = ids.length
+      ? `<button class="btn btn-sm" data-printticket="${ids.join(',')}" type="button">🖨 พิมพ์ใบสั่งครัว</button>`
+      : '';
+    const sendEnabled = remoteRequireReady ? ready : true;
     const btn = o.status !== 'open'
       ? '<span class="s">รอลูกค้าชำระเงินก่อนจึงจะนำส่งได้</span>'
-      : `<button class="btn btn-sm btn-primary" data-send="${o.id}" type="button"${ready ? '' : ' disabled title="รอครัว/แคชเชียร์ทำรายการให้ครบก่อน"'}>✅ นำส่ง</button>`;
-    return `<div class="remote-item" style="flex-direction:column;align-items:stretch;gap:6px;border-left-color:${ready ? '#059669' : '#4f46e5'};">
+      : `<button class="btn btn-sm btn-primary" data-send="${o.id}" type="button"${sendEnabled ? '' : ' disabled title="รอครัว/แคชเชียร์ทำรายการให้ครบก่อน"'}>✅ นำส่ง</button>`;
+    return `<div class="remote-item" style="flex-direction:column;align-items:stretch;gap:6px;border-left-color:${sendEnabled ? '#059669' : '#4f46e5'};">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <span class="t">${isD ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน'} · บิล ${billNo(o.bill_no)}</span>
         <span class="s">${esc(o.customer_name || '')} · ${esc(o.customer_phone || '-')}</span>
@@ -460,15 +468,21 @@ function renderRemoteBills() {
       </div>
       ${o.customer_address ? `<div class="s">📍 ${esc(o.customer_address)}</div>` : ''}
       ${o.customer_note ? `<div class="s">📝 ${esc(o.customer_note)}</div>` : ''}
-      ${items}
+      ${itemRows}
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <b>${money(o.total)}</b>
         <span class="s">· ครัว/แคชเชียร์ทำแล้ว ${p.done || 0}/${p.plates || 0} จาน${ready ? ' · ครบแล้ว' : ''}</span>
-        <span style="flex:1;"></span>${btn}
+        <span style="flex:1;"></span>${printBtn}${btn}
       </div>
     </div>`;
   }).join('');
   box.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => sendOrder(Number(b.dataset.send), b)));
+  box.querySelectorAll('[data-printticket]').forEach((b) => b.addEventListener('click', () => {
+    const ids = String(b.dataset.printticket || '');
+    if (!ids) return;
+    API.printRound({ url_path: '/shop/ticket.html?ids=' + ids + '&fresh=' + ids });
+    toast('กำลังพิมพ์ใบสั่งครัว…');
+  }));
 }
 
 async function sendOrder(orderId, btn) {
