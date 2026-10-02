@@ -645,6 +645,7 @@ ipcMain.handle('notify:update', (event, p) => api.updateNotifyGroup(p && p.id, p
 ipcMain.handle('notify:delete', (event, id) => api.deleteNotifyGroup(id));
 ipcMain.handle('sys:set-qr-auto-delete', (event, enabled) => api.setQrAutoDelete(enabled));
 ipcMain.handle('shop:payment-settings', () => api.shopPaymentSettings());
+ipcMain.handle('shop:test-slip', () => api.testSlipConnection());
 ipcMain.handle('shop:save-payment', (event, fields) => api.saveShopPaymentSettings(fields || {}));
 ipcMain.handle('shop:save-hours', (event, fields) => api.saveShopHours(fields || {}));
 ipcMain.handle('sys:close-today', (event, closed) => api.setCloseToday(closed));

@@ -76,6 +76,17 @@ $('btnSave').addEventListener('click', async () => {
   } finally { btn.disabled = false; }
 });
 
+$('btnTestSlip').addEventListener('click', async () => {
+  const btn = $('btnTestSlip');
+  btn.disabled = true;
+  try {
+    const r = await API.testSlipConnection();
+    toast(r.message + (r.provider_code ? ' · รหัสจากผู้ให้บริการ: ' + r.provider_code : ''), r.connected ? 5000 : 9000);
+    $('keyState').textContent = r.connected ? 'คีย์ใช้งานได้ปกติ' : ('มีปัญหา: ' + r.message);
+  } catch (e) { toast('ทดสอบไม่สำเร็จ: ' + e.message); }
+  finally { btn.disabled = false; }
+});
+
 $('btnReload').addEventListener('click', () => load().then(() => toast('โหลดใหม่แล้ว')));
 $('btnHistory').addEventListener('click', () => NAV.go('/shop/history.html'));
 

@@ -15,6 +15,7 @@ const { isAdminRole, isShop } = require('../lib/roles');
 const { randomToken } = require('../lib/crypto');
 const shopHours = require('../lib/shop-hours');
 const orderPay = require('../lib/order-pay');
+const slipVerify = require('../lib/slip-verify');
 const { addMonthsSql, toSql, nowSql } = require('../lib/time');
 const { getPaymentSettings, hasAnyChannel, paymentInstructions, generateRef, emailPackagePurchased, entitlementEndFor } = require('../lib/payments');
 
@@ -664,4 +665,29 @@ router.put('/api/shop/close-today', requireShop, async (req, res) => {
   });
 });
 
+
+// ทดสอบการเชื่อมต่อ EasySlip ด้วยคีย์ของร้าน (ส่งรูปจิ๋วที่ตั้งใจให้อ่านไม่ได้ → ไม่กินเครดิตในกรณีปกติ)
+// ใช้ดูว่าคีย์/แพ็กเกจยังใช้ได้ไหม โดยไม่ต้องรอลูกค้าอัปสลิปจริง
+router.post('/api/shop/payment-settings/test-slip', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const slipSettings = slipVerify.getSlipSettings(shop);
+  if (!slipSettings.configured) {
+    return res.status(400).json({ ok: false, message: 'ยังไม่ได้ใส่คีย์ EasySlip — ใส่คีย์ก่อนแล้วบันทึก' });
+  }
+  // PNG 1x1 พิกเซล (โปร่งใส) — ผู้ให้บริการจะตอบว่า 'อ่านรูปไม่ได้' ซึ่งแปลว่าคีย์ยังใช้งานได้
+  const dummy = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==', 'base64');
+  const r = await slipVerify.verifySlip(dummy, 0, slipSettings);
+  const shopProblem = slipVerify.isShopConfigCode(r.code);
+  const okConnect = r.code === 'invalid_image' || r.code === 'slip_not_found' || r.code === 'verified';
+  res.json({
+    ok: true,
+    connected: okConnect,
+    code: r.code || '',
+    provider_code: r.providerCode || '',
+    message: okConnect
+      ? 'เชื่อมต่อ EasySlip ได้ปกติ — คีย์ใช้งานได้ (ผู้ให้บริการตอบว่า: ' + (r.providerCode || r.code) + ')'
+      : (r.message || 'เชื่อมต่อไม่สำเร็จ'),
+  });
+});
 module.exports = router;

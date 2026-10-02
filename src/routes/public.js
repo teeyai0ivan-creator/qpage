@@ -386,8 +386,21 @@ router.post('/api/public/pay/:ref/slip', async (req, res) => {
 
   if (!decision.approve) {
     const customerMsg = verify && verify.customerMessage ? verify.customerMessage : '';
+    const shopProblem = slipVerify.isShopConfigCode(verify && verify.code);
+    console.warn(`⚠️ ตรวจสลิปไม่ผ่าน บิล #${order.bill_no} (${shop.name}) รหัส ${(verify && verify.code) || '-'}${verify && verify.providerCode ? ' / ผู้ให้บริการ ' + verify.providerCode : ''}`);
+    if (shopProblem) {
+      // ปัญหาอยู่ที่การตั้งค่า/บัญชีของร้าน (เช่น EasySlip หมดอายุ) — ลูกค้าแก้เองไม่ได้
+      // ปิดบิลนี้แล้วให้ลูกค้าสั่งใหม่แบบชำระเงินสด จะได้ไม่ต้องรอจนหมดเวลา
+      await db.expireOrderPayment(order.id);
+      return res.status(400).json({
+        ok: false, field: 'slip', status: decision.status, shop_config_error: true, retry_cash: true,
+        provider_code: (verify && verify.providerCode) || null,
+        message: customerMsg || 'ร้านยังไม่พร้อมรับชำระเงินโอนในขณะนี้ — ออเดอร์นี้ถูกยกเลิกแล้ว กรุณาสั่งใหม่และเลือก “ชำระเงินสด”',
+      });
+    }
     return res.status(400).json({
       ok: false, field: 'slip', status: decision.status,
+      provider_code: (verify && verify.providerCode) || null,
       message: customerMsg || decision.detail || 'ตรวจสลิปไม่ผ่าน กรุณาตรวจสอบสลิปแล้วลองใหม่',
     });
   }

@@ -153,6 +153,11 @@
               <div class="set-sub" id="keyState">ยังไม่ได้ตั้งคีย์</div>
             </div>
             <div class="set-field">
+              <label>ทดสอบการเชื่อมต่อ</label>
+              <button class="mini-btn" id="btnTestSlip" type="button">🔌 ทดสอบคีย์ EasySlip</button>
+              <div class="set-sub" id="testSlipResult">กดเพื่อดูว่าคีย์/แพ็กเกจยังใช้งานได้ไหม (ไม่ต้องรอลูกค้าอัปสลิป)</div>
+            </div>
+            <div class="set-field">
               <label>โหมดการตรวจ</label>
               <label style="display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600;color:var(--text);">
                 <input type="checkbox" id="slipAutoApprove" checked style="accent-color:var(--accent);">
@@ -249,6 +254,21 @@
         document.getElementById('errMsg').textContent = err.message;
       } finally { btn.disabled = false; }
     });
+    document.getElementById('btnTestSlip').addEventListener('click', async function () {
+      const btn = this;
+      const el = document.getElementById('testSlipResult');
+      btn.disabled = true;
+      el.textContent = 'กำลังทดสอบ…';
+      try {
+        const r = await api('/api/shop/payment-settings/test-slip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        el.textContent = r.message + (r.provider_code ? ' · รหัสจากผู้ให้บริการ: ' + r.provider_code : '');
+        el.style.color = r.connected ? 'var(--success, #059669)' : 'var(--danger, #dc2626)';
+      } catch (e) {
+        el.textContent = e.message;
+        el.style.color = 'var(--danger, #dc2626)';
+      } finally { btn.disabled = false; }
+    });
+
     document.getElementById('reloadBtn').addEventListener('click', () => load().then(() => toast('โหลดใหม่แล้ว')));
     load();
   </script>

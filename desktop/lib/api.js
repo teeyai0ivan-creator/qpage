@@ -294,6 +294,9 @@ async function closeRemoteOrder(orderId) {
 async function shopPaymentSettings() {
   return call('/api/shop/payment-settings');
 }
+async function testSlipConnection() {
+  return call('/api/shop/payment-settings/test-slip', { method: 'POST', body: {} });
+}
 async function saveShopPaymentSettings(fields) {
   return call('/api/shop/payment-settings', { method: 'PUT', body: fields });
 }
@@ -386,7 +389,7 @@ module.exports = {
   tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
   history, kitchenPrints, retiredTables, qrImage,
   deliveryQrImage, remoteOrders, closeRemoteOrder,
-  shopPaymentSettings, saveShopPaymentSettings, saveShopHours, setCloseToday,
+  shopPaymentSettings, saveShopPaymentSettings, testSlipConnection, saveShopHours, setCloseToday,
   shopAll, saveShop, uploadImage, imageDataUrl,
   addCategory, updateCategory, deleteCategory,
   addMenu, updateMenu, deleteMenu, setMenuGroups,

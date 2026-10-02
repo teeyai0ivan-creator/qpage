@@ -87,6 +87,15 @@ const ERROR_MAP = {
   QUOTA_EXCEEDED: 'quota',
   USAGE_LIMIT_EXCEEDED: 'quota',
   INSUFFICIENT_BALANCE: 'quota',
+  // แพ็กเกจ/รอบบริการของ EasySlip หมดอายุ (ข้อความผู้ให้บริการมักเป็น 'Service has expired')
+  SERVICE_EXPIRED: 'service_expired',
+  SUBSCRIPTION_EXPIRED: 'service_expired',
+  PACKAGE_EXPIRED: 'service_expired',
+  PLAN_EXPIRED: 'service_expired',
+  SERVICE_INACTIVE: 'service_expired',
+  ACCOUNT_EXPIRED: 'service_expired',
+  ACCOUNT_INACTIVE: 'service_expired',
+  FORBIDDEN: 'unauthorized',
 };
 
 /** ข้อความสำหรับเจ้าของระบบ (ในคิวตรวจสอบ) */
@@ -98,6 +107,7 @@ const OWNER_TEXT = {
   ip_not_allowed: 'IP ของเซิร์ฟเวอร์ไม่ได้รับอนุญาต — ต้องเพิ่ม 118.27.151.243 ใน whitelist ของ EasySlip',
   unauthorized: 'API key ของ EasySlip ไม่ถูกต้องหรือถูกยกเลิก — ตรวจสอบที่หน้าเว็บ EasySlip',
   quota: 'โควต้าตรวจสลิปของ EasySlip หมด — กรุณาเติมเครดิตหรืออัปเกรดแพ็กเกจ',
+  service_expired: 'แพ็กเกจ/รอบบริการของ EasySlip หมดอายุ — ต้องต่ออายุที่เว็บ easyslip.com ก่อนจึงจะตรวจสลิปได้ (ไม่ใช่ปัญหาที่ร้านหรือลูกค้า)',
   verify_failed: 'ตรวจสลิปไม่สำเร็จ',
   error: 'เชื่อมต่อผู้ให้บริการตรวจสลิปไม่สำเร็จ',
 };
@@ -186,7 +196,9 @@ async function verifySlip(buffer, expectedAmount, settingsOverride) {
     if (json.success !== true) {
       const code = (json.error && json.error.code) || 'HTTP_' + status;
       const providerMessage = (json.error && json.error.message) || '';
-      const mapped = ERROR_MAP[code] || 'verify_failed';
+      // ผู้ให้บริการบางครั้งส่งรหัสมาไม่ตรงกับที่รู้จัก แต่ข้อความบอกชัดว่า 'หมดอายุ' → จับจากข้อความด้วย
+      const expiredByText = /expire|not active|inactive|suspend|ระงับ|หมดอายุ/i.test(providerMessage);
+      const mapped = ERROR_MAP[code] || (expiredByText ? 'service_expired' : 'verify_failed');
       console.error('⚠️ EasySlip [' + code + '] ' + providerMessage);
       return {
         ok: false,
@@ -266,4 +278,9 @@ function decideAutoApprove({ settings, record, result }) {
   return { approve: true, status: 'verified', detail: 'ตรวจสลิปผ่าน · ยอดตรง · ' + extra };
 }
 
-module.exports = { getSlipSettings, verifySlip, decideAutoApprove, accountMatches };
+
+/** รหัสที่เป็น 'ปัญหาระดับร้าน/บัญชี' (ลูกค้าแก้เองไม่ได้) — ใช้ตัดสินว่าจะบอกลูกค้ายังไง */
+const SHOP_CONFIG_CODES = ['service_expired', 'unauthorized', 'ip_not_allowed', 'quota', 'not_configured', 'error'];
+function isShopConfigCode(code) { return SHOP_CONFIG_CODES.includes(String(code || '')); }
+
+module.exports = { getSlipSettings, verifySlip, decideAutoApprove, accountMatches, isShopConfigCode };

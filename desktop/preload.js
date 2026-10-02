@@ -84,6 +84,7 @@ contextBridge.exposeInMainWorld('qpageShop', {
   setQrAutoDelete: (enabled) => ipcRenderer.invoke('sys:set-qr-auto-delete', enabled),
   paymentSettings: () => ipcRenderer.invoke('shop:payment-settings'),
   savePayment: (fields) => ipcRenderer.invoke('shop:save-payment', fields || {}),
+  testSlipConnection: () => ipcRenderer.invoke('shop:test-slip'),
   saveHours: (fields) => ipcRenderer.invoke('shop:save-hours', fields || {}),
   setCloseToday: (closed) => ipcRenderer.invoke('sys:close-today', closed),
   printReceipt: (payload) => ipcRenderer.send('orders:print-receipt', payload || {}),
