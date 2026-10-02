@@ -18,7 +18,8 @@ const db = require('../db');
 // เหตุการณ์ที่รองรับ — เพิ่มใหม่ได้ที่นี่ที่เดียว หน้าเว็บอ่านรายการนี้ผ่าน API
 // ---------------------------------------------------------------------------
 const EVENTS = [
-  { key: 'order_new', label: 'มีออเดอร์ใหม่', desc: 'ลูกค้าสแกนสั่งอาหาร หรือแคชเชียร์เพิ่มอาหารเข้าบิล' },
+  { key: 'order_new', label: 'มีออเดอร์ใหม่ (ที่โต๊ะ)', desc: 'ลูกค้าสแกน QR ที่โต๊ะสั่งอาหาร หรือแคชเชียร์เพิ่มอาหารเข้าบิล' },
+  { key: 'order_delivery', label: 'ออเดอร์เดลิเวอร์รี่/รับที่ร้าน', desc: 'มีออเดอร์จาก QR เดลิเวอร์รี่ — แจ้งวันเวลา ชื่อ เบอร์ ลิงก์ปักหมุด รายการอาหารทั้งหมด พร้อมยอดเงิน และสถานะชำระเงิน (โอนแล้ว/เก็บเงินปลายทาง)' },
   { key: 'item_done', label: 'อาหารทำเสร็จ', desc: 'ครัว/แคชเชียร์กดเคลียร์รายการว่าพร้อมเสิร์ฟ' },
   { key: 'item_cancel', label: 'ยกเลิกรายการ', desc: 'ครัว/แคชเชียร์ยกเลิกรายการ พร้อมเหตุผล' },
   { key: 'checkout', label: 'เช็คบิล (ปิดบิล)', desc: 'ปิดบิลของโต๊ะและเปิดบิลใหม่ให้โต๊ะเดิม' },
@@ -150,6 +151,60 @@ function bangkokTime(date = new Date()) {
   return `${p(t.getUTCDate())}/${p(t.getUTCMonth() + 1)}/${t.getUTCFullYear()} ${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`;
 }
 
+/**
+ * ลิงก์แผนที่ของที่อยู่จัดส่ง
+ * ใช้ลิงก์ที่ลูกค้าวางไว้ (ถ้ามี) ไม่งั้นสร้างจากพิกัดที่ปักหมุด GPS
+ */
+function mapLinkOf(order = {}) {
+  const addr = String(order.customer_address || '');
+  const m = /https?:\/\/(?:www\.)?(?:maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.[a-z.]+|google\.[a-z.]+\/maps)[^\s|]*/i.exec(addr);
+  if (m) return m[0];
+  const lat = Number(order.customer_lat);
+  const lng = Number(order.customer_lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && lat && lng) return `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+  return '';
+}
+
+/** ที่อยู่จัดส่งแบบข้อความ (ตัดลิงก์แผนที่ออก เพราะจะแสดงเป็นบรรทัดแยกให้กดได้) */
+function addressTextOf(order = {}) {
+  return String(order.customer_address || '').split('|').map((s) => s.trim())
+    .filter((s) => s && !/^แผนที่\s*:/.test(s)).join(' ');
+}
+
+/**
+ * ออเดอร์เดลิเวอร์รี่ / รับที่ร้าน — แจ้งครบ: วันเวลา · ชื่อ · เบอร์ · ลิงก์ปักหมุด · รายการทั้งหมด · ยอดรวม · สถานะชำระเงิน
+ * paid = true เมื่อตรวจสลิปผ่านแล้ว (หรือจ่ายเงินสดแล้ว) — ถ้าไม่ส่งมาจะอ่านจากออเดอร์เอง
+ */
+function buildDeliveryOrderText({ shopName, order = {}, items = [], paid }) {
+  const isDelivery = order.order_type === 'delivery';
+  const isPaid = paid === undefined ? order.payment_status === 'paid' : !!paid;
+  const payText = isPaid
+    ? (order.payment_method === 'transfer'
+      ? 'โอนเงินแล้ว ✅' + (order.trans_ref ? ` (รายการ ${order.trans_ref})` : '')
+      : 'ชำระเงินสดแล้ว ✅')
+    : (order.payment_method === 'transfer' ? 'รอชำระเงิน (โอน)' : 'เก็บเงินปลายทาง 💵');
+  const rows = [
+    `${isDelivery ? '🛵 ออเดอร์เดลิเวอร์รี่' : '🏠 ออเดอร์รับที่ร้าน'} — ${shopName}`,
+    `บิล ${billFmt(order.bill_no)} · ${bangkokTime(order.opened_at || order.created_at || new Date())}`,
+    '',
+    `ชื่อ: ${order.customer_name || '-'}`,
+    `เบอร์: ${order.customer_phone || '-'}`,
+  ];
+  if (isDelivery) {
+    const addr = addressTextOf(order);
+    if (addr) rows.push(`ที่อยู่: ${addr}`);
+    const map = mapLinkOf(order);
+    if (map) rows.push(`📍 ปักหมุด: ${map}`);
+  }
+  if (order.customer_note) rows.push(`หมายเหตุ: ${order.customer_note}`);
+  rows.push('');
+  rows.push(itemLines(items));
+  rows.push('');
+  rows.push(`ยอดรวม ${money(order.total)}`);
+  rows.push(`การชำระเงิน: ${payText}`);
+  return rows.join('\n');
+}
+
 function buildOrderNewText({ shopName, tableCode, billNo, items, total, source }) {
   return [
     `🔔 ออเดอร์ใหม่ — ${shopName}`,
@@ -251,6 +306,8 @@ module.exports = {
   bangkokTime,
   buildTestText,
   buildOrderNewText,
+  buildDeliveryOrderText,
+  mapLinkOf,
   buildItemDoneText,
   buildItemCancelText,
   buildCheckoutText,

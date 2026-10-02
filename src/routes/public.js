@@ -309,13 +309,17 @@ router.post('/api/public/delivery/:token/order', async (req, res) => {
 
   // เงินสด = รับออเดอร์ทันที → แจ้งเตือนเจ้าของร้าน + เข้าครัว
   if (method === 'cash') {
+    // แจ้งเตือนกลุ่มของร้าน (เหตุการณ์ "ออเดอร์เดลิเวอร์รี่/รับที่ร้าน") — วันเวลา/ชื่อ/เบอร์/แผนที่/รายการ/ยอดเงิน
     const items = await db.listOrderItems(created.id);
-    void notify.notifyShop(shop.id, 'order_new', notify.buildOrderNewText({
+    const full = await db.findOrderById(created.id, shop.id);
+    void notify.notifyShop(shop.id, 'order_delivery', notify.buildDeliveryOrderText({
       shopName: shop.name,
-      tableCode: label + ' · ' + name,
-      billNo: created.billNo,
+      order: Object.assign({}, full || created, {
+        bill_no: created.billNo,
+        total: items.reduce((s, i) => s + Number(i.line_total || 0), 0),
+      }),
       items,
-      total: items.reduce((s, i) => s + Number(i.line_total || 0), 0),
+      paid: false,
     }));
     realtime.publish(shop.id, 'order_new', { order_type: orderType, bill_no: created.billNo });
   }
@@ -390,15 +394,14 @@ router.post('/api/public/pay/:ref/slip', async (req, res) => {
 
   // ผ่าน → ได้เงินจริง → ส่งออเดอร์เข้าครัวทันที + ติดป้าย "โอนแล้ว"
   await db.markOrderPaid(order.id, { transRef: verify.transRef, slipDetail: decision.detail });
-  const label = order.order_type === 'delivery' ? 'เดลิเวอร์รี่' : 'รับที่ร้าน';
   const items = await db.listOrderItems(order.id);
-  void notify.notifyShop(shop.id, 'order_new', notify.buildOrderNewText({
+  // แจ้งกลุ่มของร้านว่า "ชำระเงินแล้ว" พร้อมรายละเอียดออเดอร์ครบ (เหตุการณ์ออเดอร์เดลิเวอร์รี่/รับที่ร้าน)
+  const paidOrder = await db.findOrderById(order.id, shop.id);
+  void notify.notifyShop(shop.id, 'order_delivery', notify.buildDeliveryOrderText({
     shopName: shop.name,
-    tableCode: label + ' · ' + (order.customer_name || ''),
-    billNo: order.bill_no,
+    order: Object.assign({}, paidOrder || order, { payment_status: 'paid', trans_ref: verify.transRef || null }),
     items,
-    total: Number(order.total),
-    source: 'โอนเงินแล้ว (ตรวจสลิปอัตโนมัติ)',
+    paid: true,
   }));
   realtime.publish(shop.id, 'order_new', { order_type: order.order_type, bill_no: order.bill_no, paid: true });
   console.log(`💰 รับชำระเงินโอนแล้ว บิล #${order.bill_no} (${shop.name}) ยอด ${order.total} → ส่งเข้าครัว`);
