@@ -429,6 +429,26 @@ function renderDelivery() {
 
 const STN_LABEL = { kitchen: 'ครัว', cashier: 'แคชเชียร์' };
 const ST_LABEL = { pending: 'รอทำ', cooking: 'กำลังทำ', done: 'เสร็จแล้ว', cancelled: 'ยกเลิก' };
+
+/** เปิดภาพสลิปการโอนของออเดอร์ (ดึงภาพผ่าน session ของร้าน) */
+async function showSlip(name, billLabel) {
+  const overlay = $('slipOverlay');
+  $('slipTitle').textContent = 'สลิปการโอน' + (billLabel ? ' · ' + billLabel : '');
+  $('slipNote').textContent = 'ภาพที่ลูกค้าแนบไว้ (ใช้เป็นหลักฐานการชำระเงิน)';
+  $('slipBody').innerHTML = '<div class="hint" style="padding:20px;">กำลังโหลด…</div>';
+  overlay.classList.add('show');
+  try {
+    const url = await window.qpageShop.imageData('/api/shop/order-slips/' + name);
+    $('slipBody').innerHTML = url
+      ? '<img src="' + url + '" alt="สลิปการโอน">'
+      : '<div class="hint" style="padding:20px;">เปิดภาพสลิปไม่ได้</div>';
+  } catch (err) {
+    $('slipBody').innerHTML = '<div class="hint" style="padding:20px;">โหลดสลิปไม่สำเร็จ: ' + esc(err.message) + '</div>';
+  }
+}
+$('slipClose').addEventListener('click', () => $('slipOverlay').classList.remove('show'));
+$('slipOverlay').addEventListener('click', (e) => { if (e.target === $('slipOverlay')) $('slipOverlay').classList.remove('show'); });
+
 function payBadgeHtml(o) {
   if (o.status === 'awaiting_payment') return '<span class="badge wait">รอลูกค้าชำระเงิน (โอน)</span>';
   if (o.payment_status === 'paid') return '<span class="badge ok">' + (o.payment_method === 'cash' ? 'รับเงินสดแล้ว' : 'ลูกค้าโอนแล้ว') + '</span>';
@@ -453,6 +473,10 @@ function renderRemoteBills() {
         <span>${money(i.line_total)}</span>
       </div>`).join('');
     const ids = items.map((i) => i.id);
+    const slipName = o.slip_url ? String(o.slip_url).split('/').pop() : '';
+    const slipBtn = slipName
+      ? `<button class="btn btn-sm" data-slip="${esc(slipName)}" data-bill="${esc(billNo(o.bill_no))}" type="button">🖼 ดูสลิป</button>`
+      : '';
     const printBtn = ids.length
       ? `<button class="btn btn-sm" data-printticket="${ids.join(',')}" type="button">🖨 พิมพ์ใบสั่งครัว</button>`
       : '';
@@ -472,11 +496,12 @@ function renderRemoteBills() {
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <b>${money(o.total)}</b>
         <span class="s">· ครัว/แคชเชียร์ทำแล้ว ${p.done || 0}/${p.plates || 0} จาน${ready ? ' · ครบแล้ว' : ''}</span>
-        <span style="flex:1;"></span>${printBtn}${btn}
+        <span style="flex:1;"></span>${slipBtn}${printBtn}${btn}
       </div>
     </div>`;
   }).join('');
   box.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => sendOrder(Number(b.dataset.send), b)));
+  box.querySelectorAll('[data-slip]').forEach((b) => b.addEventListener('click', () => showSlip(b.dataset.slip, b.dataset.bill)));
   box.querySelectorAll('[data-printticket]').forEach((b) => b.addEventListener('click', () => {
     const ids = String(b.dataset.printticket || '');
     if (!ids) return;

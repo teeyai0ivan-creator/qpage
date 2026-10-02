@@ -2353,6 +2353,7 @@ async function listOpenRemoteOrders(shopId) {
     `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no, o.order_type, o.status,
             o.customer_name, o.customer_phone, o.customer_address, o.customer_note,
             o.customer_lat, o.customer_lng, o.payment_method, o.payment_status, o.paid_at, o.pay_ref, o.pay_expires_at,
+            o.slip_url, o.slip_status,
             (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
        FROM orders o
       WHERE o.shop_id = ? AND o.status IN ('open', 'awaiting_payment') AND o.order_type <> 'dine_in'
@@ -2381,7 +2382,7 @@ async function listRemoteOrders(shopId, { limit = 100, status = '' } = {}) {
   const lim = Math.max(1, Math.min(200, Number(limit) || 100));
   let sql = 'SELECT o.id, o.bill_no, o.status, o.order_type, o.total, o.opened_at, o.closed_at,'
     + ' o.customer_name, o.customer_phone, o.customer_address, o.customer_note,'
-    + ' o.payment_method, o.payment_status, o.paid_at, o.trans_ref, o.pay_ref, o.slip_status, o.slip_url,'
+    + ' o.payment_method, o.payment_status, o.paid_at, o.trans_ref, o.pay_ref, o.slip_status, o.slip_url, o.slip_detail,'
     + " (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count"
     + " FROM orders o WHERE o.shop_id = ? AND o.order_type <> 'dine_in'";
   const params = [shopId];

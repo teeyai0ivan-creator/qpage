@@ -605,6 +605,10 @@
         const printBtn = activeIds.length
           ? '<a class="mini-btn" target="_blank" rel="noopener" href="/shop/ticket.html?ids=' + activeIds.join(",") + '&fresh=' + activeIds.join(",") + '">🖨 พิมพ์ใบสั่งครัว</a>'
           : '';
+        const slipName = o.slip_url ? String(o.slip_url).split("/").pop() : "";
+        const slipBtn = slipName
+          ? '<a class="mini-btn" target="_blank" rel="noopener" href="/api/shop/order-slips/' + encodeURIComponent(slipName) + '">🖼 ดูสลิป</a>'
+          : '';
         return '<div class="hist-sub" style="border:1px solid var(--border);border-left:4px solid ' + (sendEnabled ? '#059669' : '#4f46e5') + ';border-radius:12px;padding:10px 12px;margin-bottom:10px;">'
           + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
           + '<b>' + (isD ? "🛵 เดลิเวอร์รี่" : "🏠 รับที่ร้าน") + ' · บิล ' + billNoFmt(o.bill_no) + '</b>'
@@ -618,7 +622,7 @@
           + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">'
           + '<b>' + money(o.total) + '</b>'
           + '<span style="color:var(--muted);font-size:12.5px;">· ครัว/แคชเชียร์ทำแล้ว ' + (p.done || 0) + '/' + (p.plates || 0) + ' จาน' + (ready ? " · ครบแล้ว" : "") + '</span>'
-          + '<span style="flex:1;"></span>' + printBtn + btn
+          + '<span style="flex:1;"></span>' + slipBtn + printBtn + btn
           + '</div>'
           + '</div>';
       }).join("");

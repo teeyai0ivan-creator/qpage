@@ -81,6 +81,15 @@
 
     .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); background: #101828; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; opacity: 0; transition: .18s; pointer-events: none; z-index: 30; max-width: 80vw; }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    /* ดูสลิปการโอนของบิล (ภาพเก็บฝั่งเซิร์ฟเวอร์ โปรแกรมดึงผ่าน session ของร้าน) */
+    .slip-overlay { position: fixed; inset: 0; background: rgba(16,24,40,.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 40; }
+    .slip-overlay.show { display: flex; }
+    .slip-modal { width: 100%; max-width: 560px; max-height: 92vh; display: flex; flex-direction: column; background: var(--card); border-radius: 16px; padding: 16px; box-shadow: 0 20px 44px rgba(16,24,40,.28); }
+    .slip-modal h3 { margin: 0 0 6px; font-size: 16px; font-weight: 800; }
+    .slip-modal .slip-note { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+    .slip-modal .slip-body { flex: 1; min-height: 0; overflow: auto; text-align: center; background: var(--card-2); border: 1px solid var(--border); border-radius: 12px; }
+    .slip-modal .slip-body img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .slip-modal .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -166,6 +175,15 @@
   </main>
 
   <div class="toast" id="toast"></div>
+
+  <div class="slip-overlay" id="slipOverlay">
+    <div class="slip-modal">
+      <h3 id="slipTitle">สลิปการโอน</h3>
+      <div class="slip-note" id="slipNote">—</div>
+      <div class="slip-body" id="slipBody"><div class="hint" style="padding:20px;">กำลังโหลด…</div></div>
+      <div class="foot"><button class="btn" id="slipClose" type="button">ปิด</button></div>
+    </div>
+  </div>
 
   <script src="history.js"></script>
 </body>

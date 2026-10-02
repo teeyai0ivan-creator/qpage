@@ -27,6 +27,52 @@ const optsText = (json) => {
 const csvCell = (c) => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"';
 const csvRows = (rows) => rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
 
+// ---------- สลิปการโอน: ป้ายสถานะ + เปิดดูภาพ ----------
+// คีย์ตรงกับ slip_status ที่เซิร์ฟเวอร์บันทึกไว้ (src/lib/slip-verify.js)
+const SLIP_LABEL = {
+  verified: ['สลิปผ่าน', 'ok'],
+  amount_mismatch: ['สลิปไม่ผ่าน · ยอดไม่ตรง', 'cancel'],
+  duplicate: ['สลิปไม่ผ่าน · สลิปซ้ำ', 'cancel'],
+  receiver_unverified: ['สลิปไม่ผ่าน · บัญชีผู้รับไม่ตรง', 'cancel'],
+  manual: ['รอตรวจสลิปเอง', 'wait'],
+  service_expired: ['สลิปไม่ผ่าน · EasySlip หมดอายุ', 'cancel'],
+  unauthorized: ['สลิปไม่ผ่าน · คีย์ไม่ถูกต้อง', 'cancel'],
+  ip_not_allowed: ['สลิปไม่ผ่าน · IP ไม่ได้รับอนุญาต', 'cancel'],
+  quota: ['สลิปไม่ผ่าน · โควตาหมด', 'cancel'],
+  not_configured: ['สลิปไม่ผ่าน · ร้านยังไม่ตั้งค่า', 'cancel'],
+  verify_failed: ['ตรวจสลิปไม่สำเร็จ', 'cancel'],
+  error: ['ตรวจสลิปไม่สำเร็จ', 'cancel'],
+};
+const slipNameOf = (o) => (o.slip_url ? String(o.slip_url).split('/').pop() : '');
+function slipBadge(o) {
+  if (!o.slip_url && !o.slip_status) return '';
+  const t = SLIP_LABEL[o.slip_status] || ['มีสลิปแนบ', 'wait'];
+  return '<span class="badge ' + t[1] + '">' + esc(t[0]) + '</span>';
+}
+function slipButton(o) {
+  const name = slipNameOf(o);
+  if (!name) return '';
+  return '<button class="btn btn-sm" data-slip="' + esc(name) + '" data-bill="' + esc(billNo(o.bill_no)) + '" type="button">🖼 ดูสลิป</button>';
+}
+/** เปิดภาพสลิปในหน้าต่างของโปรแกรม (ดึงภาพผ่าน session ของร้าน) */
+async function showSlip(name, billLabel) {
+  const overlay = $('slipOverlay');
+  $('slipTitle').textContent = 'สลิปการโอน' + (billLabel ? ' · ' + billLabel : '');
+  $('slipNote').textContent = 'ภาพที่ลูกค้าแนบไว้ (ใช้เป็นหลักฐานการชำระเงิน)';
+  $('slipBody').innerHTML = '<div class="hint" style="padding:20px;">กำลังโหลด…</div>';
+  overlay.classList.add('show');
+  try {
+    const url = await window.qpageShop.imageData('/api/shop/order-slips/' + name);
+    $('slipBody').innerHTML = url
+      ? '<img src="' + url + '" alt="สลิปการโอน">'
+      : '<div class="hint" style="padding:20px;">เปิดภาพสลิปไม่ได้</div>';
+  } catch (err) {
+    $('slipBody').innerHTML = '<div class="hint" style="padding:20px;">โหลดสลิปไม่สำเร็จ: ' + esc(err.message) + '</div>';
+  }
+}
+$('slipClose').addEventListener('click', () => $('slipOverlay').classList.remove('show'));
+$('slipOverlay').addEventListener('click', (e) => { if (e.target === $('slipOverlay')) $('slipOverlay').classList.remove('show'); });
+
 let tab = 'bills';
 let orders = [];
 let retired = [];
@@ -103,6 +149,7 @@ function renderDeliveryHistory() {
         <span class="b">· บิล ${billNo(o.bill_no)} · ${esc(o.customer_name || '-')}</span>
         <span class="spacer"></span>
         <span class="badge ${paidOk ? 'ok' : (cancelled ? 'cancel' : 'wait')}">${esc(dlvPayText(o))}</span>
+        ${slipBadge(o)}
         <span class="amt" style="font-size:16px;">${money(o.total)}</span>
       </div>
       <div class="bill-items">
@@ -110,13 +157,18 @@ function renderDeliveryHistory() {
         ${o.customer_address ? `<div class="row"><div class="info"><div class="opts">📍 ${esc(o.customer_address)}</div></div></div>` : ''}
         ${o.customer_note ? `<div class="row"><div class="info"><div class="opts">📝 ${esc(o.customer_note)}</div></div></div>` : ''}
         <div class="row"><div class="info"><div class="opts">วิธีชำระที่เลือก: ${o.payment_method === 'transfer' ? 'โอนเงิน' : (o.payment_method === 'cash' ? 'เงินสด' : '—')}${o.trans_ref ? ' · รายการโอน ' + esc(o.trans_ref) : ''}${o.status === 'awaiting_payment' ? ' · รหัสชำระ ' + esc(o.pay_ref || '') : ''}</div></div></div>
+        ${o.slip_detail ? `<div class="row"><div class="info"><div class="opts">ผลตรวจสลิป: ${esc(o.slip_detail)}</div></div></div>` : ''}
       </div>
       <div class="bill-foot">
+        ${slipButton(o)}
         <button class="btn btn-sm btn-primary" data-dlv-receipt="${o.id}" type="button">🖨 พิมพ์ใบเสร็จ</button>
       </div>
     </section>`;
   }).join('');
 
+  box.querySelectorAll('[data-slip]').forEach((b) => b.addEventListener('click', () => {
+    showSlip(b.dataset.slip, b.dataset.bill);
+  }));
   box.querySelectorAll('[data-dlv-receipt]').forEach((b) => b.addEventListener('click', () => {
     const id = Number(b.dataset.dlvReceipt);
     API.printReceipt({ orderId: id, url_path: '/shop/receipt.html?order=' + id });

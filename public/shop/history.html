@@ -276,6 +276,30 @@
 
     // ---------- แท็บ "ประวัติเดลิเวอร์รี่" (ทุกสถานะ รวมที่ถูกยกเลิก/หมดเวลาชำระ) ----------
     let dlvOrders = [];
+    // สถานะการตรวจสลิป → ป้ายไทย (คีย์ตรงกับ slip_status ที่เซิร์ฟเวอร์บันทึกไว้)
+    const SLIP_LABEL = {
+      verified: ['สลิปผ่าน', 'st-done'],
+      amount_mismatch: ['สลิปไม่ผ่าน · ยอดไม่ตรง', 'st-cancelled'],
+      duplicate: ['สลิปไม่ผ่าน · สลิปซ้ำ', 'st-cancelled'],
+      receiver_unverified: ['สลิปไม่ผ่าน · บัญชีผู้รับไม่ตรง', 'st-cancelled'],
+      manual: ['รอตรวจสลิปเอง', 'st-pending'],
+      service_expired: ['สลิปไม่ผ่าน · EasySlip หมดอายุ', 'st-cancelled'],
+      unauthorized: ['สลิปไม่ผ่าน · คีย์ไม่ถูกต้อง', 'st-cancelled'],
+      ip_not_allowed: ['สลิปไม่ผ่าน · IP ไม่ได้รับอนุญาต', 'st-cancelled'],
+      quota: ['สลิปไม่ผ่าน · โควตาหมด', 'st-cancelled'],
+      not_configured: ['สลิปไม่ผ่าน · ร้านยังไม่ตั้งค่า', 'st-cancelled'],
+      verify_failed: ['ตรวจสลิปไม่สำเร็จ', 'st-cancelled'],
+      error: ['ตรวจสลิปไม่สำเร็จ', 'st-cancelled'],
+    };
+    const slipNameOf = (o) => (o.slip_url ? String(o.slip_url).split('/').pop() : '');
+    /** ป้ายสถานะสลิป + ปุ่มดูสลิป (ว่างถ้าไม่มีสลิป) */
+    function slipHtml(o) {
+      if (!o.slip_url && !o.slip_status) return '';
+      const t = SLIP_LABEL[o.slip_status] || ['มีสลิปแนบ', 'st-pending'];
+      const name = slipNameOf(o);
+      return ' <span class="st-badge ' + t[1] + '">' + esc(t[0]) + '</span>'
+        + (name ? ' <a class="mini-btn" href="/api/shop/order-slips/' + encodeURIComponent(name) + '" target="_blank" rel="noopener">🖼 ดูสลิป</a>' : '');
+    }
     const dlvPayText = (o) => {
       if (o.status === 'cancelled') return o.payment_status === 'expired' ? 'ยกเลิก (หมดเวลาชำระ)' : 'ยกเลิก';
       if (o.payment_status === 'paid') return o.payment_method === 'transfer' ? 'โอนแล้ว' : 'เงินสด (รับแล้ว)';
@@ -298,19 +322,20 @@
           + '<div class="hist-sub">' + dt(o.opened_at) + (o.closed_at ? ' → ' + dt(o.closed_at) : '') + ' · ' + o.item_count + ' จาน · เบอร์ ' + esc(o.customer_phone || '-') + '</div>'
           + '<div class="hist-sub"><span class="st-badge ' + cls + '">' + esc(dlvPayText(o)) + '</span>'
           + (o.trans_ref ? ' · รายการโอน ' + esc(o.trans_ref) : '')
-          + (o.status === 'awaiting_payment' ? ' · รหัสชำระ ' + esc(o.pay_ref || '') : '') + '</div>'
+          + (o.status === 'awaiting_payment' ? ' · รหัสชำระ ' + esc(o.pay_ref || '') : '') + slipHtml(o) + '</div>'
           + '</div>'
           + '<div class="bill-total">' + money(o.total) + '</div>'
           + '</summary>'
           + '<div class="hist-items">'
           + (o.customer_address ? '<div class="bill-item"><span>📍 ' + esc(o.customer_address) + '</span><span></span></div>' : '')
           + (o.customer_note ? '<div class="bill-item"><span>📝 ' + esc(o.customer_note) + '</span><span></span></div>' : '')
+          + (o.slip_detail ? '<div class="bill-item"><span>ผลตรวจสลิป</span><span>' + esc(o.slip_detail) + '</span></div>' : '')
           + '<div class="bill-item"><span>วิธีชำระที่เลือก</span><span>' + (o.payment_method === 'transfer' ? 'โอนเงิน' : (o.payment_method === 'cash' ? 'เงินสด' : '—')) + '</span></div>'
           + '<div class="bill-item"><span>สถานะบิล</span><span>' + esc(o.status) + '</span></div>'
           + '</div>'
           + '<div class="hist-actions">'
           + '<a class="mini-btn primary" href="/shop/receipt.html?order=' + o.id + '" target="_blank" rel="noopener">🖨 ใบเสร็จ</a>'
-          + (o.slip_url ? ' · <span class="hist-sub" style="margin:0;">มีสลิปแนบไว้</span>' : '')
+          + (slipNameOf(o) ? ' <a class="mini-btn" href="/api/shop/order-slips/' + encodeURIComponent(slipNameOf(o)) + '" target="_blank" rel="noopener">🖼 ดูสลิป</a>' : '')
           + '</div>'
           + '</details>';
       }).join('');
