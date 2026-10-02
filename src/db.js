@@ -2304,6 +2304,7 @@ async function deleteOrder(id, shopId) {
   return Number(r.affectedRows) || 0;
 }
 
+/** บิลโต๊ะที่ยังเปิดอยู่ (เฉพาะ dine_in) — บิลเดลิเวอร์รี่/รับที่ร้านมีหน้าจอของตัวเอง (ดู listOpenRemoteOrders) */
 async function listOpenOrders(shopId) {
   const [rows] = await pool.execute(
     `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no,
@@ -2312,6 +2313,7 @@ async function listOpenOrders(shopId) {
             (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
        FROM orders o LEFT JOIN \`tables\` t ON t.id = o.table_id
       WHERE o.shop_id = ? AND o.status = 'open'
+        AND COALESCE(o.order_type, 'dine_in') = 'dine_in'
       ORDER BY table_code ASC`,
     [shopId]
   );
