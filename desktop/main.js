@@ -708,6 +708,7 @@ ipcMain.handle('orders:add-zone', (event, name) => api.addZone(name));
 ipcMain.handle('orders:delivery-qr', () => api.deliveryQrImage());
 ipcMain.handle('orders:remote', () => api.remoteOrders());
 ipcMain.handle('orders:close-remote', (event, orderId) => api.closeRemoteOrder(orderId));
+ipcMain.handle('orders:clear-empty', (event, orderId) => api.clearEmptyOrder(orderId));
 ipcMain.handle('orders:save-png', (event, payload) => {
   const b64 = String((payload && payload.dataUrl) || '').split('base64,').pop();
   const p = saveToDownloads((payload && payload.name) || 'qpage-qr.png', Buffer.from(b64, 'base64'));

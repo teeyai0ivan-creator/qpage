@@ -101,6 +101,7 @@ contextBridge.exposeInMainWorld('qpageOrders', {
   deliveryQr: () => ipcRenderer.invoke('orders:delivery-qr'),
   remoteOrders: () => ipcRenderer.invoke('orders:remote'),
   closeRemote: (orderId) => ipcRenderer.invoke('orders:close-remote', orderId),
+  clearEmptyOrder: (orderId) => ipcRenderer.invoke('orders:clear-empty', orderId),
   saveQrDataUrl: (payload) => ipcRenderer.invoke('orders:save-png', payload || {}),
 
   zones: () => ipcRenderer.invoke('orders:zones'),

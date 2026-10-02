@@ -132,6 +132,7 @@
           <div class="td-total-row">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="mini-btn primary" id="tdCheckout" type="button">เช็คบิล (ปิดบิล + เปิดบิลใหม่)</button>
+              <button class="mini-btn danger" id="tdClearEmpty" type="button" style="display:none;">ล้างบิลเปล่า</button>
               <button class="mini-btn" id="tdRefresh" type="button">รีเฟรช</button>
             </div>
             <strong id="tdTotal">฿0</strong>
@@ -186,7 +187,6 @@
       document.getElementById('tdTitle').textContent = 'โต๊ะ ' + table.code;
       const zone = document.getElementById('tdZone');
       if (table.zone_name) { zone.textContent = table.zone_name; zone.style.display = ''; } else { zone.style.display = 'none'; }
-      document.getElementById('tdSub').textContent = 'บิล ' + billNoFmt(table.open_order ? table.open_order.bill_no : null) + ' · QR นี้ให้ลูกค้าที่โต๊ะสแกนเพื่อสั่งอาหาร';
       document.getElementById('tdQr').src = qrUrl(table.id);
       const dl = document.getElementById('tdDownload');
       dl.href = qrUrl(table.id);
@@ -194,14 +194,21 @@
 
       const items = (bill && bill.items) ? bill.items : [];
       const active = items.filter((i) => i.status !== 'cancelled');
-      document.getElementById('tdBillNo').textContent = table.open_order ? billNoFmt(table.open_order.bill_no) : '';
+      const hasBillNo = !!(table.open_order && items.length);
+      document.getElementById('tdSub').textContent = (hasBillNo ? 'บิล ' + billNoFmt(table.open_order.bill_no) + ' · ' : '')
+        + 'QR นี้ให้ลูกค้าที่โต๊ะสแกนเพื่อสั่งอาหาร';
+      document.getElementById('tdBillNo').textContent = hasBillNo ? billNoFmt(table.open_order.bill_no) : '';
       document.getElementById('tdBill').innerHTML = items.length
         ? '<div class="bill-items">' + items.map(itemRow).join('') + '</div>'
-        : '<div class="cat-empty">บิลนี้ยังไม่มีรายการ</div>';
+        : '<div class="cat-empty">บิลนี้ยังไม่มีรายการ' + (table.open_order ? ' (บิลเปล่า — ล้างทิ้งได้ถ้าไม่มีคนสั่ง)' : '') + '</div>';
       document.getElementById('tdTotal').textContent = money(bill ? bill.total : (table.open_order ? table.open_order.total : 0));
       const uncleared = platesOf(items.filter((i) => i.status === 'pending' || i.status === 'cooking'));
       const coBtn = document.getElementById('tdCheckout');
       coBtn.disabled = !items.length || !!uncleared;
+      // บิลเปล่า (มีบิลเปิดอยู่แต่ไม่มีรายการ) → ให้ล้างทิ้งได้
+      const clearBtn = document.getElementById('tdClearEmpty');
+      clearBtn.style.display = (table.open_order && !items.length) ? '' : 'none';
+      clearBtn.dataset.order = table.open_order ? table.open_order.id : '';
       document.getElementById('tdWarn').textContent = uncleared ? `⚠ ยังมีรายการรอทำ/กำลังทำ ${uncleared} รายการ — เช็คบิลไม่ได้` : '';
 
       document.querySelectorAll('[data-delitem]').forEach((b) => b.addEventListener('click', async () => {
@@ -263,6 +270,22 @@
       catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); }
     });
     document.getElementById('tdRefresh').addEventListener('click', async () => { try { await load(); toast('อัปเดตแล้ว'); } catch (e) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: e.message }); } });
+
+    // ล้างบิลเปล่า (บิลที่เปิดอยู่แต่ยังไม่มีรายการอาหาร) — ลบทิ้งได้ ปลอดภัยเพราะไม่มีข้อมูลบิล
+    document.getElementById('tdClearEmpty').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const orderId = Number(btn.dataset.order || 0);
+      if (!orderId) return;
+      const okClear = await uiConfirm({ title: 'ล้างบิลเปล่า?', message: 'บิลนี้ยังไม่มีรายการอาหาร — ลบทิ้งได้เลย\n(โต๊ะจะยังใช้ได้ปกติ และสแกน QR ครั้งถัดไประบบจะเปิดบิลใหม่ให้)', okText: 'ล้างบิลเปล่า', danger: true });
+      if (!okClear) return;
+      btn.disabled = true;
+      try {
+        const r = await api('/api/shop/orders/' + orderId + '/clear-empty', { method: 'POST' });
+        toast(r.message || 'ล้างบิลเปล่าแล้ว');
+        await load();
+      } catch (err) { uiAlert({ title: 'ทำรายการไม่สำเร็จ', message: err.message }); }
+      finally { btn.disabled = false; }
+    });
 
     // เช็คบิล: ปิดบิล + เปิดใบเสร็จให้พิมพ์ แล้วกลับหน้าสั่งอาหาร
     document.getElementById('tdCheckout').addEventListener('click', async () => {

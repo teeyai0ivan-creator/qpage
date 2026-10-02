@@ -2292,14 +2292,16 @@ async function findOrderBySlipFile(shopId, fileName) {
 }
 
 /** ลบบิลที่ยังเปิดอยู่และยังไม่มีรายการ (ตั๋วเปล่าของโต๊ะที่ถูกลบไปแล้ว)
- *  บิลที่มีรายการแล้วต้อง "เช็คบิล" เท่านั้น เพื่อไม่ให้ประวัติหาย */
+ *  บิลที่มีรายการแล้วต้อง "เช็คบิล" เท่านั้น เพื่อไม่ให้ประวัติหาย
+ *  คืนจำนวนแถวที่ลบได้ (0 = มีรายการอยู่/ปิดไปแล้ว/ไม่ใช่ของร้านนี้) */
 async function deleteOrder(id, shopId) {
-  await pool.execute(
+  const [r] = await pool.execute(
     `DELETE o FROM orders o
       WHERE o.id = ? AND o.shop_id = ? AND o.status = 'open'
         AND NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id)`,
     [id, shopId]
   );
+  return Number(r.affectedRows) || 0;
 }
 
 async function listOpenOrders(shopId) {

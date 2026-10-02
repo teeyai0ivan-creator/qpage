@@ -146,8 +146,12 @@ function renderDrawer() {
   const t = tables.find((x) => x.id === currentTable.id) || currentTable;
   currentTable = t;
   const o = t.open_order;
+  const openPlates = o ? plates(o.items) : 0;
   $('dTitle').textContent = 'โต๊ะ ' + (t.code || '—');
-  $('dSub').textContent = o ? ('บิล ' + billNo(o.bill_no) + ' · ' + plates(o.items) + ' จาน') : 'ยังไม่มีบิลที่เปิดอยู่';
+  // บิลเปล่า (ยังไม่มีรายการ) ไม่ต้องโชว์เลขบิล ให้ดูเป็นโต๊ะว่างแทน
+  $('dSub').textContent = (o && openPlates)
+    ? ('บิล ' + billNo(o.bill_no) + ' · ' + openPlates + ' จาน')
+    : (o ? 'บิลเปล่า — ยังไม่มีรายการ' : 'ยังไม่มีบิลที่เปิดอยู่');
   const body = $('dBody');
   if (!o || !o.items || !o.items.length) {
     body.innerHTML = '<div class="empty-state" style="padding:28px 16px;">ยังไม่มีรายการในบิล<br>กด "＋ เพิ่มอาหาร" เพื่อเริ่มสั่ง</div>';
@@ -172,11 +176,17 @@ function renderDrawer() {
   const uncleared = o && (o.items || []).some((i) => i.status === 'pending' || i.status === 'cooking');
   $('dCheckout').disabled = !o || !(o.items || []).length;
   $('dAdd').disabled = !o;
+  // บิลเปล่า (มีบิลเปิดอยู่แต่ไม่มีรายการ) → ให้ล้างทิ้งได้
+  const clearBtn = $('dClearEmpty');
+  clearBtn.style.display = (o && !(o.items || []).length) ? '' : 'none';
+  clearBtn.dataset.order = o ? o.id : '';
   $('dHint').textContent = !o
     ? 'โต๊ะนี้ยังไม่มีบิล — เพิ่มอาหารไม่ได้จนกว่าจะมีบิล (ลูกค้าสแกน QR หรือกดเพิ่มโต๊ะ/บิลจากหน้าเว็บ)'
-    : uncleared
-      ? 'ยังมีรายการที่ครัว/แคชเชียร์ยังไม่เคลียร์ — เช็คบิลได้เมื่อเคลียร์ครบแล้ว'
-      : 'พร้อมเช็คบิล — ระบบจะพิมพ์ใบเสร็จให้อัตโนมัติ';
+    : (o.items || []).length === 0
+      ? 'บิลนี้ยังไม่มีรายการ (บิลเปล่าจากการสแกน QR) — ล้างทิ้งได้ถ้าไม่มีคนสั่ง'
+      : uncleared
+        ? 'ยังมีรายการที่ครัว/แคชเชียร์ยังไม่เคลียร์ — เช็คบิลได้เมื่อเคลียร์ครบแล้ว'
+        : 'พร้อมเช็คบิล — ระบบจะพิมพ์ใบเสร็จให้อัตโนมัติ';
 }
 
 async function delItem(id, name, btn) {
@@ -472,6 +482,22 @@ $('btnAddZone').addEventListener('click', () => openForm('zone'));
 $('dClose').addEventListener('click', closeDrawer);
 $('dAdd').addEventListener('click', openAdd);
 $('dCheckout').addEventListener('click', openCheckout);
+// ล้างบิลเปล่า (บิลที่เปิดอยู่แต่ยังไม่มีรายการอาหาร) — ปลอดภัยเพราะไม่มีข้อมูลบิล
+$('dClearEmpty').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const orderId = Number(btn.dataset.order || 0);
+  if (!orderId) return;
+  const okClear = await askConfirm('ล้างบิลเปล่า', 'บิลนี้ยังไม่มีรายการอาหาร — ลบทิ้งได้เลย\n(โต๊ะยังใช้ได้ปกติ และสแกน QR ครั้งถัดไประบบจะเปิดบิลใหม่ให้)', 'ล้างบิลเปล่า');
+  if (!okClear) return;
+  btn.disabled = true;
+  try {
+    const r = await API.clearEmptyOrder(orderId);
+    toast(r.message || 'ล้างบิลเปล่าแล้ว');
+    await loadAll();
+    closeDrawer();
+  } catch (err) { toast('ล้างบิลไม่สำเร็จ: ' + err.message); }
+  finally { btn.disabled = false; }
+});
 $('addClose').addEventListener('click', closeAdd);
 $('addConfirm').addEventListener('click', confirmAdd);
 $('addSearch').addEventListener('input', renderMenuList);

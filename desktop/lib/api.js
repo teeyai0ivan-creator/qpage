@@ -299,6 +299,11 @@ async function closeRemoteOrder(orderId) {
   const data = await call('/api/shop/orders/' + Number(orderId) + '/close', { method: 'POST', body: {} });
   return { closed: data.closed || null, message: data.message || '' };
 }
+/** ล้างบิลเปล่า (บิลที่ยังเปิดอยู่แต่ไม่มีรายการอาหาร) */
+async function clearEmptyOrder(orderId) {
+  const data = await call('/api/shop/orders/' + Number(orderId) + '/clear-empty', { method: 'POST', body: {} });
+  return { message: data.message || '' };
+}
 /** การชำระเงินของร้าน (ร้านตั้งเองได้ทั้งหมด รวมคีย์ EasySlip) */
 async function shopPaymentSettings() {
   return call('/api/shop/payment-settings');
@@ -397,7 +402,7 @@ module.exports = {
   kitchenItems, startItems, setItemStatus, cancelItem,
   tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
   history, deliveryHistory, kitchenPrints, retiredTables, qrImage,
-  deliveryQrImage, remoteOrders, closeRemoteOrder,
+  deliveryQrImage, remoteOrders, closeRemoteOrder, clearEmptyOrder,
   shopPaymentSettings, saveShopPaymentSettings, testSlipConnection, saveShopHours, setCloseToday,
   shopAll, saveShop, uploadImage, imageDataUrl,
   addCategory, updateCategory, deleteCategory,

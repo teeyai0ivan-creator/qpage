@@ -338,7 +338,8 @@
                   <span>${esc(n.name)}</span><small>ยังไม่มี QR · กดเพื่อสร้าง</small>
                 </button>`;
               }
-              const billNo = (o && o.bill_no) || (t.open_order && t.open_order.bill_no) || null;
+              // บิลเปล่า (ยังไม่มีรายการ) ไม่ต้องโชว์เลขบิล ให้ดูเป็นโต๊ะว่างแทน
+              const billNo = billPlatesN ? ((o && o.bill_no) || (t.open_order && t.open_order.bill_no) || null) : null;
               const billTag = billNo ? `<small class="tile-bill">บิล ${billNoFmt(billNo)}</small>` : '';
               return `<button type="button" class="tile hasqr${billPlatesN ? ' busy-tile' : ''}" data-open="${t.id}" title="กดเพื่อดู/พิมพ์ QR และดูบิลปัจจุบัน">
                 <span>${esc(n.name)}</span>

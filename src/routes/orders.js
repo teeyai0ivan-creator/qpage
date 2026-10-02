@@ -531,6 +531,21 @@ router.post('/api/shop/orders/:id/close', requireShop, async (req, res) => {
   res.json({ ok: true, closed, message: 'ปิดบิลแล้ว' });
 });
 
+/** ล้าง "บิลเปล่า" (บิลที่เปิดอยู่แต่ยังไม่มีรายการอาหาร) — ใช้กับตั๋วเปล่าของโต๊ะ/บิลที่สแกน QR แล้วยังไม่สั่ง */
+router.post('/api/shop/orders/:id/clear-empty', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const order = await db.findOrderById(Number(req.params.id), shop.id);
+  if (!order) return res.status(404).json({ ok: false, message: 'ไม่พบบิลนี้' });
+  if (order.status !== 'open') return res.status(400).json({ ok: false, message: 'บิลนี้ปิดไปแล้ว' });
+  const removed = await db.deleteOrder(order.id, shop.id);
+  if (!removed) {
+    return res.status(409).json({ ok: false, message: 'ล้างไม่ได้ — บิลนี้มีรายการอาหารแล้ว (ต้องเช็คบิลตามปกติ)' });
+  }
+  realtime.publish(shop.id, 'tables_changed', {});
+  res.json({ ok: true, message: `ล้างบิล ${order.bill_no ? '#' + String(order.bill_no).padStart(4, '0') : ''} (บิลเปล่า) แล้ว` });
+});
+
 /** ดูสลิปโอนเงินของบิลในร้านตัวเอง (ไฟล์เก็บนอก public — เปิดดูได้เฉพาะร้านเจ้าของบิล) */
 router.get('/api/shop/order-slips/:name', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
