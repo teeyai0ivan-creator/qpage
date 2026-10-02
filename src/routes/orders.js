@@ -93,6 +93,25 @@ router.get('/shop/settings.html', requireShopPage, async (req, res) => {
   await sendShopPage(res, 'settings.html', shop);
 });
 
+// หน้าคิวเดลิเวอร์รี่/รับที่ร้าน (เจ้าของร้าน) — เดิมเสิร์ฟเป็น static จึงไม่ได้ล็อกสิทธิ์และไม่ได้ ?v=
+router.get('/shop/delivery.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  await sendShopPage(res, 'delivery.html', shop);
+});
+
+// หน้าตั้งค่าการชำระเงิน + หน้า QR เดลิเวอร์รี่สำหรับพิมพ์ — เดิมเสิร์ฟเป็น static (ไม่ได้ ?v=)
+router.get('/shop/payments.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  await sendShopPage(res, 'payments.html', shop);
+});
+router.get('/shop/delivery-qr.html', requireShopPage, async (req, res) => {
+  const shop = await db.findShopByUserId(req.user.id);
+  if (!shop) return res.redirect('/shop/setup.html');
+  await sendShopPage(res, 'delivery-qr.html', shop);
+});
+
 // หน้าสั่งอาหารของลูกค้า (สาธารณะ) — ใช้ token ของโต๊ะ
 router.get('/order/:token', (req, res) => {
   res.set('Cache-Control', 'no-store');

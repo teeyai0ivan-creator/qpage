@@ -9,6 +9,7 @@
 
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { stampAssetUrls } = require('./asset-version');
 
 const PUBLIC_DIR = path.join(__dirname, '..', '..', 'public');
 const BRAND_NAME_RE = /(<span class="brand-name"[^>]*>)[^<]*(<\/span>)/;
@@ -31,6 +32,7 @@ async function sendShopPage(res, file, shop) {
     if (shop && shop.logo_url) {
       html = html.replace(BRAND_LOGO_RE, `$1<img src="${esc(shop.logo_url)}" alt="${esc(shop.name || 'ร้านของฉัน')}">$2`);
     }
+    html = stampAssetUrls(html);   // เติม ?v=<เวอร์ชัน> ให้ CSS/JS เพื่อให้แคชได้ยาว (สลับหน้าเร็วขึ้น)
     res.type('html').send(html);
   } catch (err) {
     // อ่านไฟล์ไม่ได้ก็ยังส่งหน้าเดิมได้ (แค่ชื่อร้าน/โลโก้จะเริ่มที่ค่าเดิมเหมือนก่อน)

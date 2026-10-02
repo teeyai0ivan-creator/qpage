@@ -70,11 +70,21 @@ app.use(publicRoutes);
 // robots.txt + sitemap.xml (ให้เสิร์ชเอนจินค้นเจอหน้าเว็บสาธารณะและหน้าร้านแต่ละร้าน)
 app.use(seoRoutes);
 
-// ไฟล์หน้าเว็บ (.html) และไฟล์ CSS/JS บังคับให้ตรวจสอบของใหม่ทุกครั้ง (no-cache) — กันเบราว์เซอร์
-// (โดยเฉพาะมือถือ) ใช้หน้าเก่า/สไตล์เก่าที่ cache ไว้หลัง deploy ทำให้ผู้ใช้เห็นพฤติกรรมเก่า
+// ไฟล์ Static: หน้าเว็บ (.html) บังคับ "ตรวจของใหม่ทุกครั้ง" (กันเบราว์เซอร์ใช้หน้าเก่าหลัง deploy)
+// ส่วน CSS/JS/ฟอนต์: ถ้ามี ?v=<เวอร์ชันปัจจุบัน> ให้แคชได้ยาว (immutable) — หน้าเว็บของร้านเติม ?v ให้อัตโนมัติ
+// (ดู src/lib/asset-version.js) ทำให้สลับเมนูไปมาไม่ต้องถามเซิร์ฟเวอร์ใหม่ทีละไฟล์อีก
+const { ASSET_VERSION } = require('./lib/asset-version');
 app.use(express.static(path.join(__dirname, '..', 'public'), {
   setHeaders(res, filePath) {
-    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+    if (/\.(html)$/i.test(filePath)) { res.setHeader('Cache-Control', 'no-cache'); return; }
+    if (/\.(css|js)$/i.test(filePath)) {
+      const v = res.req && res.req.query ? res.req.query.v : '';
+      res.setHeader('Cache-Control', v && v === ASSET_VERSION ? 'public, max-age=31536000, immutable' : 'no-cache');
+      return;
+    }
+    if (/\.(woff2?|ttf|otf|png|jpe?g|webp|gif|svg|ico)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800');   // รูป/ฟอนต์: 7 วัน
+    }
   },
 }));
 
