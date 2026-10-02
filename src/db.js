@@ -402,6 +402,8 @@ async function initSchema() {
   // ตัวเลือกลบ QR ของโต๊ะทันทีเมื่อเช็คบิล (ปิดไว้เป็นค่าเริ่มต้น)
   // หมายเหตุ: ตัวเลือกนี้ "ปิดใช้งาน" QR ไม่ได้ลบทิ้ง — โต๊ะยังถูกเก็บไว้ในประวัติ (tables.retired_at)
   await ensureColumn('shops', 'delete_qr_on_checkout', 'delete_qr_on_checkout TINYINT(1) NOT NULL DEFAULT 0');
+  // พิมพ์ใบสั่งครัวอัตโนมัติเมื่อกด "เริ่มทำ" ในหน้าครัว/แคชเชียร์ (เปิดไว้เป็นค่าเริ่มต้น)
+  await ensureColumn('shops', 'print_on_start', 'print_on_start TINYINT(1) NOT NULL DEFAULT 1');
   // เนื้อหา SEO ของร้าน (กรอกที่หน้าตั้งค่าข้อมูลร้าน) — ใช้เป็นชื่อ/คำอธิบายในการ์ดพรีวิวเวลาแชร์ลิงก์
   // และให้เสิร์ชเอนจินอ่าน (หัวข้อที่ตั้งเอง + คำอธิบาย) ถ้าเว้นว่าง ระบบจะใช้ชื่อร้าน/คำอธิบายที่สร้างให้อัตโนมัติ
   await ensureColumn('shops', 'seo_title', "seo_title VARCHAR(160) NOT NULL DEFAULT ''");
@@ -1061,6 +1063,7 @@ async function updateShop(id, fields) {
     name: 'name', phone: 'phone', lineUrl: 'line_url', logoUrl: 'logo_url', mapsUrl: 'maps_url',
     seoTitle: 'seo_title', seoDescription: 'seo_description',
     deleteQrOnCheckout: 'delete_qr_on_checkout',
+    printOnStart: 'print_on_start',
     // เวลาเปิด–ปิดร้าน + วันเปิดทำการ + วันที่กด "ปิดร้านวันนี้"
     openTime: 'open_time', closeTime: 'close_time', openDays: 'open_days', closedDate: 'closed_date',
     // การชำระเงินของร้าน (ร้านตั้งเองได้ทั้งหมด รวมคีย์ EasySlip)
@@ -1069,7 +1072,7 @@ async function updateShop(id, fields) {
     payNote: 'pay_note', payExpireMinutes: 'pay_expire_minutes',
     slipApiKey: 'slip_api_key', slipAutoApprove: 'slip_auto_approve',
   };
-  const bools = ['deleteQrOnCheckout', 'payEnabled', 'slipAutoApprove'];
+  const bools = ['deleteQrOnCheckout', 'printOnStart', 'payEnabled', 'slipAutoApprove'];
   const sets = [];
   const params = [];
   for (const key of Object.keys(map)) {

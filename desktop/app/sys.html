@@ -55,6 +55,24 @@
         <button class="btn" id="btnReload" type="button">⟳ โหลดใหม่</button>
       </div>
     </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+        <label class="sw" style="margin-top:2px;">
+          <input type="checkbox" id="swPrintOnStart">
+          <span class="track"></span>
+        </label>
+        <div style="flex:1;min-width:260px;">
+          <div style="font-weight:800;font-size:15px;">พิมพ์ใบสั่งครัวเมื่อกด “เริ่มทำ” <span class="badge" id="printBadge">กำลังโหลด…</span></div>
+          <div class="hint" id="printHint">กำลังโหลด…</div>
+        </div>
+      </div>
+      <div class="hint" style="border-top:1px solid var(--border);padding-top:12px;">
+        <b>เปิดไว้:</b> กด “เริ่มทำ” ที่หน้าจอครัวหรือแคชเชียร์ ระบบจะสั่งพิมพ์ใบสั่งครัวออกเครื่องพิมพ์ทันที (เหมือนเดิม)<br>
+        <b>ปิดไว้:</b> กด “เริ่มทำ” จะไม่มีการพิมพ์ออกมาเลย — เหมาะกับร้านที่ไม่ต้องการให้มีกระดาษพิมพ์รบกวน (ยังกดพิมพ์ซ้ำเองได้จากหน้าจอ “ประวัติสั่งครัว”)
+      </div>
+      <div class="err" id="printErr"></div>
+    </div>
   </main>
 
   <div class="overlay" id="askOverlay">

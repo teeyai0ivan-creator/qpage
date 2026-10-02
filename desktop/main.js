@@ -646,6 +646,7 @@ ipcMain.handle('notify:add', (event, fields) => api.addNotifyGroup(fields || {})
 ipcMain.handle('notify:update', (event, p) => api.updateNotifyGroup(p && p.id, p && p.fields));
 ipcMain.handle('notify:delete', (event, id) => api.deleteNotifyGroup(id));
 ipcMain.handle('sys:set-qr-auto-delete', (event, enabled) => api.setQrAutoDelete(enabled));
+ipcMain.handle('sys:set-print-on-start', (event, enabled) => api.setPrintOnStart(enabled));
 ipcMain.handle('shop:payment-settings', () => api.shopPaymentSettings());
 ipcMain.handle('shop:test-slip', () => api.testSlipConnection());
 ipcMain.handle('shop:save-payment', (event, fields) => api.saveShopPaymentSettings(fields || {}));

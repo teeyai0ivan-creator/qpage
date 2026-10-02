@@ -8,6 +8,7 @@ const API = window.qpageShop;
 const NAV = window.qpageNav;
 const $ = (id) => document.getElementById(id);
 let enabled = false;
+let printOnStart = true;
 let busy = false;
 
 function toast(msg) {
@@ -46,13 +47,55 @@ async function load() {
     const data = await API.all();
     $('stShop').textContent = 'ร้าน ' + ((data.shop && data.shop.name) || '—');
     enabled = data.shop ? Number(data.shop.delete_qr_on_checkout) === 1 : false;
+    printOnStart = data.shop ? Number(data.shop.print_on_start) !== 0 : true;   // ค่าเริ่มต้น = เปิด
     paintShopState(data.hours);
     $('err').textContent = '';
     paint();
+    $('printErr').textContent = '';
+    paintPrint();
   } catch (err) {
     $('err').textContent = 'โหลดค่าตั้งไม่สำเร็จ: ' + err.message;
   }
 }
+
+// สวิตช์ "พิมพ์ใบสั่งครัวเมื่อกดเริ่มทำ"
+function paintPrint() {
+  $('swPrintOnStart').checked = printOnStart;
+  const b = $('printBadge');
+  b.textContent = printOnStart ? 'เปิดอยู่' : 'ปิดอยู่';
+  b.className = 'badge ' + (printOnStart ? 'ok' : 'wait');
+  $('printHint').textContent = printOnStart
+    ? 'เปิดอยู่ — กด “เริ่มทำ” ที่ครัว/แคชเชียร์ แล้วระบบพิมพ์ใบสั่งครัวให้ทันที'
+    : 'ปิดอยู่ — กด “เริ่มทำ” จะไม่พิมพ์ออกมา (เริ่มทำอย่างเดียว ไม่มีกระดาษรบกวน)';
+}
+
+$('swPrintOnStart').addEventListener('change', async (e) => {
+  if (busy) return;
+  const el = e.currentTarget;
+  const on = el.checked;
+  const okToggle = await ask(
+    (on ? 'เปิด' : 'ปิด') + ' “พิมพ์ใบสั่งครัวเมื่อกดเริ่มทำ” ?',
+    on
+      ? 'เมื่อกด “เริ่มทำ” ที่หน้าจอครัว/แคชเชียร์ ระบบจะพิมพ์ใบสั่งครัวออกเครื่องพิมพ์ทันที'
+      : 'เมื่อกด “เริ่มทำ” ระบบจะไม่พิมพ์ใบสั่งครัว (ไม่มีกระดาษออกมารบกวน) — ยังกดพิมพ์ซ้ำเองได้จากหน้าจอ “ประวัติสั่งครัว”',
+    on ? 'เปิดใช้งาน' : 'ปิดใช้งาน'
+  );
+  if (!okToggle) { el.checked = !on; return; }
+  busy = true;
+  el.disabled = true;
+  try {
+    const r = await API.setPrintOnStart(on);
+    printOnStart = r.enabled;
+    paintPrint();
+    toast(r.message || 'บันทึกแล้ว');
+  } catch (err) {
+    el.checked = !on;
+    $('printErr').textContent = err.message;
+  } finally {
+    busy = false;
+    el.disabled = false;
+  }
+});
 
 $('swQrAutoDelete').addEventListener('change', async (e) => {
   if (busy) return;

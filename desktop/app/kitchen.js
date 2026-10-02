@@ -187,6 +187,7 @@ async function doStatus(id, status, btn) {
       const r = await API.start([id]);
       if (!r.started.length) { toast('รายการนี้เริ่มทำไปแล้ว'); await load(); return; }
       await load();
+      if (r.print === false) { toast(r.message || 'เริ่มทำแล้ว'); return; }   // ร้านปิดพิมพ์เมื่อกดเริ่มทำ
       toast('เริ่มทำแล้ว — กำลังพิมพ์ใบสั่งครัว');
       for (const round of (r.rounds || [])) API.printRound({ roundId: round.print_id, url_path: round.url_path });
       return;
@@ -211,6 +212,7 @@ async function startAll(btn) {
     const r = await API.start(ids);
     if (!r.started.length) { toast('รายการนี้เริ่มทำไปแล้ว'); await load(); return; }
     await load();
+    if (r.print === false) { toast(r.message || ('เริ่มทำ ' + r.started.length + ' รายการแล้ว')); return; }
     toast('เริ่มทำ ' + r.started.length + ' รายการ — กำลังพิมพ์ใบสั่งครัว');
     // พิมพ์ใบสั่งครัว (main เปิดหน้าพิมพ์ในหน้าต่างซ่อนให้)
     for (const round of (r.rounds || [])) API.printRound({ roundId: round.print_id, url_path: round.url_path });

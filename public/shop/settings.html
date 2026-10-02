@@ -171,12 +171,31 @@
           </div>
           <div class="error-msg" id="setErr" style="display:none;"></div>
         </div>
+
+        <div class="set-card">
+          <div class="set-row">
+            <label class="switch" title="เปิด = กดเริ่มทำในหน้าครัว/แคชเชียร์แล้วพิมพ์ใบสั่งครัวให้ทันที">
+              <input type="checkbox" id="printOnStart">
+              <span class="track"></span>
+            </label>
+            <div style="flex:1;min-width:0;">
+              <div class="set-title">พิมพ์ใบสั่งครัวเมื่อกด “เริ่มทำ” <span class="set-state off" id="printState">กำลังโหลด…</span></div>
+              <div class="set-sub" id="printHint">กำลังโหลด...</div>
+            </div>
+          </div>
+          <div class="set-sub" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            เปิดไว้: กด “เริ่มทำ” ในหน้าครัวหรือแคชเชียร์ ระบบจะสั่งพิมพ์ใบสั่งครัวออกเครื่องพิมพ์ให้ทันที (เหมือนเดิม)<br>
+            ปิดไว้: กด “เริ่มทำ” จะไม่มีการพิมพ์ออกมาเลย — เหมาะกับร้านที่ไม่ต้องการให้มีกระดาษพิมพ์รบกวน (ยังกดพิมพ์ซ้ำเองได้จากหน้า <a href="/shop/kitchen-history.html">ประวัติสั่งครัว</a>)
+          </div>
+          <div class="error-msg" id="printErr" style="display:none;"></div>
+        </div>
       </div>
 
   <div class="toast" id="toast"></div>
 
   <script>
     let enabled = false;
+    let printOnStart = true;
     let toastTimer = null;
 
     function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
@@ -232,12 +251,51 @@
         document.getElementById('shopName').textContent = me.shop.name || 'ร้านของฉัน';
         enabled = Number(me.shop.delete_qr_on_checkout) === 1;
         paint();
+        printOnStart = Number(me.shop.print_on_start) === 0 ? false : true;   // ค่าเริ่มต้น = เปิด
+        paintPrint();
         paintShopState(me.hours);
       } catch (e) {
         if (e.status === 403) { location.href = '/shop'; return; }
         showErr(e.message);
       }
     })();
+
+    // ---------- สวิตช์ "พิมพ์ใบสั่งครัวเมื่อกดเริ่มทำ" ----------
+    function paintPrint() {
+      const el = document.getElementById('printOnStart');
+      if (el) el.checked = printOnStart;
+      const st = document.getElementById('printState');
+      st.textContent = printOnStart ? 'เปิดอยู่' : 'ปิดอยู่';
+      st.className = 'set-state ' + (printOnStart ? 'on' : 'off');
+      document.getElementById('printHint').textContent = printOnStart
+        ? 'เปิดอยู่ — กด “เริ่มทำ” ที่ครัว/แคชเชียร์ แล้วระบบพิมพ์ใบสั่งครัวให้ทันที'
+        : 'ปิดอยู่ — กด “เริ่มทำ” จะไม่พิมพ์ออกมา (เริ่มทำอย่างเดียว ไม่มีกระดาษรบกวน)';
+    }
+    document.getElementById('printOnStart').addEventListener('change', async (e) => {
+      const el = e.currentTarget;
+      const on = el.checked;
+      const okToggle = await uiConfirm({
+        title: (on ? 'เปิด' : 'ปิด') + ' “พิมพ์ใบสั่งครัวเมื่อกดเริ่มทำ” ?',
+        message: on
+          ? 'เมื่อกด “เริ่มทำ” ที่หน้าครัว/แคชเชียร์ ระบบจะพิมพ์ใบสั่งครัวออกเครื่องพิมพ์ทันที'
+          : 'เมื่อกด “เริ่มทำ” ระบบจะไม่พิมพ์ใบสั่งครัว (ไม่มีกระดาษออกมารบกวน) — ยังกดพิมพ์ซ้ำเองได้จากหน้า “ประวัติสั่งครัว”',
+        okText: on ? 'เปิดใช้งาน' : 'ปิดใช้งาน',
+      });
+      if (!okToggle) { el.checked = !on; return; }
+      el.disabled = true;
+      const errEl = document.getElementById('printErr');
+      errEl.style.display = 'none';
+      try {
+        const r = await api('/api/shop/print-on-start', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: on }) });
+        printOnStart = !!r.enabled;
+        paintPrint();
+        toast(r.message || 'บันทึกแล้ว');
+      } catch (err) {
+        el.checked = !on;
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+      } finally { el.disabled = false; }
+    });
 
     // ---------- สถานะร้าน + ปุ่ม "ปิดร้านวันนี้" ----------
     let shopClosedToday = false;

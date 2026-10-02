@@ -275,6 +275,12 @@ async function setQrAutoDelete(enabled) {
   return { enabled: !!data.enabled, message: data.message || '' };
 }
 
+/** เปิด/ปิด "พิมพ์ใบสั่งครัวอัตโนมัติเมื่อกดเริ่มทำ" (ครัว/แคชเชียร์) */
+async function setPrintOnStart(enabled) {
+  const data = await call('/api/shop/print-on-start', { method: 'PUT', body: { enabled: !!enabled } });
+  return { enabled: !!data.enabled, message: data.message || '' };
+}
+
 // ---------------------------------------------------------------------------
 // เดลิเวอร์รี่ / รับที่ร้าน + การชำระเงินของร้าน (หน้าจอในโปรแกรม)
 // ---------------------------------------------------------------------------
@@ -408,5 +414,5 @@ module.exports = {
   addCategory, updateCategory, deleteCategory,
   addMenu, updateMenu, deleteMenu, setMenuGroups,
   addOptionGroup, updateOptionGroup, deleteOptionGroup, addOptionItem, updateOptionItem, deleteOptionItem,
-  notifyGroups, addNotifyGroup, updateNotifyGroup, deleteNotifyGroup, setQrAutoDelete,
+  notifyGroups, addNotifyGroup, updateNotifyGroup, deleteNotifyGroup, setQrAutoDelete, setPrintOnStart,
 };

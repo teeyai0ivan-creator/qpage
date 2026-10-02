@@ -298,6 +298,22 @@ router.put('/api/shop/qr-auto-delete', requireShop, async (req, res) => {
   });
 });
 
+// เปิด/ปิด "พิมพ์ใบสั่งครัวอัตโนมัติเมื่อกดเริ่มทำ" (ครัว/แคชเชียร์)
+router.put('/api/shop/print-on-start', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const enabled = !!req.body?.enabled;
+  await db.updateShop(shop.id, { printOnStart: enabled ? 1 : 0 });
+  console.log(`🖨️ ตั้งค่า "${shop.name}": พิมพ์ใบสั่งครัวเมื่อกดเริ่มทำ = ${enabled ? 'เปิด' : 'ปิด'}`);
+  res.json({
+    ok: true,
+    enabled,
+    message: enabled
+      ? 'เปิดแล้ว — กด "เริ่มทำ" ในหน้าครัว/แคชเชียร์ ระบบจะพิมพ์ใบสั่งครัวให้'
+      : 'ปิดแล้ว — กด "เริ่มทำ" จะไม่พิมพ์ใบสั่งครัว (กดพิมพ์ซ้ำเองได้จาก "ประวัติสั่งครัว")',
+  });
+});
+
 router.post('/api/shop/tables', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
@@ -761,10 +777,18 @@ router.post('/api/shop/order-items/start', requireShop, async (req, res) => {
   const r = await db.startPendingOrderItems(shop.id, ids);
   const rounds = [];   // รอบพิมพ์ที่เกิดขึ้นจากการเริ่มทำครั้งนี้ (ส่งกลับให้โปรแกรมบนคอมเปิดพิมพ์เอง)
   if (!r.started.length) {
-    return res.json({ ok: true, started: [], rounds, message: 'ไม่มีรายการที่ต้องเริ่ม (เริ่มทำไปแล้ว)' });
+    return res.json({ ok: true, started: [], rounds, print: true, message: 'ไม่มีรายการที่ต้องเริ่ม (เริ่มทำไปแล้ว)' });
   }
   // แจ้งหน้าจออื่น (ครัว/แคชเชียร์/หน้าสั่งอาหาร) ให้ของใหม่ขึ้นทันที
   for (const orderId of r.orderIds) realtime.publish(shop.id, 'item_status', { order_id: orderId });
+  // ร้านปิด "พิมพ์เมื่อกดเริ่มทำ" ไว้ → เริ่มทำอย่างเดียว ไม่บันทึก/ไม่สั่งพิมพ์ใบสั่งครัว
+  if (Number(shop.print_on_start) === 0) {
+    console.log(`🍳 [ครัว] เริ่มทำ ${r.started.length} รายการ (ร้าน #${shop.id}) · ปิดการพิมพ์ไว้`);
+    return res.json({
+      ok: true, started: r.started, rounds, print: false,
+      message: `เริ่มทำ ${r.started.length} รายการแล้ว (ปิดการพิมพ์ใบสั่งครัวไว้)`,
+    });
+  }
   // บันทึก "ประวัติสั่งครัว": 1 รอบการพิมพ์ = 1 บิล (โต๊ะเดียวกันพิมพ์ซ้ำหลายรอบได้ตามออเดอร์ใหม่)
   try {
     const items = await db.listTicketItems(shop.id, r.started);
@@ -793,7 +817,7 @@ router.post('/api/shop/order-items/start', requireShop, async (req, res) => {
     console.error('⚠️ บันทึกประวัติสั่งครัวไม่สำเร็จ:', e.message);
   }
   console.log(`🍳 [ครัว] เริ่มทำ ${r.started.length} รายการ (ร้าน #${shop.id})`);
-  res.json({ ok: true, started: r.started, rounds, message: `เริ่มทำ ${r.started.length} รายการแล้ว` });
+  res.json({ ok: true, started: r.started, rounds, print: true, message: `เริ่มทำ ${r.started.length} รายการแล้ว` });
 });
 
 // ข้อมูลสำหรับพิมพ์ใบสั่งครัว (ตาม id รายการที่เพิ่งเริ่มทำ หรือกดพิมพ์ซ้ำ)

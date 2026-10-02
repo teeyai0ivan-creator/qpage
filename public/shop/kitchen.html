@@ -345,6 +345,12 @@
           toast('รายการนี้เริ่มทำไปแล้ว');
           return;
         }
+        if (r.print === false) {   // ร้านปิด "พิมพ์เมื่อกดเริ่มทำ" ไว้ → ไม่ต้องเปิดหน้าพิมพ์
+          if (w) { try { w.close(); } catch (e) { /* ข้าม */ } }
+          toast(r.message || 'เริ่มทำแล้ว');
+          await load();
+          return;
+        }
         gotoReceipt(w, '/shop/ticket.html?ids=' + started.join(',') + '&fresh=' + started.join(','));
         toast(r.message || 'เริ่มทำแล้ว');
         await load();
