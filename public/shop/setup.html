@@ -162,6 +162,31 @@
 
         <div style="border-top:1px solid var(--border);margin:20px 0 16px;padding-top:16px;">
           <div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            เวลาเปิด–ปิดร้าน และวันเปิดทำการ
+          </div>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.6;">
+            ลูกค้าสั่งอาหารได้เฉพาะวันที่เลือกและในช่วงเวลานี้ — ถ้าสแกน QR นอกเวลา ระบบจะแจ้งว่าร้านปิดและไม่รับออเดอร์ (เว้นเวลาว่างทั้งคู่ = เปิดตลอด 24 ชั่วโมง)
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+          <div class="field">
+            <label for="openTime">เวลาเปิดร้าน</label>
+            <input type="time" id="openTime" class="mini-input" style="width:100%;">
+          </div>
+          <div class="field">
+            <label for="closeTime">เวลาปิดร้าน</label>
+            <input type="time" id="closeTime" class="mini-input" style="width:100%;">
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <label>วันเปิดทำการ</label>
+          <div id="openDays" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;"></div>
+          <div class="field-hint" style="font-size:12.5px;color:var(--muted);margin-top:6px;" id="hoursPreview">—</div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin:20px 0 16px;padding-top:16px;">
+          <div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;">
             <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             เนื้อหา SEO (แสดงบน Google และการ์ดพรีวิวเวลาแชร์ลิงก์ร้าน)
           </div>
@@ -240,6 +265,12 @@
           document.getElementById('mapsUrl').value = data.shop.maps_url || '';
           document.getElementById('seoTitle').value = data.shop.seo_title || '';
           document.getElementById('seoDescription').value = data.shop.seo_description || '';
+          // เวลาเปิด–ปิด + วันเปิดทำการ
+          const ot = data.shop.open_time ? String(data.shop.open_time).slice(0, 5) : '';
+          const ct = data.shop.close_time ? String(data.shop.close_time).slice(0, 5) : '';
+          document.getElementById('openTime').value = ot;
+          document.getElementById('closeTime').value = ct;
+          setOpenDays(data.shop.open_days);
           logoUrl = data.shop.logo_url || '';
           publicCode = data.shop.public_code || '';
           if (logoUrl) document.getElementById('logoPreview').src = logoUrl;
@@ -251,6 +282,51 @@
         if (err.status === 403) { window.location.href = '/shop'; return; }
       }
     }
+
+    // ---------- วันเปิดทำการ (จ.–อา.) ----------
+    const DAY_SHORT = ['', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'];
+    const DAY_FULL = ['', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์', 'อาทิตย์'];
+    function renderDayBoxes(selected) {
+      const box = document.getElementById('openDays');
+      if (!box) return;
+      const on = new Set((selected && selected.length ? selected : [1, 2, 3, 4, 5, 6, 7]).map(Number));
+      box.innerHTML = DAY_SHORT.slice(1).map((n, i) => {
+        const d = i + 1;
+        const st = on.has(d) ? 'background:var(--accent-gradient);color:#fff;border-color:transparent;' : '';
+        return '<label class="mini-btn" style="cursor:pointer;display:inline-flex;gap:6px;align-items:center;padding:7px 12px;' + st + '">'
+          + '<input type="checkbox" value="' + d + '" data-day ' + (on.has(d) ? 'checked' : '') + ' style="accent-color:var(--accent);"> ' + n + '</label>';
+      }).join('');
+      box.querySelectorAll('[data-day]').forEach((cb) => cb.addEventListener('change', () => {
+        const p = cb.parentElement;
+        p.style.background = cb.checked ? 'var(--accent-gradient)' : '';
+        p.style.color = cb.checked ? '#fff' : '';
+        p.style.borderColor = cb.checked ? 'transparent' : '';
+        paintHours();
+      }));
+      paintHours();
+    }
+    function setOpenDays(v) {
+      const days = String(v == null ? '' : v).split(',').map((x) => Number(String(x).trim())).filter((n) => n >= 1 && n <= 7);
+      renderDayBoxes(days.length ? days : [1, 2, 3, 4, 5, 6, 7]);
+    }
+    function chosenDays() {
+      return [...document.querySelectorAll('#openDays [data-day]:checked')].map((c) => Number(c.value));
+    }
+    function paintHours() {
+      const ot = document.getElementById('openTime').value;
+      const ct = document.getElementById('closeTime').value;
+      const days = chosenDays();
+      const el = document.getElementById('hoursPreview');
+      if (!el) return;
+      if (!ot && !ct) {
+        el.textContent = 'ยังไม่กำหนดเวลา = เปิดตลอด 24 ชั่วโมง' + (days.length && days.length < 7 ? ' (เฉพาะวันที่เลือก)' : '');
+        return;
+      }
+      el.textContent = 'เปิด ' + (ot || '—') + '–' + (ct || '—') + ' · วันที่เปิด: ' + (days.length ? days.map((d) => DAY_FULL[d]).join(' · ') : 'ยังไม่เลือกวัน (ลูกค้าจะสั่งไม่ได้)');
+    }
+    document.getElementById('openTime').addEventListener('change', paintHours);
+    document.getElementById('closeTime').addEventListener('change', paintHours);
+    renderDayBoxes([1, 2, 3, 4, 5, 6, 7]);
 
     document.getElementById('logoFile').addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
@@ -306,6 +382,10 @@
           document.getElementById('viewShopLink').href = '/s/' + data.shop.public_code;
         }
         renderSeoPreview();
+        // บันทึกเวลาเปิด–ปิด/วันเปิดทำการ (คนละปลายทางกับข้อมูลร้าน)
+        try {
+          await api('/api/shop/hours', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ openTime: document.getElementById('openTime').value, closeTime: document.getElementById('closeTime').value, openDays: chosenDays() }) });
+        } catch (e) { showErr('errMsg', e.message); }
         const ok = document.getElementById('okBox');
         ok.innerHTML = '<strong>บันทึกข้อมูลร้านแล้ว</strong>';
         ok.style.display = 'block';

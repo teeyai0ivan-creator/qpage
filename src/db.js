@@ -406,9 +406,55 @@ async function initSchema() {
   // และให้เสิร์ชเอนจินอ่าน (หัวข้อที่ตั้งเอง + คำอธิบาย) ถ้าเว้นว่าง ระบบจะใช้ชื่อร้าน/คำอธิบายที่สร้างให้อัตโนมัติ
   await ensureColumn('shops', 'seo_title', "seo_title VARCHAR(160) NOT NULL DEFAULT ''");
   await ensureColumn('shops', 'seo_description', "seo_description VARCHAR(400) NOT NULL DEFAULT ''");
+
+  // ── เวลาเปิด–ปิดร้าน + วันเปิดทำการ + ปิดร้านวันนี้ ─────────────────────
+  // เวลาเก็บเป็น HH:MM (เวลาท้องถิ่นร้าน) · open_days = '1,2,3,4,5' (1=จันทร์ … 7=อาทิตย์)
+  // closed_date = วันที่กด "ปิดร้านวันนี้" (หมดอายุเองเมื่อขึ้นวันใหม่)
+  await ensureColumn('shops', 'open_time', 'open_time TIME NULL');
+  await ensureColumn('shops', 'close_time', 'close_time TIME NULL');
+  await ensureColumn('shops', 'open_days', "open_days VARCHAR(20) NOT NULL DEFAULT '1,2,3,4,5,6,7'");
+  await ensureColumn('shops', 'closed_date', 'closed_date DATE NULL');
+  // ── QR เดลิเวอร์รี่/รับที่ร้าน (1 อันต่อร้าน ทุกคนสแกนได้) ───────────────
+  await ensureColumn('shops', 'delivery_token', 'delivery_token CHAR(16) NULL UNIQUE');
+  // ── การชำระเงินของร้าน (ร้านตั้งเองได้ทั้งหมด รวมคีย์ EasySlip) ──────────
+  await ensureColumn('shops', 'pay_enabled', 'pay_enabled TINYINT(1) NOT NULL DEFAULT 0');
+  await ensureColumn('shops', 'pay_promptpay_id', "pay_promptpay_id VARCHAR(30) NOT NULL DEFAULT ''");
+  await ensureColumn('shops', 'pay_bank_name', "pay_bank_name VARCHAR(120) NOT NULL DEFAULT ''");
+  await ensureColumn('shops', 'pay_bank_account', "pay_bank_account VARCHAR(40) NOT NULL DEFAULT ''");
+  await ensureColumn('shops', 'pay_bank_holder', "pay_bank_holder VARCHAR(120) NOT NULL DEFAULT ''");
+  await ensureColumn('shops', 'pay_note', "pay_note VARCHAR(255) NOT NULL DEFAULT ''");
+  await ensureColumn('shops', 'pay_expire_minutes', 'pay_expire_minutes INT NOT NULL DEFAULT 10');
+  await ensureColumn('shops', 'slip_api_key', "slip_api_key VARCHAR(255) NOT NULL DEFAULT ''");
+  await ensureColumn('shops', 'slip_auto_approve', 'slip_auto_approve TINYINT(1) NOT NULL DEFAULT 1');
+
+  // ── บิลเดลิเวอร์รี่ / รับที่ร้าน (ใช้ตาราง orders เดิม เพื่อให้ครัว/ประวัติ/ใบเสร็จใช้ร่วมกัน) ──
+  // ⚠️ orders.status เดิมยาว 10 → เก็บ 'awaiting_payment' (รอโอนเงิน 16 ตัวอักษร) ไม่ได้
+  //    ต้องขยายก่อน ไม่งั้น INSERT บิลรอโอนจะล้มเหลว (เจอจริง: Data too long for column 'status')
+  const [[statusCol]] = await pool.execute(
+    "SELECT CHARACTER_MAXIMUM_LENGTH AS len FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'status'"
+  );
+  if (statusCol && Number(statusCol.len) < 20) {
+    await pool.execute("ALTER TABLE orders MODIFY status VARCHAR(20) NOT NULL DEFAULT 'open'");
+  }
+  await ensureColumn('orders', 'order_type', "order_type VARCHAR(12) NOT NULL DEFAULT 'dine_in'");
+  await ensureColumn('orders', 'customer_name', "customer_name VARCHAR(120) NOT NULL DEFAULT ''");
+  await ensureColumn('orders', 'customer_phone', "customer_phone VARCHAR(30) NOT NULL DEFAULT ''");
+  await ensureColumn('orders', 'customer_address', "customer_address VARCHAR(500) NOT NULL DEFAULT ''");
+  await ensureColumn('orders', 'customer_note', "customer_note VARCHAR(500) NOT NULL DEFAULT ''");
+  await ensureColumn('orders', 'customer_lat', 'customer_lat DECIMAL(10,7) NULL');
+  await ensureColumn('orders', 'customer_lng', 'customer_lng DECIMAL(10,7) NULL');
+  await ensureColumn('orders', 'payment_method', "payment_method VARCHAR(12) NOT NULL DEFAULT ''");
+  await ensureColumn('orders', 'payment_status', "payment_status VARCHAR(12) NOT NULL DEFAULT ''");
+  await ensureColumn('orders', 'pay_ref', 'pay_ref VARCHAR(20) NULL');
+  await ensureColumn('orders', 'pay_expires_at', 'pay_expires_at DATETIME NULL');
+  await ensureColumn('orders', 'slip_url', 'slip_url VARCHAR(255) NULL');
+  await ensureColumn('orders', 'slip_status', 'slip_status VARCHAR(24) NULL');
+  await ensureColumn('orders', 'slip_detail', 'slip_detail VARCHAR(255) NULL');
+  await ensureColumn('orders', 'slip_hash', 'slip_hash CHAR(64) NULL');
+  await ensureColumn('orders', 'trans_ref', 'trans_ref VARCHAR(64) NULL');
+  await ensureColumn('orders', 'paid_at', 'paid_at DATETIME NULL');
   // วันที่ปิดใช้งาน QR ของโต๊ะ (NULL = ยังใช้งานอยู่) — เก็บแถวไว้เป็นประวัติ/หลักฐาน ไม่ลบทิ้ง
-  await ensureColumn('tables', 'retired_at', 'retired_at DATETIME NULL');
-  // ตัวนับรุ่นของชื่อโต๊ะ: 0 = ยังใช้งานอยู่ · ตอนปิดใช้งานจะตั้งเป็น id ของแถว
+  await ensureColumn('tables', 'retired_at', 'retired_at DATETIME NULL');  // ตัวนับรุ่นของชื่อโต๊ะ: 0 = ยังใช้งานอยู่ · ตอนปิดใช้งานจะตั้งเป็น id ของแถว
   // เพื่อให้ชื่อเดิมถูกนำมาออก QR ใหม่ได้ แม้แถวเก่าจะยังอยู่เป็นประวัติ (UNIQUE เป็น shop_id+code+retire_seq)
   await ensureColumn('tables', 'retire_seq', 'retire_seq INT NOT NULL DEFAULT 0');
   await pool.execute('UPDATE `tables` SET retire_seq = id WHERE retired_at IS NOT NULL AND retire_seq = 0');
@@ -1015,14 +1061,24 @@ async function updateShop(id, fields) {
     name: 'name', phone: 'phone', lineUrl: 'line_url', logoUrl: 'logo_url', mapsUrl: 'maps_url',
     seoTitle: 'seo_title', seoDescription: 'seo_description',
     deleteQrOnCheckout: 'delete_qr_on_checkout',
+    // เวลาเปิด–ปิดร้าน + วันเปิดทำการ + วันที่กด "ปิดร้านวันนี้"
+    openTime: 'open_time', closeTime: 'close_time', openDays: 'open_days', closedDate: 'closed_date',
+    // การชำระเงินของร้าน (ร้านตั้งเองได้ทั้งหมด รวมคีย์ EasySlip)
+    payEnabled: 'pay_enabled', payPromptpayId: 'pay_promptpay_id',
+    payBankName: 'pay_bank_name', payBankAccount: 'pay_bank_account', payBankHolder: 'pay_bank_holder',
+    payNote: 'pay_note', payExpireMinutes: 'pay_expire_minutes',
+    slipApiKey: 'slip_api_key', slipAutoApprove: 'slip_auto_approve',
   };
+  const bools = ['deleteQrOnCheckout', 'payEnabled', 'slipAutoApprove'];
   const sets = [];
   const params = [];
   for (const key of Object.keys(map)) {
     if (fields[key] === undefined) continue;
     sets.push(`${map[key]} = ?`);
-    // ค่าบูลีนในตารางเก็บเป็น 0/1
-    params.push(key === 'deleteQrOnCheckout' ? (fields[key] ? 1 : 0) : fields[key]);
+    // ค่าบูลีนในตารางเก็บเป็น 0/1 · ค่าว่างของเวลา → NULL
+    if (bools.includes(key)) params.push(fields[key] ? 1 : 0);
+    else if ((key === 'openTime' || key === 'closeTime' || key === 'closedDate') && !fields[key]) params.push(null);
+    else params.push(fields[key]);
   }
   if (!sets.length) return;
   sets.push('updated_at = CURRENT_TIMESTAMP');
@@ -1597,7 +1653,8 @@ async function findTableByCode(shopId, code) {
 async function findOrderableTableByToken(token) {
   const [rows] = await pool.execute(
     `SELECT t.id, t.shop_id, t.code, t.token,
-            s.name AS shop_name, s.public_code, s.logo_url, s.phone, s.line_url, s.maps_url
+            s.name AS shop_name, s.public_code, s.logo_url, s.phone, s.line_url, s.maps_url,
+            s.open_time, s.close_time, s.open_days, s.closed_date
        FROM \`tables\` t
        JOIN shops s ON s.id = t.shop_id
        JOIN users u ON u.id = s.user_id
@@ -1842,6 +1899,21 @@ async function findOpenOrder(shopId, tableId) {
   return rows[0] || null;
 }
 
+
+/** หาร้านจาก id (ใช้ทั้งฝั่งลูกค้าและฝั่งร้าน) */
+async function findShopById(id) {
+  const [rows] = await pool.execute('SELECT * FROM shops WHERE id = ? LIMIT 1', [Number(id)]);
+  return rows[0] || null;
+}
+
+/** ยกเลิกบิลที่ยังรอโอนเงิน (ทีละใบ) — ใช้ตอนลูกค้าปิดหน้าหรือหมดเวลา */
+async function expireOrderPayment(orderId) {
+  await pool.execute(
+    "UPDATE orders SET status = 'cancelled', payment_status = 'expired' WHERE id = ? AND status = 'awaiting_payment'",
+    [Number(orderId)]
+  );
+}
+
 async function findOrderById(id, shopId) {
   const [rows] = await pool.execute('SELECT * FROM orders WHERE id = ? AND shop_id = ?', [id, shopId]);
   return rows[0] || null;
@@ -1892,6 +1964,7 @@ async function listKitchenItems(shopId, station = 'kitchen') {
   const [rows] = await pool.execute(
     `SELECT oi.id, oi.order_id, oi.menu_id, oi.menu_name, oi.quantity, oi.options_json, oi.status,
             oi.created_at, oi.started_at, oi.done_at, o.bill_no,
+            o.order_type, o.customer_name, o.customer_phone, o.payment_method, o.payment_status,
             COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code,
             m.image_url, COALESCE(c.station, 'kitchen') AS station
        FROM order_items oi
@@ -2119,6 +2192,102 @@ async function closeOrder(orderId) {
   await pool.execute("UPDATE orders SET status = 'closed', closed_at = UTC_TIMESTAMP() WHERE id = ?", [orderId]);
 }
 
+// ---------------------------------------------------------------------------
+// เดลิเวอร์รี่ / รับที่ร้าน (บิลไม่มีโต๊ะ) + การชำระเงินของบิล
+// ---------------------------------------------------------------------------
+/** ร้านจากโทเคน QR เดลิเวอร์รี่ (ต้องเป็นร้านที่ใช้งานได้ + เจ้าของยังมีสิทธิ์) */
+async function findDeliveryShopByToken(token) {
+  const [rows] = await pool.execute(
+    `SELECT s.id, s.user_id, s.public_code, s.name, s.logo_url, s.phone, s.line_url, s.maps_url,
+            s.open_time, s.close_time, s.open_days, s.closed_date,
+            s.pay_enabled, s.pay_promptpay_id, s.pay_bank_name, s.pay_bank_account, s.pay_bank_holder,
+            s.pay_note, s.pay_expire_minutes, s.slip_api_key, s.slip_auto_approve, s.delivery_token
+       FROM shops s JOIN users u ON u.id = s.user_id
+      WHERE s.delivery_token = ? AND s.status = 'active' AND u.role = 'shop'
+        AND (u.gift_expires_at IS NULL OR u.gift_expires_at > UTC_TIMESTAMP()) LIMIT 1`,
+    [String(token || '')]
+  );
+  return rows[0] || null;
+}
+
+/** ตั้งโทเคน QR เดลิเวอร์รี่ให้ร้าน (ครั้งแรกที่ร้านเปิดดู QR) */
+async function setShopDeliveryToken(shopId, token) {
+  await pool.execute('UPDATE shops SET delivery_token = ? WHERE id = ?', [token, shopId]);
+}
+
+/** บิลเดลิเวอร์รี่/รับที่ร้าน: สร้างบิลใหม่พร้อมข้อมูลลูกค้าและการชำระเงิน
+ *  paymentMethod = 'cash' → status 'open' (เข้าครัวทันที) · 'transfer' → 'awaiting_payment' (รอโอน) */
+async function createRemoteOrder({ shopId, orderType, customer = {}, paymentMethod = 'cash', payRef = null, payExpiresAt = null }) {
+  const [rows] = await pool.execute('SELECT COALESCE(MAX(bill_no),0)+1 AS n FROM orders WHERE shop_id = ?', [shopId]);
+  const billNo = Number(rows[0].n) || 1;
+  const type = orderType === 'delivery' ? 'delivery' : 'pickup';
+  const status = paymentMethod === 'transfer' ? 'awaiting_payment' : 'open';
+  const payStatus = paymentMethod === 'transfer' ? 'unpaid' : 'unpaid';
+  const [result] = await pool.execute(
+    `INSERT INTO orders (shop_id, table_id, table_code, status, bill_no, order_type,
+        customer_name, customer_phone, customer_address, customer_note, customer_lat, customer_lng,
+        payment_method, payment_status, pay_ref, pay_expires_at)
+     VALUES (?, NULL, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shopId, status, billNo, type,
+      String(customer.name || '').slice(0, 120), String(customer.phone || '').slice(0, 30),
+      String(customer.address || '').slice(0, 500), String(customer.note || '').slice(0, 500),
+      customer.lat === undefined || customer.lat === null || customer.lat === '' ? null : Number(customer.lat),
+      customer.lng === undefined || customer.lng === null || customer.lng === '' ? null : Number(customer.lng),
+      paymentMethod, payStatus, payRef, payExpiresAt]
+  );
+  const id = Number(result.insertId);
+  return { id, billNo };
+}
+
+/** หาบิลจากรหัสอ้างอิงการชำระเงิน (pay_ref) — ใช้ทั้งฝั่งลูกค้าและฝั่งร้าน */
+async function findOrderByPayRef(ref) {
+  const [rows] = await pool.execute('SELECT * FROM orders WHERE pay_ref = ? LIMIT 1', [String(ref || '')]);
+  return rows[0] || null;
+}
+
+/** บิลที่เลยกำหนดชำระ (ยังไม่อัปสลิป) → ยกเลิกอัตโนมัติ; คืนจำนวนที่ยกเลิก */
+async function expireStaleOrderPayments(shopId = null) {
+  const params = [];
+  let sql = "UPDATE orders SET status = 'cancelled', payment_status = 'expired' WHERE status = 'awaiting_payment' AND pay_expires_at IS NOT NULL AND pay_expires_at < UTC_TIMESTAMP()";
+  if (shopId) { sql += ' AND shop_id = ?'; params.push(shopId); }
+  const [r] = await pool.execute(sql, params);
+  return Number(r.affectedRows) || 0;
+}
+
+/** แนบสลิปให้บิล (เก็บพาธไฟล์ไว้ + ผลตรวจ) */
+async function setOrderSlip(orderId, { slipUrl, slipStatus, slipDetail, slipHash }) {
+  await pool.execute(
+    'UPDATE orders SET slip_url = ?, slip_status = ?, slip_detail = ?, slip_hash = ? WHERE id = ?',
+    [slipUrl || null, slipStatus || null, slipDetail ? String(slipDetail).slice(0, 255) : null, slipHash || null, orderId]
+  );
+}
+
+/** ยืนยันว่าได้รับเงินแล้ว (สลิปผ่าน) → บิลเข้าครัวทันที */
+async function markOrderPaid(orderId, { transRef = null, slipDetail = null } = {}) {
+  await pool.execute(
+    `UPDATE orders SET status = 'open', payment_status = 'paid', paid_at = UTC_TIMESTAMP(),
+            trans_ref = ?, slip_detail = COALESCE(?, slip_detail), pay_expires_at = NULL
+      WHERE id = ?`,
+    [transRef ? String(transRef).slice(0, 64) : null, slipDetail, orderId]
+  );
+}
+
+/** ตรวจว่าสลิปซ้ำกับบิลอื่นในร้านเดียวกันหรือไม่ (กันสลิปใบเดียวใช้หลายบิล) */
+async function findOrderBySlipHash(shopId, slipHash) {
+  if (!slipHash) return null;
+  const [rows] = await pool.execute('SELECT id, pay_ref, bill_no FROM orders WHERE shop_id = ? AND slip_hash = ? LIMIT 1', [shopId, slipHash]);
+  return rows[0] || null;
+}
+
+/** สลิปของบิลนั้นเป็นของร้านนี้จริงไหม (ใช้กับเส้นทางดูสลิป) */
+async function findOrderBySlipFile(shopId, fileName) {
+  const [rows] = await pool.execute(
+    "SELECT id, bill_no, pay_ref, slip_url FROM orders WHERE shop_id = ? AND slip_url = ? LIMIT 1",
+    [shopId, '/api/shop/order-slips/' + String(fileName || '')]
+  );
+  return rows[0] || null;
+}
+
 /** ลบบิลที่ยังเปิดอยู่และยังไม่มีรายการ (ตั๋วเปล่าของโต๊ะที่ถูกลบไปแล้ว)
  *  บิลที่มีรายการแล้วต้อง "เช็คบิล" เท่านั้น เพื่อไม่ให้ประวัติหาย */
 async function deleteOrder(id, shopId) {
@@ -2132,7 +2301,9 @@ async function deleteOrder(id, shopId) {
 
 async function listOpenOrders(shopId) {
   const [rows] = await pool.execute(
-    `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no, COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code,
+    `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no,
+            o.order_type, o.customer_name, o.customer_phone, o.payment_method, o.payment_status,
+            COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code,
             (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
        FROM orders o LEFT JOIN \`tables\` t ON t.id = o.table_id
       WHERE o.shop_id = ? AND o.status = 'open'
@@ -2143,17 +2314,39 @@ async function listOpenOrders(shopId) {
   return rows.map((r) => ({ ...r, item_count: Number(r.item_count) || 0 }));
 }
 
+/**
+ * บิลเดลิเวอร์รี่/รับที่ร้านที่ยังเปิดอยู่ (ไม่มีโต๊ะ) — ให้หน้าจอ "สั่งอาหาร" แสดงเป็นอีกรายการหนึ่ง
+ * (บิลแบบนี้ไม่โผล่ในผังโต๊ะเพราะไม่มี table_id)
+ */
+async function listOpenRemoteOrders(shopId) {
+  const [rows] = await pool.execute(
+    `SELECT o.id, o.table_id, o.total, o.opened_at, o.bill_no, o.order_type,
+            o.customer_name, o.customer_phone, o.customer_address, o.customer_note,
+            o.customer_lat, o.customer_lng, o.payment_method, o.payment_status, o.paid_at, o.pay_ref, o.pay_expires_at,
+            (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
+       FROM orders o
+      WHERE o.shop_id = ? AND o.status = 'open' AND o.order_type <> 'dine_in'
+      ORDER BY o.id DESC`,
+    [shopId]
+  );
+  return rows.map((r) => ({ ...r, item_count: Number(r.item_count) || 0 }));
+}
+
 // ประวัติบิลที่ปิดแล้ว (ดูย้อนหลัง) — กรองตามโต๊ะได้
 // หมายเหตุ: ใช้ชื่อโต๊ะที่เก็บไว้ในบิล (o.table_code) เพราะบิลที่เช็คบิลแล้วต้องอยู่ต่อแม้โต๊ะ/QR ถูกลบ
-async function listClosedOrders(shopId, { tableId = null, limit = 50 } = {}) {
+async function listClosedOrders(shopId, { tableId = null, limit = 50, paymentMethod = null } = {}) {
   const safeLimit = Math.max(1, Math.min(200, Number(limit) || 50));
   let sql = `SELECT o.id, o.table_id, o.bill_no, o.total, o.opened_at, o.closed_at,
+                    o.order_type, o.customer_name, o.customer_phone, o.customer_address,
+                    o.payment_method, o.payment_status, o.paid_at, o.trans_ref, o.pay_ref,
                     COALESCE(NULLIF(o.table_code,''), t.code, '') AS table_code,
                     (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.id AND oi.status <> 'cancelled') AS item_count
                FROM orders o LEFT JOIN \`tables\` t ON t.id = o.table_id
               WHERE o.shop_id = ? AND o.status = 'closed'`;
   const params = [shopId];
   if (tableId) { sql += ' AND o.table_id = ?'; params.push(tableId); }
+  if (paymentMethod === 'cash' || paymentMethod === 'transfer') { sql += ' AND o.payment_method = ?'; params.push(paymentMethod); }
+  else if (paymentMethod === 'delivery' || paymentMethod === 'pickup') { sql += ' AND o.order_type = ?'; params.push(paymentMethod); }
   sql += ` ORDER BY o.closed_at DESC, o.id DESC LIMIT ${safeLimit}`;
   const [rows] = await pool.execute(sql, params);
   return rows.map((r) => ({ ...r, item_count: Number(r.item_count) || 0 }));
@@ -2305,6 +2498,8 @@ module.exports = {
   deleteNotifyGroup,
   setNotifyGroupResult,
   findOpenOrder,
+  findShopById,
+  expireOrderPayment,
   findOrderById,
   createOrder,
   listOrderItems,
@@ -2313,6 +2508,10 @@ module.exports = {
   deleteOrder,
   listOpenOrders,
   listClosedOrders,
+  // เดลิเวอร์รี่ / รับที่ร้าน + การชำระเงินของบิล
+  findDeliveryShopByToken, setShopDeliveryToken, createRemoteOrder,
+  listOpenRemoteOrders, findOrderByPayRef, expireStaleOrderPayments,
+  setOrderSlip, markOrderPaid, findOrderBySlipHash, findOrderBySlipFile,
   listItemsForOrders,
   recalcOrderTotal,
   listKitchenItems,

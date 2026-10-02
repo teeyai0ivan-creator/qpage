@@ -46,6 +46,7 @@ async function load() {
     const data = await API.all();
     $('stShop').textContent = 'ร้าน ' + ((data.shop && data.shop.name) || '—');
     enabled = data.shop ? Number(data.shop.delete_qr_on_checkout) === 1 : false;
+    paintShopState(data.hours);
     $('err').textContent = '';
     paint();
   } catch (err) {
@@ -79,6 +80,36 @@ $('swQrAutoDelete').addEventListener('change', async (e) => {
     busy = false;
     el.disabled = false;
   }
+});
+
+let closedToday = false;
+function paintShopState(hours) {
+  if (!hours) return;
+  closedToday = hours.reason === 'closed_today';
+  const b = $('shopStateBadge');
+  b.textContent = hours.open ? 'เปิดอยู่' : 'ปิดอยู่';
+  b.className = 'badge ' + (hours.open ? 'ok' : 'wait');
+  $('shopStateHint').textContent = hours.open
+    ? ('ลูกค้าสั่งอาหารได้ตามปกติ' + (hours.open_time ? ' (เปิด ' + hours.open_time + '–' + hours.close_time + ' · ' + hours.open_days_text + ')' : ''))
+    : ((hours.message || 'ร้านปิดอยู่') + ' — ลูกค้าจะสั่งอาหารไม่ได้');
+  $('btnCloseToday').textContent = closedToday ? '🔓 เปิดร้านวันนี้' : '🚪 ปิดร้านวันนี้';
+}
+$('btnCloseToday').addEventListener('click', async () => {
+  const btn = $('btnCloseToday');
+  const want = !closedToday;
+  const ok = await ask(
+    want ? 'ปิดร้านวันนี้?' : 'เปิดร้านวันนี้?',
+    want ? 'วันนี้ลูกค้าจะสั่งอาหารไม่ได้ (สแกน QR แล้วระบบแจ้งว่าร้านปิด) — เปิดคืนได้ทุกเมื่อ และระบบเปิดให้เองเมื่อขึ้นวันใหม่'
+         : 'เปิดร้านตามปกติ ลูกค้าสั่งอาหารได้ตามเวลาเปิด–ปิดที่ตั้งไว้',
+    want ? 'ปิดร้านวันนี้' : 'เปิดร้าน');
+  if (!ok) return;
+  btn.disabled = true;
+  try {
+    const r = await API.setCloseToday(want);
+    paintShopState(r.hours);
+    toast(r.message || 'บันทึกแล้ว');
+  } catch (err) { $('err').textContent = err.message; }
+  finally { btn.disabled = false; }
 });
 
 $('btnHistory').addEventListener('click', () => NAV.go('/shop/history.html'));

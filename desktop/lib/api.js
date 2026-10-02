@@ -124,6 +124,7 @@ async function history(opts) {
   const q = new URLSearchParams();
   if (opts && opts.tableId) q.set('tableId', String(opts.tableId));
   if (opts && opts.limit) q.set('limit', String(opts.limit));
+  if (opts && opts.payment) q.set('payment', String(opts.payment));
   const data = await call('/api/shop/orders/history' + (q.toString() ? '?' + q.toString() : ''));
   return data.orders || [];
 }
@@ -160,6 +161,7 @@ async function shopAll() {
   const data = await call('/api/shop/me');
   return {
     shop: data.shop || null,
+    hours: data.hours || null,
     publicUrl: data.publicUrl ? base() + data.publicUrl : '',
     categories: data.categories || [],
     menus: data.menus || [],
@@ -264,6 +266,46 @@ async function setQrAutoDelete(enabled) {
   return { enabled: !!data.enabled, message: data.message || '' };
 }
 
+// ---------------------------------------------------------------------------
+// เดลิเวอร์รี่ / รับที่ร้าน + การชำระเงินของร้าน (หน้าจอในโปรแกรม)
+// ---------------------------------------------------------------------------
+/** รูป QR เดลิเวอร์รี่เป็น data URL + ลิงก์ + สถานะร้าน (สร้างโทเคนให้ถ้ายังไม่มี) */
+async function deliveryQrImage() {
+  const info = await call('/api/shop/delivery-qr');
+  const res = await sess().fetch(base() + info.qr_path, { headers: headers() });
+  if (!res.ok) throw new Error('โหลดรูป QR ไม่สำเร็จ (HTTP ' + res.status + ')');
+  const buf = Buffer.from(await res.arrayBuffer());
+  return {
+    dataUrl: 'data:image/png;base64,' + buf.toString('base64'),
+    url: info.url, token: info.token, hours: info.hours || null, transferReady: !!info.transfer_ready,
+  };
+}
+/** บิลเดลิเวอร์รี่/รับที่ร้านที่ยังเปิดอยู่ */
+async function remoteOrders() {
+  const data = await call('/api/shop/orders/remote');
+  return { orders: data.orders || [], hours: data.hours || null, transferReady: !!data.transfer_ready };
+}
+/** ปิดบิลเดลิเวอร์รี่/รับที่ร้าน (เทียบเท่าเช็คบิลของโต๊ะ) */
+async function closeRemoteOrder(orderId) {
+  const data = await call('/api/shop/orders/' + Number(orderId) + '/close', { method: 'POST', body: {} });
+  return { closed: data.closed || null, message: data.message || '' };
+}
+/** การชำระเงินของร้าน (ร้านตั้งเองได้ทั้งหมด รวมคีย์ EasySlip) */
+async function shopPaymentSettings() {
+  return call('/api/shop/payment-settings');
+}
+async function saveShopPaymentSettings(fields) {
+  return call('/api/shop/payment-settings', { method: 'PUT', body: fields });
+}
+/** เวลาเปิด–ปิดร้าน + วันเปิดทำการ */
+async function saveShopHours(fields) {
+  return call('/api/shop/hours', { method: 'PUT', body: fields });
+}
+/** ปิด/เปิดร้านวันนี้ */
+async function setCloseToday(closed) {
+  return call('/api/shop/close-today', { method: 'PUT', body: { closed: !!closed } });
+}
+
 /** เพิ่มอาหารเข้าบิลของโต๊ะ */
 async function addItems(tableId, items) {
   return call('/api/shop/tables/' + Number(tableId) + '/items', { method: 'POST', body: { items } });
@@ -343,6 +385,8 @@ module.exports = {
   kitchenItems, startItems, setItemStatus, cancelItem,
   tables, tableNames, createQrForName, zones, openBills, catalog, addItems, deleteItem, checkout, addTable, addZone,
   history, kitchenPrints, retiredTables, qrImage,
+  deliveryQrImage, remoteOrders, closeRemoteOrder,
+  shopPaymentSettings, saveShopPaymentSettings, saveShopHours, setCloseToday,
   shopAll, saveShop, uploadImage, imageDataUrl,
   addCategory, updateCategory, deleteCategory,
   addMenu, updateMenu, deleteMenu, setMenuGroups,

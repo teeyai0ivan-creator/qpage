@@ -174,6 +174,7 @@ const NATIVE_PAGES = {
   '/shop/menus.html': { file: 'app/menus.html' },
   '/shop/setup.html': { file: 'app/setup.html' },
   '/shop/notify.html': { file: 'app/notify.html' },
+  '/shop/payments.html': { file: 'app/payments.html' },
   '/shop/settings.html': { file: 'app/sys.html' },
   // หน้าเข้าสู่ระบบของโปรแกรมเอง (ไม่มีปุ่มสมัครสมาชิก — ใช้เฉพาะบัญชีที่มีร้านและแพ็กเกจ)
   '/login.html': { file: 'app/login.html' },
@@ -643,6 +644,10 @@ ipcMain.handle('notify:add', (event, fields) => api.addNotifyGroup(fields || {})
 ipcMain.handle('notify:update', (event, p) => api.updateNotifyGroup(p && p.id, p && p.fields));
 ipcMain.handle('notify:delete', (event, id) => api.deleteNotifyGroup(id));
 ipcMain.handle('sys:set-qr-auto-delete', (event, enabled) => api.setQrAutoDelete(enabled));
+ipcMain.handle('shop:payment-settings', () => api.shopPaymentSettings());
+ipcMain.handle('shop:save-payment', (event, fields) => api.saveShopPaymentSettings(fields || {}));
+ipcMain.handle('shop:save-hours', (event, fields) => api.saveShopHours(fields || {}));
+ipcMain.handle('sys:close-today', (event, closed) => api.setCloseToday(closed));
 /** ให้หน้าจอของโปรแกรมพาไปหน้าอื่นได้ (เช่น ปุ่ม "ดูประวัติ" ในหน้าตั้งค่า) — จำกัดเฉพาะหน้าของร้าน */
 ipcMain.on('nav:go', (event, target) => {
   const p = String(target || '');
@@ -695,6 +700,15 @@ ipcMain.handle('orders:delete-item', (event, itemId) => api.deleteItem(itemId));
 ipcMain.handle('orders:checkout', (event, tableId) => api.checkout(tableId));
 ipcMain.handle('orders:add-table', (event, payload) => api.addTable(payload && payload.code, payload && payload.zoneId));
 ipcMain.handle('orders:add-zone', (event, name) => api.addZone(name));
+// เดลิเวอร์รี่ / รับที่ร้าน
+ipcMain.handle('orders:delivery-qr', () => api.deliveryQrImage());
+ipcMain.handle('orders:remote', () => api.remoteOrders());
+ipcMain.handle('orders:close-remote', (event, orderId) => api.closeRemoteOrder(orderId));
+ipcMain.handle('orders:save-png', (event, payload) => {
+  const b64 = String((payload && payload.dataUrl) || '').split('base64,').pop();
+  const p = saveToDownloads((payload && payload.name) || 'qpage-qr.png', Buffer.from(b64, 'base64'));
+  return { path: p };
+});
 ipcMain.on('orders:print-receipt', async (event, payload) => {
   const urlPath = (payload && payload.url_path) || ('/shop/receipt.html?order=' + Number(payload && payload.orderId));
   const r = await printRoundTicket(urlPath);   // ใช้กลไกเดียวกับใบสั่งครัว (หน้าต่างซ่อน + ดักพิมพ์)

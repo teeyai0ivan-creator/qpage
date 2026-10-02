@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ชำระเงิน | QPage</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/shop.css">
+  <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+</head>
+<body>
+  <div class="pay-wrap">
+    <div id="head" class="pay-card" style="text-align:center;">
+      <h1 style="margin:0 0 4px;font-size:20px;" id="shopName">กำลังโหลด…</h1>
+      <div class="sub" id="billLine" style="font-size:13px;">—</div>
+    </div>
+
+    <div id="countBox" class="pay-count" style="display:none;">
+      <span>⏱ กรุณาโอนและแนบสลิปภายใน</span>
+      <b id="countText" style="margin-left:auto;font-size:18px;font-variant-numeric:tabular-nums;">10:00</b>
+      <div class="pay-bar" style="flex-basis:100%;"><i id="countBar" style="width:100%;"></i></div>
+    </div>
+
+    <div id="payCard" class="pay-card" style="display:none;">
+      <div class="pay-amt" id="amount">฿0</div>
+      <div class="sub" style="text-align:center;font-size:12.5px;margin-bottom:6px;">โอนเข้าบัญชีร้านตามจำนวนนี้ (ระบบจะตรวจสลิปอัตโนมัติ)</div>
+      <img class="pay-qr" id="qrImg" alt="QR พร้อมเพย์" style="display:none;">
+      <div id="bankBox" style="display:none;">
+        <div class="pay-line"><span>ธนาคาร</span><b id="bankName">—</b></div>
+        <div class="pay-line"><span>เลขบัญชี</span><b id="bankAcc">—</b></div>
+        <div class="pay-line"><span>ชื่อบัญชี</span><b id="bankHolder">—</b></div>
+      </div>
+      <div class="sub" id="payNote" style="font-size:12.5px;"></div>
+    </div>
+
+    <div id="slipCard" class="pay-card" style="display:none;">
+      <h2 style="margin:0 0 8px;font-size:16px;">แนบสลิปการโอน</h2>
+      <p class="sub" style="font-size:13px;margin:0 0 10px;">ถ่าย/แคปสลิปให้เห็น QR และยอดเงินชัดเจน ระบบจะตรวจกับธนาคารให้ทันที</p>
+      <input type="file" id="slipFile" accept="image/png,image/jpeg,image/webp" style="font-size:13px;">
+      <img id="slipPreview" alt="" style="display:none;max-width:100%;border-radius:12px;border:1px solid var(--border);margin-top:10px;">
+      <div class="error-msg" id="slipErr" style="display:none;margin-top:10px;"></div>
+      <button class="mini-btn primary" id="slipSend" type="button" style="width:100%;padding:13px;font-size:15px;margin-top:12px;display:none;">ยืนยันแนบสลิป</button>
+    </div>
+
+    <div id="doneCard" class="pay-card" style="display:none;text-align:center;">
+      <div style="font-size:44px;">✅</div>
+      <h2 style="margin:6px 0;font-size:18px;" id="doneTitle">ชำระเงินสำเร็จ</h2>
+      <p class="sub" id="doneMsg" style="font-size:13.5px;">กำลังส่งออเดอร์เข้าครัว</p>
+    </div>
+
+    <div id="cancelCard" class="pay-card" style="display:none;text-align:center;">
+      <div style="font-size:44px;">⌛</div>
+      <h2 style="margin:6px 0;font-size:18px;">หมดเวลาชำระเงิน</h2>
+      <p class="sub" style="font-size:13.5px;">ออเดอร์นี้ถูกยกเลิกแล้ว (ยังไม่ได้รับเงิน) — กรุณาสั่งรายการใหม่</p>
+      <button class="mini-btn primary" id="retryBtn" type="button" style="width:100%;padding:13px;margin-top:12px;">กลับไปสั่งรายการใหม่</button>
+    </div>
+  </div>
+
+  <script>
+    const REF = (location.pathname.split('/').filter(Boolean).pop() || '').trim();
+    const TOKEN_KEY = 'qpage_pay_token_' + REF;
+    const $ = (id) => document.getElementById(id);
+    const money = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    let P = null;          // ข้อมูลการชำระเงิน
+    let slipData = null;   // data URL ของสลิปที่เลือก
+    let timer = null;
+    let done = false;
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let data; try { data = await res.json(); } catch { throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง'); }
+      if (!res.ok || !data.ok) { const e = new Error(data.message || 'เกิดข้อผิดพลาด'); e.status = res.status; e.data = data; throw e; }
+      return data;
+    }
+
+    // ห้ามรีเฟรช/ปิดหน้าระหว่างรอชำระเงิน (กันออเดอร์ค้าง)
+    window.addEventListener('beforeunload', (e) => {
+      if (done || !P || P.paid || P.cancelled) return undefined;
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    });
+    // ห้ามกดย้อนกลับไปแก้ตะกร้า (จะทำให้ออเดอร์ค้าง) — ดันประวัติกลับมาหน้านี้
+    history.pushState({ pay: REF }, '', location.href);
+    window.addEventListener('popstate', () => {
+      if (done) return;
+      history.pushState({ pay: REF }, '', location.href);
+      if (P && !P.paid && !P.cancelled) uiAlert({ title: 'ยังชำระเงินไม่เสร็จ', message: 'หน้านี้ต้องแนบสลิปให้เสร็จก่อน ไม่งั้นออเดอร์จะถูกยกเลิกเมื่อหมดเวลา' });
+    });
+
+    function paint() {
+      $('shopName').textContent = P.shop.name || 'ร้านค้า';
+      $('billLine').textContent = 'บิล #' + (P.bill_no || '-') + ' · ' + (P.order_type === 'delivery' ? 'จัดส่งที่บ้าน' : 'รับที่ร้าน') + (P.customer_name ? ' · ' + P.customer_name : '');
+      $('amount').textContent = money(P.total);
+      const r = P.receiver || {};
+      if (P.qr_url) { $('qrImg').src = P.qr_url; $('qrImg').style.display = ''; }
+      if (r.bank_name || r.bank_account) {
+        $('bankBox').style.display = '';
+        $('bankName').textContent = r.bank_name || '—';
+        $('bankAcc').textContent = r.bank_account || '—';
+        $('bankHolder').textContent = r.bank_holder || '—';
+      }
+      $('payNote').textContent = r.note ? 'หมายเหตุจากร้าน: ' + r.note : '';
+      $('payCard').style.display = '';
+      $('slipCard').style.display = '';
+    }
+
+    function tick() {
+      if (!P || !P.expires_at_ms) return;
+      const left = Math.max(0, Math.round((P.expires_at_ms - Date.now()) / 1000));
+      const m = Math.floor(left / 60), s = left % 60;
+      $('countText').textContent = m + ':' + String(s).padStart(2, '0');
+      $('countBar').style.width = Math.max(0, Math.min(100, (left / (P.seconds_left || 600)) * 100)) + '%';
+      $('countBox').classList.toggle('warn', left <= 60);
+      if (left <= 0) { clearInterval(timer); expire(); }
+    }
+
+    async function expire() {
+      if (done) return;
+      done = true;
+      try { await api('/api/public/pay/' + encodeURIComponent(REF) + '/expire', { method: 'POST' }); } catch (e) { /* ข้าม */ }
+      $('countBox').style.display = 'none';
+      $('payCard').style.display = 'none';
+      $('slipCard').style.display = 'none';
+      $('cancelCard').style.display = '';
+      try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    }
+
+    function donePaint(msg) {
+      done = true;
+      clearInterval(timer);
+      $('countBox').style.display = 'none';
+      $('payCard').style.display = 'none';
+      $('slipCard').style.display = 'none';
+      $('doneCard').style.display = '';
+      $('doneMsg').textContent = msg || 'กำลังส่งออเดอร์เข้าครัว';
+    }
+
+    // เลือกไฟล์สลิป → พรีวิว
+    $('slipFile').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) { slipData = null; $('slipPreview').style.display = 'none'; $('slipSend').style.display = 'none'; return; }
+      if (file.size > 2 * 1024 * 1024) { $('slipErr').textContent = 'ไฟล์ใหญ่เกิน 2MB กรุณาย่อรูปก่อนแนบ'; $('slipErr').style.display = 'block'; e.target.value = ''; return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        slipData = String(reader.result);
+        $('slipErr').style.display = 'none';
+        $('slipPreview').src = slipData;
+        $('slipPreview').style.display = '';
+        $('slipSend').style.display = '';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    $('slipSend').addEventListener('click', async () => {
+      if (!slipData) return;
+      const btn = $('slipSend');
+      btn.disabled = true;
+      btn.textContent = 'กำลังตรวจสลิป…';
+      $('slipErr').style.display = 'none';
+      try {
+        const r = await api('/api/public/pay/' + encodeURIComponent(REF) + '/slip', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slip: slipData }),
+        });
+        donePaint('ได้รับเงินแล้ว — ส่งออเดอร์เข้าครัวเรียบร้อย (บิล #' + (r.bill_no || P.bill_no) + ')');
+      } catch (e) {
+        if (e.data && e.data.done) { donePaint(e.message || 'บิลนี้ปิดแล้ว'); return; }
+        $('slipErr').textContent = e.message || 'ตรวจสลิปไม่ผ่าน กรุณาลองใหม่';
+        $('slipErr').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'ยืนยันแนบสลิป';
+      }
+    });
+
+    $('retryBtn').addEventListener('click', () => {
+      // กลับไปหน้าเลือกรายการใหม่ (ลิงก์ QR เดลิเวอร์รี่เดิม)
+      const back = sessionStorage.getItem('qpage_back_url');
+      location.href = back || '/';
+    });
+
+    (async () => {
+      try {
+        P = await api('/api/public/pay/' + encodeURIComponent(REF));
+        if (P.paid) { donePaint('บิลนี้ชำระเงินแล้ว — ร้านกำลังทำอาหาร'); return; }
+        if (P.cancelled) { done = true; $('head').style.display = ''; $('cancelCard').style.display = ''; return; }
+        paint();
+        $('countBox').style.display = '';
+        tick();
+        timer = setInterval(tick, 1000);
+      } catch (e) {
+        $('head').innerHTML = '<div class="error-msg" style="display:block;">' + esc(e.message || 'ไม่พบรายการชำระเงินนี้') + '</div>';
+      }
+    })();
+  </script>
+</body>
+</html>

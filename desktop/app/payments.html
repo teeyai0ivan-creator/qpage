@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:">
+  <title>การชำระเงิน</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="pg-head">
+    <div class="pg-title">
+      <h1>ตั้งค่าการชำระเงิน</h1>
+      <span class="sub">บัญชีรับเงินของร้าน + คีย์ EasySlip สำหรับตรวจสลิปอัตโนมัติ — ลูกค้าจะเลือก "โอนเงิน" ได้เมื่อตั้งค่าครบ</span>
+      <span class="spacer"></span>
+      <span class="stat" id="stReady">กำลังโหลด…</span>
+      <span class="live" id="live"><span class="dot"></span><span id="liveText">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="filters">
+      <button class="btn btn-primary" id="btnSave" type="button">💾 บันทึกการชำระเงิน</button>
+      <button class="btn" id="btnReload" type="button">⟳ โหลดใหม่</button>
+      <button class="btn" id="btnHistory" type="button">ดูประวัติการชำระเงิน</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="sec-title">ช่องทางรับเงินของร้าน <span class="line"></span></div>
+      <div class="hint">กรอกพร้อมเพย์ หรือเลขบัญชีธนาคาร (หรือทั้งสองอย่าง) — ลูกค้าจะเห็นข้อมูลนี้ที่หน้าจ่ายเงิน</div>
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl" for="promptpayId">พร้อมเพย์ (เบอร์โทร 10 หลัก / เลขบัตรประชาชน 13 หลัก)</label>
+          <input class="inp mono" id="promptpayId" inputmode="numeric" maxlength="20" placeholder="0812345678">
+        </div>
+        <div class="field">
+          <label class="lbl" for="bankName">ธนาคาร</label>
+          <input class="inp" id="bankName" maxlength="120" placeholder="เช่น ธนาคารกสิกรไทย">
+        </div>
+        <div class="field">
+          <label class="lbl" for="bankAccount">เลขบัญชี</label>
+          <input class="inp mono" id="bankAccount" inputmode="numeric" maxlength="30" placeholder="เช่น 1234567890">
+        </div>
+        <div class="field">
+          <label class="lbl" for="bankHolder">ชื่อบัญชี</label>
+          <input class="inp" id="bankHolder" maxlength="120" placeholder="เช่น นางสมหญิง ใจดี">
+        </div>
+        <div class="field">
+          <label class="lbl" for="payNote">หมายเหตุถึงลูกค้า (ไม่ใส่ก็ได้)</label>
+          <input class="inp" id="payNote" maxlength="255" placeholder="เช่น โอนแล้วแนบสลิปด้วยนะครับ">
+        </div>
+        <div class="field">
+          <label class="lbl" for="expireMinutes">เวลาชำระเงิน (นาที) — เกินแล้วออเดอร์ถูกยกเลิก</label>
+          <input class="inp mono" id="expireMinutes" type="number" min="1" max="60" value="10">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">ตรวจสลิปอัตโนมัติ (EasySlip) <span class="line"></span></div>
+      <div class="hint">
+        ใส่คีย์ API ของ EasySlip เพื่อให้ระบบตรวจสลิปการโอนอัตโนมัติ — <b>ถ้าไม่ใส่ ลูกค้าจะเลือก "โอนเงิน" ไม่ได้</b> (เหลือชำระเงินสด)
+        · เมื่อสลิปผ่านการตรวจ ระบบจะส่งออเดอร์เข้าครัวทันทีและติดป้าย "โอนแล้ว"
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl" for="slipApiKey">คีย์ API ของ EasySlip</label>
+          <input class="inp mono" id="slipApiKey" maxlength="255" autocomplete="off" placeholder="วางคีย์ที่นี่ (เว้นว่าง = ใช้คีย์เดิม)">
+          <div class="hint" id="keyState">ยังไม่ได้ตั้งคีย์</div>
+        </div>
+        <div class="field">
+          <label class="lbl">โหมดการตรวจ</label>
+          <label class="sw" style="gap:8px;"><input type="checkbox" id="slipAutoApprove" checked><span class="track"></span><span class="hint" style="margin:0;">ตรวจผ่านแล้วอนุมัติให้เลย (ได้เงินจริง = ส่งเข้าครัวทันที)</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="sw" style="gap:10px;font-size:14.5px;">
+        <input type="checkbox" id="payEnabled">
+        <span class="track"></span>
+        <span><b>เปิดรับชำระเงินออนไลน์ของร้าน</b><br><span class="hint" id="enabledHint">ปิดอยู่ = ลูกค้าชำระเงินสดเท่านั้น</span></span>
+      </label>
+      <div class="err" id="err"></div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="payments.js"></script>
+</body>
+</html>

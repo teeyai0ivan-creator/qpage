@@ -18,6 +18,21 @@
   </header>
 
   <main>
+
+    <div class="card">
+      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="flex:1;min-width:260px;">
+          <div style="font-weight:800;font-size:15px;">สถานะร้านตอนนี้ <span class="badge" id="shopStateBadge">กำลังโหลด…</span></div>
+          <div class="hint" id="shopStateHint">—</div>
+        </div>
+        <button class="btn btn-soft" id="btnCloseToday" type="button" style="padding:11px 16px;">🚪 ปิดร้านวันนี้</button>
+      </div>
+      <div class="hint" style="border-top:1px solid var(--border);padding-top:12px;">
+        กดปุ่ม = วันนี้ลูกค้าสแกน QR แล้วสั่งอาหารไม่ได้ (ระบบแจ้งว่าร้านปิด) — ระบบเปิดให้เองเมื่อขึ้นวันใหม่ หรือกดปุ่มเดิมอีกครั้งเพื่อเปิดร้านคืนทันที
+        · เวลาเปิด–ปิดและวันเปิดทำการ ตั้งที่หน้าจอ “ตั้งค่าข้อมูลร้าน”
+      </div>
+    </div>
+
     <div class="card">
       <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
         <label class="sw" style="margin-top:2px;">

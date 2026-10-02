@@ -558,3 +558,30 @@ button.cart-info strong { color: var(--text); }
   .pub-chip .only-wide { display: none; }
   .pub-chip .only-narrow { display: inline; }
 }
+
+/* ---------- ร้านปิดทำการ (หน้าสั่งอาหารของลูกค้า) ---------- */
+.closed-note {
+  margin-top: 8px; padding: 9px 13px; border-radius: 12px; font-size: 13px; font-weight: 700;
+  background: #fff7ed; color: #b45309; border: 1px solid #fed7aa;
+}
+/* ---------- ตัวเลือกวิธีชำระเงิน (หน้าสั่งอาหารของลูกค้า) ---------- */
+.pay-pick {
+  display: flex; gap: 10px; align-items: flex-start; padding: 11px 13px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--surface); cursor: pointer; font-size: 13.5px; line-height: 1.5;
+}
+.pay-pick input { margin-top: 3px; accent-color: var(--accent); flex: none; }
+.pay-pick b { font-size: 14px; }
+/* ---------- หน้าจ่ายเงินของบิล (แนบสลิป + นับถอยหลัง) ---------- */
+.pay-wrap { max-width: 560px; margin: 0 auto; padding: 18px 16px 40px; }
+.pay-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+.pay-count {
+  display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px; font-weight: 800;
+  background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe; margin-bottom: 14px;
+}
+.pay-count.warn { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.pay-bar { height: 7px; border-radius: 999px; background: #e5e7eb; overflow: hidden; margin-top: 8px; }
+.pay-bar > i { display: block; height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+.pay-qr { width: 232px; height: 232px; display: block; margin: 8px auto; border: 1px solid var(--border); border-radius: 14px; background: #fff; padding: 8px; }
+.pay-amt { font-size: 30px; font-weight: 900; text-align: center; color: #0f766e; }
+.pay-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 4px 0; }
+.pay-line b { font-weight: 800; }

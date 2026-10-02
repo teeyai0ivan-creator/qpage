@@ -90,6 +90,16 @@ function billItemsHtml(o) {
   }).join('');
 }
 
+/** ป้ายวิธีชำระ/ประเภทออร์เดอร์ของบิล (แสดงเฉพาะบิลที่ไม่ได้มาจากโต๊ะหรือชำระออนไลน์) */
+function payBadge(o) {
+  const out = [];
+  if (o.order_type === 'delivery') out.push('<span class="badge">🛵 เดลิเวอร์รี่</span>');
+  else if (o.order_type === 'pickup') out.push('<span class="badge">🏠 รับที่ร้าน</span>');
+  if (o.payment_method === 'transfer') out.push('<span class="badge ' + (o.payment_status === 'paid' ? 'ok' : '') + '">' + (o.payment_status === 'paid' ? 'โอนแล้ว' : 'โอน-รอตรวจ') + '</span>');
+  else if (o.payment_method === 'cash' && o.order_type && o.order_type !== 'dine_in') out.push('<span class="badge">เงินสด</span>');
+  return out.join(' ');
+}
+
 function renderBills() {
   $('cntBills').textContent = orders.length ? '(' + orders.length + ')' : '';
   $('nBills').textContent = orders.length;
@@ -111,6 +121,7 @@ function renderBills() {
         <span class="t">บิล ${billNo(o.bill_no)}</span>
         <span class="b">· โต๊ะ ${esc(o.table_code || '-')}</span>
         <span class="spacer"></span>
+        ${payBadge(o)}
         <span class="when">เปิด ${dt(o.opened_at)} · ปิด ${dt(o.closed_at)} · ${o.item_count} จาน${cancelled ? ' · ยกเลิก ' + cancelled : ''}</span>
         <span class="amt">${money(o.total)}</span>
         <span class="caret">${open ? '▲' : '▼'}</span>
@@ -322,7 +333,7 @@ async function loadBills() {
     const code = sel.replace(/^code:/, '');
     const ids = [...(idsByCode.get(code) || [])];
     const parts = await Promise.all(ids.map(async (id) => {
-      if (!perTable.has(id)) perTable.set(id, await API.bills({ tableId: id, limit: 200 }));
+      if (!perTable.has(id)) perTable.set(id, await API.bills({ tableId: id, limit: 200, payment: $('fPay') ? $('fPay').value : '' }));
       return perTable.get(id);
     }));
     orders = parts.flat()
@@ -334,7 +345,8 @@ async function loadBills() {
 
 async function loadAll() {
   try {
-    recent = await API.bills({ limit: 200 });
+    const pay = $("fPay") ? $("fPay").value : "";
+    recent = await API.bills({ limit: 200, payment: pay });
     perTable.clear();
     buildCodeMap();
     renderTableFilter();
@@ -372,10 +384,11 @@ async function exportCsv() {
       name = 'qpage-kitchen-print-history.csv';
     } else {
       if (!orders.length) { toast('ไม่มีข้อมูลให้ออก'); return; }
-      rows = [['บิล', 'โต๊ะ', 'เปิด', 'ปิด', 'จำนวนจาน', 'ยอดรวม', 'รายการ']];
+      rows = [['บิล', 'โต๊ะ/ช่องทาง', 'เปิด', 'ปิด', 'จำนวนจาน', 'ยอดรวม', 'วิธีชำระ', 'สถานะชำระ', 'รายการ']];
       for (const o of orders) {
         const names = (o.items || []).map((i) => i.quantity + 'x ' + i.menu_name + (i.status === 'cancelled' ? '(ยกเลิก)' : '')).join(' | ');
-        rows.push([billNo(o.bill_no), o.table_code || '', o.opened_at || '', o.closed_at || '', o.item_count, Number(o.total || 0), names]);
+        const place = o.table_code || (o.order_type === 'delivery' ? 'เดลิเวอร์รี่' : (o.order_type === 'pickup' ? 'รับที่ร้าน' : ''));
+        rows.push([billNo(o.bill_no), place, o.opened_at || '', o.closed_at || '', o.item_count, Number(o.total || 0), o.payment_method === 'transfer' ? 'โอนเงิน' : (o.payment_method === 'cash' ? 'เงินสด' : ''), o.payment_status || '', names]);
       }
       name = 'qpage-order-history.csv';
     }
@@ -391,6 +404,7 @@ async function exportCsv() {
 // ---------------------------------------------------------------------------
 $('fTable').addEventListener('change', () => loadBills().catch((e) => toast('โหลดไม่สำเร็จ: ' + e.message)));
 $('fLimit').addEventListener('change', () => loadBills().catch((e) => toast('โหลดไม่สำเร็จ: ' + e.message)));
+$('fPay').addEventListener('change', () => loadAll().then(() => toast('กรองตามการชำระแล้ว')).catch((e) => toast('โหลดไม่สำเร็จ: ' + e.message)));
 $('fLimitPrints').addEventListener('change', () => loadPrints().then(() => toast('อัปเดตแล้ว')).catch(() => { /* แจ้งในหน้าจอแล้ว */ }));
 $('btnReload').addEventListener('click', () => loadAll().then(() => toast('อัปเดตแล้ว')));
 $('btnExport').addEventListener('click', exportCsv);

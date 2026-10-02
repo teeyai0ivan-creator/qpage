@@ -212,6 +212,18 @@
     const hhmm = (iso) => { const d = new Date(iso); const p = (n) => String(n).padStart(2, '0'); return isNaN(d) ? '' : p(d.getHours()) + ':' + p(d.getMinutes()); };
 
 
+    // ชื่อจุดที่สั่ง: โต๊ะในร้าน หรือ เดลิเวอร์รี่/รับที่ร้าน (พร้อมชื่อลูกค้า)
+    function placeTitle(i) {
+      if (i.table_code) return 'โต๊ะ ' + i.table_code;
+      const t = i.order_type === 'delivery' ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน';
+      return i.customer_name ? (t + ' · ' + i.customer_name) : t;
+    }
+    function payTag(i) {
+      if (!i.order_type || i.order_type === 'dine_in') return '';
+      if (i.payment_status === 'paid') return ' · โอนแล้ว';
+      return i.payment_method === 'cash' ? ' · เงินสด' : '';
+    }
+
     function itemHtml(i, showCtx) {
       let opts = []; try { opts = i.options_json ? JSON.parse(i.options_json) : []; } catch (e) {}
       const btn = i.status === 'pending'
@@ -232,7 +244,7 @@
         <div class="k-info">
           <div class="k-name">${esc(i.menu_name)}</div>
           ${opts.length ? '<div class="k-opts">' + esc(opts.join(', ')) + '</div>' : ''}
-          ${showCtx ? '<div class="k-ctx">โต๊ะ ' + esc(i.table_code) + ' · บิล ' + billNoFmt(i.bill_no) + '</div>' : ''}
+          ${showCtx ? '<div class="k-ctx">' + esc(placeTitle(i)) + ' · บิล ' + billNoFmt(i.bill_no) + esc(payTag(i)) + '</div>' : ''}
           <div class="k-time">สั่งเมื่อ ${hhmm(i.created_at)} · ⏱ <span class="k-timer" data-created="${esc(i.created_at)}" data-status="${esc(i.status)}" data-done="${esc(i.done_at || '')}">—</span></div>
         </div>
         <span class="st-badge ${STATUS_CLASS[i.status]}">${STATUS_LABEL[i.status]}</span>
@@ -272,7 +284,7 @@
         const map = {};
         const order = [];
         list.forEach((i) => {
-          if (!map[i.order_id]) { map[i.order_id] = { title: 'โต๊ะ ' + i.table_code, sub: 'บิล ' + billNoFmt(i.bill_no), items: [] }; order.push(map[i.order_id]); }
+          if (!map[i.order_id]) { map[i.order_id] = { title: placeTitle(i), sub: 'บิล ' + billNoFmt(i.bill_no) + payTag(i), items: [] }; order.push(map[i.order_id]); }
           map[i.order_id].items.push(i);
         });
         groups = order.map((g) => ({ title: g.title, sub: g.sub, items: g.items, ctx: false }));

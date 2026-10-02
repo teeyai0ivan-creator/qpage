@@ -4,12 +4,20 @@
 'use strict';
 
 const express = require('express');
+const crypto = require('node:crypto');
+const QRCode = require('qrcode');
+const generatePromptPayPayload = require('promptpay-qr');
 const db = require('../db');
 const { buildOrderItems } = require('../lib/order-builder');
 const notify = require('../lib/notify');
 const realtime = require('../lib/realtime');
 const legal = require('../lib/legal');
 const site = require('../lib/site');
+const hours = require('../lib/shop-hours');
+const orderPay = require('../lib/order-pay');
+const slipVerify = require('../lib/slip-verify');
+const slipFiles = require('../lib/slip-files');
+const time = require('../lib/time');
 
 const { makeRouter } = require('../lib/router');
 const router = makeRouter();
@@ -94,6 +102,8 @@ router.get('/api/public/order/:token', async (req, res) => {
       line_url: table.line_url, maps_url: table.maps_url,
     },
     table: { code: table.code },
+    // สถานะร้านตอนนี้ (เปิด/ปิด) — ถ้าปิด ลูกค้าสั่งไม่ได้ หน้าจอจะแจ้งเหตุผลให้
+    hours: hours.openState(table),
     categories, menus, optionGroups, optionItems, menuGroups,
     bill,
   });
@@ -118,6 +128,12 @@ router.post('/api/public/order/:token/items', async (req, res) => {
   const table = await db.findOrderableTableByToken(String(req.params.token || ''));
   if (!table) {
     return res.status(404).json({ ok: false, message: 'ไม่พบโต๊ะนี้ หรือร้านปิดให้บริการชั่วคราว' });
+  }
+
+  // ร้านปิดอยู่ (ปิดวันนี้/นอกเวลา/วันไม่เปิดทำการ) → ไม่รับออเดอร์ พร้อมบอกเหตุผลให้ลูกค้า
+  const hoursNow = hours.openState(table);
+  if (!hoursNow.open) {
+    return res.status(409).json({ ok: false, closed: true, reason: hoursNow.reason, message: hoursNow.message + ' — กรุณาสั่งใหม่ในเวลาเปิดร้าน' });
   }
 
   let prepared;
@@ -202,6 +218,218 @@ router.post('/api/public/order/:token/items/:itemId/cancel', async (req, res) =>
     message: 'ยกเลิกรายการแล้ว',
     bill: { order_id: open.id, bill_no: fresh.bill_no || null, total: Number(fresh.total), items: billItems },
   });
+});
+
+// ---------------------------------------------------------------------------
+// เดลิเวอร์รี่ / รับที่ร้าน (สแกน QR เดลิเวอร์รี่ของร้าน — ไม่มีโต๊ะ)
+// ---------------------------------------------------------------------------
+/** ข้อมูลร้าน + เมนู + สถานะร้าน + วิธีชำระที่ใช้ได้ สำหรับหน้าเลือกเมนูของลูกค้า */
+router.get('/api/public/delivery/:token', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const shop = await db.findDeliveryShopByToken(String(req.params.token || ''));
+  if (!shop) return res.status(404).json({ ok: false, message: 'ไม่พบร้านนี้ หรือร้านปิดให้บริการชั่วคราว' });
+  const [categories, menus, optionGroups, optionItems, menuGroups] = await Promise.all([
+    db.listCategories(shop.id),
+    db.listMenus(shop.id),
+    db.listOptionGroups(shop.id),
+    db.listOptionItems(shop.id),
+    db.listMenuOptionGroups(shop.id),
+  ]);
+  res.json({
+    ok: true,
+    mode: 'delivery',
+    shop: {
+      name: shop.name, public_code: shop.public_code, logo_url: shop.logo_url,
+      phone: shop.phone, line_url: shop.line_url, maps_url: shop.maps_url,
+    },
+    hours: hours.openState(shop),
+    payment: {
+      // โอนใช้ได้เฉพาะเมื่อร้านตั้งช่องทางรับเงิน + ต่อคีย์ EasySlip แล้ว (ยังไม่ต่อ = จ่ายเงินสดได้เท่านั้น)
+      transfer: orderPay.canTransfer(shop),
+      cash: true,
+      note: shop.pay_note || '',
+      expire_minutes: Number(shop.pay_expire_minutes) || 10,
+    },
+    categories, menus, optionGroups, optionItems, menuGroups,
+  });
+});
+
+/** สร้างบิลเดลิเวอร์รี่/รับที่ร้าน + เลือกวิธีชำระเงิน (เงินสด = เข้าครัวทันที · โอน = รอสลิป) */
+router.post('/api/public/delivery/:token/order', async (req, res) => {
+  const shop = await db.findDeliveryShopByToken(String(req.params.token || ''));
+  if (!shop) return res.status(404).json({ ok: false, message: 'ไม่พบร้านนี้ หรือร้านปิดให้บริการชั่วคราว' });
+
+  // ร้านปิดอยู่ → รับออเดอร์ไม่ได้ (บอกเหตุผลให้ลูกค้า)
+  const state = hours.openState(shop);
+  if (!state.open) return res.status(409).json({ ok: false, closed: true, reason: state.reason, message: state.message });
+
+  const orderType = req.body?.orderType === 'delivery' ? 'delivery' : 'pickup';
+  const customer = req.body?.customer || {};
+  const name = String(customer.name || '').trim();
+  const phone = String(customer.phone || '').trim();
+  const address = String(customer.address || '').trim();
+  if (name.length < 2) return res.status(400).json({ ok: false, field: 'name', message: 'กรุณากรอกชื่อผู้รับ' });
+  if (phone.replace(/\D/g, '').length < 9) return res.status(400).json({ ok: false, field: 'phone', message: 'กรุณากรอกเบอร์โทรให้ครบ' });
+  if (orderType === 'delivery' && address.length < 5) {
+    return res.status(400).json({ ok: false, field: 'address', message: 'กรุณากรอกรายละเอียดสถานที่จัดส่ง' });
+  }
+
+  const method = req.body?.payment?.method === 'transfer' ? 'transfer' : 'cash';
+  if (method === 'transfer' && !orderPay.canTransfer(shop)) {
+    return res.status(400).json({ ok: false, field: 'payment', message: 'ร้านนี้ยังไม่เปิดรับชำระเงินโอน — กรุณาเลือกชำระเงินสด' });
+  }
+
+  let prepared;
+  try {
+    prepared = await buildOrderItems(shop.id, req.body?.items);
+  } catch (err) {
+    return res.status(err.status || 400).json({ ok: false, message: err.message });
+  }
+
+  const payRef = method === 'transfer' ? orderPay.newRef() : null;
+  const minutes = Math.min(Math.max(Number(shop.pay_expire_minutes) || 10, 1), 60);
+  const expiresAt = method === 'transfer' ? time.futureSql(minutes * 60000) : null;
+
+  const created = await db.createRemoteOrder({
+    shopId: shop.id,
+    orderType,
+    customer: {
+      name, phone, address,
+      note: String(customer.note || '').trim().slice(0, 500),
+      lat: customer.lat, lng: customer.lng,
+    },
+    paymentMethod: method,
+    payRef,
+    payExpiresAt: expiresAt,
+  });
+  await db.addOrderItems(created.id, prepared);
+
+  const label = orderType === 'delivery' ? 'เดลิเวอร์รี่' : 'รับที่ร้าน';
+  console.log(`🛵 ออเดอร์${label} (${shop.name}) บิล #${created.billNo} · ${prepared.length} รายการ · ${method === 'transfer' ? 'โอนเงิน' : 'เงินสด'}`);
+
+  // เงินสด = รับออเดอร์ทันที → แจ้งเตือนเจ้าของร้าน + เข้าครัว
+  if (method === 'cash') {
+    const items = await db.listOrderItems(created.id);
+    void notify.notifyShop(shop.id, 'order_new', notify.buildOrderNewText({
+      shopName: shop.name,
+      tableCode: label + ' · ' + name,
+      billNo: created.billNo,
+      items,
+      total: items.reduce((s, i) => s + Number(i.line_total || 0), 0),
+    }));
+    realtime.publish(shop.id, 'order_new', { order_type: orderType, bill_no: created.billNo });
+  }
+
+  res.json({
+    ok: true,
+    order_id: created.id,
+    bill_no: created.billNo,
+    order_type: orderType,
+    payment_method: method,
+    pay_ref: payRef,
+    expires_at: expiresAt,
+    minutes,
+    message: method === 'cash' ? 'รับออเดอร์แล้ว — กำลังส่งเข้าครัว' : 'สร้างบิลแล้ว กรุณาโอนเงินภายใน ' + minutes + ' นาที',
+  });
+});
+
+/** ข้อมูลการชำระเงินของบิล (ใช้ที่หน้าจ่ายเงิน) */
+router.get('/api/public/pay/:ref', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  await db.expireStaleOrderPayments();
+  const order = await db.findOrderByPayRef(String(req.params.ref || ''));
+  if (!order) return res.status(404).json({ ok: false, message: 'ไม่พบรายการชำระเงินนี้' });
+  const shop = await db.findShopById(order.shop_id);
+  if (!shop) return res.status(404).json({ ok: false, message: 'ไม่พบร้านนี้' });
+  const items = await db.listOrderItems(order.id);
+  res.json(Object.assign({ ok: true }, orderPay.publicInfo(order, shop, items)));
+});
+
+/** อัปสลิปโอนเงิน → EasySlip ตรวจอัตโนมัติ → ได้เงินจริงจึงส่งออเดอร์เข้าครัวทันที */
+router.post('/api/public/pay/:ref/slip', async (req, res) => {
+  await db.expireStaleOrderPayments();
+  const order = await db.findOrderByPayRef(String(req.params.ref || ''));
+  if (!order) return res.status(404).json({ ok: false, message: 'ไม่พบรายการชำระเงินนี้' });
+  if (order.status !== 'awaiting_payment') {
+    const paid = order.payment_status === 'paid';
+    return res.status(409).json({ ok: false, done: paid, message: paid ? 'บิลนี้ชำระเงินแล้ว' : 'รายการนี้ถูกยกเลิกแล้ว' });
+  }
+  const shop = await db.findShopById(order.shop_id);
+  if (!shop) return res.status(404).json({ ok: false, message: 'ไม่พบร้านนี้' });
+
+  const slipSettings = slipVerify.getSlipSettings(shop);
+  if (!slipSettings.configured) {
+    return res.status(400).json({ ok: false, message: 'ร้านนี้ยังไม่ได้ตั้งค่าตรวจสลิปอัตโนมัติ — กรุณาชำระเงินสดที่ร้าน' });
+  }
+
+  let parsed;
+  try { parsed = slipFiles.parseSlip(req.body?.slip); }
+  catch (err) { return res.status(400).json({ ok: false, field: 'slip', message: err.message }); }
+
+  // กันสลิปใบเดียวใช้ซ้ำกับหลายบิล
+  const hash = crypto.createHash('sha256').update(parsed.buf).digest('hex');
+  const dup = await db.findOrderBySlipHash(shop.id, hash);
+  if (dup && Number(dup.id) !== Number(order.id)) {
+    return res.status(400).json({ ok: false, field: 'slip', message: 'สลิปนี้ถูกใช้กับบิลอื่นแล้ว' });
+  }
+
+  const verify = await slipVerify.verifySlip(parsed.buf, Number(order.total), slipSettings);
+  // ⚠️ decideAutoApprove อ่านยอดจาก record.amount — บิลอาหารเก็บยอดใน total จึงต้องแปลงก่อนส่ง
+  const decision = slipVerify.decideAutoApprove({ settings: slipSettings, record: { amount: Number(order.total) || 0 }, result: verify });
+  const fileName = slipFiles.saveSlipBuffer(parsed.buf, parsed.ext, 'order-' + order.pay_ref);
+  const slipUrl = '/api/shop/order-slips/' + fileName;
+  await db.setOrderSlip(order.id, { slipUrl, slipStatus: decision.status, slipDetail: decision.detail, slipHash: hash });
+
+  if (!decision.approve) {
+    const customerMsg = verify && verify.customerMessage ? verify.customerMessage : '';
+    return res.status(400).json({
+      ok: false, field: 'slip', status: decision.status,
+      message: customerMsg || decision.detail || 'ตรวจสลิปไม่ผ่าน กรุณาตรวจสอบสลิปแล้วลองใหม่',
+    });
+  }
+
+  // ผ่าน → ได้เงินจริง → ส่งออเดอร์เข้าครัวทันที + ติดป้าย "โอนแล้ว"
+  await db.markOrderPaid(order.id, { transRef: verify.transRef, slipDetail: decision.detail });
+  const label = order.order_type === 'delivery' ? 'เดลิเวอร์รี่' : 'รับที่ร้าน';
+  const items = await db.listOrderItems(order.id);
+  void notify.notifyShop(shop.id, 'order_new', notify.buildOrderNewText({
+    shopName: shop.name,
+    tableCode: label + ' · ' + (order.customer_name || ''),
+    billNo: order.bill_no,
+    items,
+    total: Number(order.total),
+    source: 'โอนเงินแล้ว (ตรวจสลิปอัตโนมัติ)',
+  }));
+  realtime.publish(shop.id, 'order_new', { order_type: order.order_type, bill_no: order.bill_no, paid: true });
+  console.log(`💰 รับชำระเงินโอนแล้ว บิล #${order.bill_no} (${shop.name}) ยอด ${order.total} → ส่งเข้าครัว`);
+
+  res.json({ ok: true, paid: true, message: 'ชำระเงินสำเร็จ — กำลังส่งออเดอร์เข้าครัว', bill_no: order.bill_no });
+});
+
+/** รูป QR พร้อมเพย์ของบิลนี้ (ยอดเงินระบุไว้แล้ว) — ให้ลูกค้าสแกนจ่าย */
+router.get('/api/public/pay/:ref/qr.png', async (req, res) => {
+  await db.expireStaleOrderPayments();
+  const order = await db.findOrderByPayRef(String(req.params.ref || ''));
+  if (!order) return res.status(404).json({ ok: false, message: 'ไม่พบรายการชำระเงินนี้' });
+  const shop = await db.findShopById(order.shop_id);
+  const promptpayId = shop ? String(shop.pay_promptpay_id || '').trim() : '';
+  if (!promptpayId) return res.status(404).json({ ok: false, message: 'ร้านนี้ยังไม่ได้ตั้งค่าพร้อมเพย์' });
+  let payload;
+  try { payload = generatePromptPayPayload(promptpayId, { amount: Math.round(Number(order.total) * 100) / 100 }); }
+  catch (err) { return res.status(400).json({ ok: false, message: 'หมายเลขพร้อมเพย์ของร้านไม่ถูกต้อง' }); }
+  const png = await QRCode.toBuffer(payload, { type: 'png', width: 420, margin: 1 });
+  res.type('png').set('Cache-Control', 'no-store').send(png);
+});
+
+/** ลูกค้าปิดหน้า/หมดเวลา → ยกเลิกบิลที่ยังไม่ชำระ */
+router.post('/api/public/pay/:ref/expire', async (req, res) => {
+  const order = await db.findOrderByPayRef(String(req.params.ref || ''));
+  if (!order) return res.status(404).json({ ok: false, message: 'ไม่พบรายการชำระเงินนี้' });
+  if (order.status === 'awaiting_payment') {
+    await db.expireOrderPayment(order.id);
+    console.log(`⌛ ยกเลิกบิลรอโอน #${order.bill_no} (หมดเวลา/ลูกค้าออก)`);
+  }
+  res.json({ ok: true, cancelled: true });
 });
 
 module.exports = router;

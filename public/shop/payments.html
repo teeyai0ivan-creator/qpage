@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ตั้งค่าการชำระเงิน | ระบบสมาชิก</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/settings.css">
+  <link rel="stylesheet" href="/css/shop.css">
+  <script src="/js/theme.js"></script>
+  <script src="/js/shop-ui.js"></script>
+  <style>
+    .set-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; background: var(--surface-2); margin-bottom: 14px; }
+    .set-title { font-size: 14.5px; font-weight: 800; }
+    .set-sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.7; }
+    .set-state { display: inline-block; font-size: 11.5px; font-weight: 800; padding: 2px 9px; border-radius: 999px; margin-left: 6px; }
+    .set-state.on { background: rgba(5,150,105,.14); color: #059669; }
+    .set-state.off { background: rgba(100,116,139,.14); color: var(--muted); }
+    .set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+    .set-field label { display: block; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
+  </style>
+  <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+</head>
+
+<body>
+  <nav class="site-nav">
+    <a class="brand" href="/shop">
+      <div class="brand-logo"><img src="/img/logo.svg" alt="QPage"></div>
+      <span class="brand-name" id="shopName">ร้านของฉัน</span>
+    </a>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="เปิด/ปิดเมนู" aria-expanded="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="/settings/profile">บัญชีของฉัน</a>
+      <a href="#" id="logoutBtn">ออกจากระบบ</a>
+    </div>
+  </nav>
+
+  <div class="side-menu-backdrop" id="menuBackdrop"></div>
+
+  <div class="shop-shell">
+    <aside class="settings-menu shop-side">
+        <div class="menu-title">ร้านค้า</div>
+        <a class="menu-item" href="/shop/orders.html" data-path="/shop/orders.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round"/></svg>
+          สั่งอาหาร
+        </a>
+        <a class="menu-item" href="/shop/kitchen.html" data-path="/shop/kitchen.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10h16v6a4 4 0 01-4 4H8a4 4 0 01-4-4v-6z"/><path d="M6 10V7a2 2 0 012-2h8a2 2 0 012 2v3"/></svg>
+          ครัว
+        </a>
+        <a class="menu-item" href="/shop/cashier.html" data-path="/shop/cashier.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h.01M12 11h.01M15 11h.01M9 15h.01M12 15h.01M15 15h.01"/></svg>
+          แคชเชียร์
+        </a>
+        <a class="menu-item" href="/shop/history.html" data-path="/shop/history.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1015.5-6.2M3 4v4h4" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8v4l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ประวัติ
+        </a>
+        <a class="menu-item" href="/shop/kitchen-history.html" data-path="/shop/kitchen-history.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V3h12v6a4 4 0 01-4 4h-4a4 4 0 01-4-4z" stroke-linejoin="round"/><path d="M6 5H4v3a3 3 0 003 3M18 5h2v3a3 3 0 01-3 3M9 17h6M12 13v4M8 21h8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ประวัติสั่งครัว
+        </a>
+        <a class="menu-item" href="/shop/menu.html" data-path="/shop/menu.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2V5z" stroke-linejoin="round"/><path d="M8 7h8M8 11h5" stroke-linecap="round"/></svg>
+          จัดการเมนู
+        </a>
+        <a class="menu-item" href="/shop/menus.html" data-path="/shop/menus.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg>
+          เมนูทั้งหมด
+        </a>
+        <a class="menu-item" href="/shop/setup.html" data-path="/shop/setup.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" stroke-linejoin="round"/><path d="M3 6h18M16 10a4 4 0 01-8 0" stroke-linecap="round"/></svg>
+          ตั้งค่าข้อมูลร้าน
+        </a>
+        <a class="menu-item" href="/shop/payments.html" data-path="/shop/payments.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20" stroke-linecap="round"/><path d="M6 15h4" stroke-linecap="round"/></svg>
+          การชำระเงิน
+        </a>
+        <a class="menu-item" href="/shop/notify.html" data-path="/shop/notify.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 01-3.4 0" stroke-linecap="round"/></svg>
+          แจ้งเตือน
+        </a>
+        <a class="menu-item" href="/shop/settings.html" data-path="/shop/settings.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" stroke-linejoin="round"/></svg>
+          ตั้งค่าระบบ
+        </a>
+        <a class="menu-item" href="#" data-path="#" id="viewShopLink" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" stroke-linejoin="round"/><circle cx="12" cy="12" r="3"/></svg>
+          ดูร้าน
+        </a>
+        <div class="menu-divider"></div>
+        <a class="menu-item" href="/settings/profile" data-path="/settings/profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ออกจากร้านค้า
+        </a>
+      </aside>
+
+    <div class="shop-wrap">
+      <div class="shop-head">
+        <h1>ตั้งค่าการชำระเงิน</h1>
+        <p>ตั้งบัญชีรับเงินของร้าน + คีย์ EasySlip สำหรับตรวจสลิปอัตโนมัติ — ลูกค้าจะเลือก "โอนเงิน" ได้เมื่อตั้งค่าครบแล้ว</p>
+      </div>
+
+      <div class="set-card">
+        <div class="set-title">สถานะการรับชำระเงิน <span class="set-state off" id="readyBadge">กำลังโหลด…</span></div>
+        <div class="set-sub" id="readyHint">—</div>
+      </div>
+
+      <form id="payForm">
+        <div class="set-card">
+          <div class="set-title">ช่องทางรับเงินของร้าน</div>
+          <div class="set-sub">กรอกพร้อมเพย์ หรือเลขบัญชีธนาคาร (หรือทั้งสองอย่าง) — ลูกค้าจะเห็นข้อมูลนี้ที่หน้าจ่ายเงิน</div>
+          <div class="set-grid" style="margin-top:12px;">
+            <div class="set-field">
+              <label for="promptpayId">พร้อมเพย์ (เบอร์โทร 10 หลัก / เลขบัตรประชาชน 13 หลัก)</label>
+              <input class="mini-input" id="promptpayId" style="width:100%;" inputmode="numeric" maxlength="20" placeholder="0812345678">
+            </div>
+            <div class="set-field">
+              <label for="bankName">ธนาคาร</label>
+              <input class="mini-input" id="bankName" style="width:100%;" maxlength="120" placeholder="เช่น ธนาคารกสิกรไทย">
+            </div>
+            <div class="set-field">
+              <label for="bankAccount">เลขบัญชี</label>
+              <input class="mini-input" id="bankAccount" style="width:100%;" inputmode="numeric" maxlength="30" placeholder="เช่น 1234567890">
+            </div>
+            <div class="set-field">
+              <label for="bankHolder">ชื่อบัญชี</label>
+              <input class="mini-input" id="bankHolder" style="width:100%;" maxlength="120" placeholder="เช่น นางสมหญิง ใจดี">
+            </div>
+            <div class="set-field">
+              <label for="payNote">หมายเหตุถึงลูกค้า (ไม่ใส่ก็ได้)</label>
+              <input class="mini-input" id="payNote" style="width:100%;" maxlength="255" placeholder="เช่น โอนแล้วแจ้งสลิปด้วยนะครับ">
+            </div>
+            <div class="set-field">
+              <label for="expireMinutes">เวลาชำระเงิน (นาที) — เกินแล้วออเดอร์ถูกยกเลิก</label>
+              <input class="mini-input" id="expireMinutes" style="width:100%;" type="number" min="1" max="60" value="10">
+            </div>
+          </div>
+        </div>
+
+        <div class="set-card">
+          <div class="set-title">ตรวจสลิปอัตโนมัติ (EasySlip)</div>
+          <div class="set-sub">
+            ใส่คีย์ API ของ EasySlip เพื่อให้ระบบตรวจสลิปการโอนอัตโนมัติ — <b>ถ้าไม่ใส่ ลูกค้าจะเลือก "โอนเงิน" ไม่ได้</b> (เหลือชำระเงินสด)
+            เปิดสวิตช์ไว้: สลิปที่ตรวจผ่านจะส่งออเดอร์เข้าครัวทันที
+          </div>
+          <div class="set-grid" style="margin-top:12px;">
+            <div class="set-field">
+              <label for="slipApiKey">คีย์ API ของ EasySlip</label>
+              <input class="mini-input mono" id="slipApiKey" style="width:100%;" maxlength="255" autocomplete="off" placeholder="วางคีย์ที่นี่ (เว้นว่าง = ใช้คีย์เดิม)">
+              <div class="set-sub" id="keyState">ยังไม่ได้ตั้งคีย์</div>
+            </div>
+            <div class="set-field">
+              <label>โหมดการตรวจ</label>
+              <label style="display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600;color:var(--text);">
+                <input type="checkbox" id="slipAutoApprove" checked style="accent-color:var(--accent);">
+                ตรวจผ่านแล้วอนุมัติให้เลย (ได้เงินจริง = ส่งเข้าครัวทันที)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="set-card">
+          <label style="display:flex;gap:10px;align-items:center;font-size:14px;font-weight:700;">
+            <input type="checkbox" id="payEnabled" style="accent-color:var(--accent);width:18px;height:18px;">
+            เปิดรับชำระเงินออนไลน์ของร้าน (ให้ลูกค้าเลือกโอนเงินได้)
+          </label>
+          <div class="set-sub" id="enabledHint">ปิดอยู่ = ลูกค้าชำระเงินสดเท่านั้น</div>
+        </div>
+
+        <div class="error-msg" id="errMsg"></div>
+        <div class="success-box" id="okBox"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="submit" class="mini-btn primary" id="saveBtn">บันทึกการชำระเงิน</button>
+          <button type="button" class="mini-btn" id="reloadBtn">โหลดใหม่</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let toastTimer = null;
+    function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let data; try { data = await res.json(); } catch { throw new Error('HTTP ' + res.status); }
+      if (!res.ok || !data.ok) { const e = new Error(data.message || 'เกิดข้อผิดพลาด'); e.field = data.field; throw e; }
+      return data;
+    }
+    function paint(d) {
+      const s = d.settings || {}, slip = d.slip || {};
+      document.getElementById('payEnabled').checked = !!s.enabled;
+      document.getElementById('promptpayId').value = s.promptpayId || '';
+      document.getElementById('bankName').value = s.bankName || '';
+      document.getElementById('bankAccount').value = s.bankAccount || '';
+      document.getElementById('bankHolder').value = s.bankHolder || '';
+      document.getElementById('payNote').value = s.note || '';
+      document.getElementById('expireMinutes').value = s.expireMinutes || 10;
+      document.getElementById('slipApiKey').value = '';
+      document.getElementById('slipAutoApprove').checked = !!slip.autoApprove;
+      document.getElementById('keyState').textContent = slip.configured ? ('ตั้งคีย์ไว้แล้ว: ' + slip.keyMasked + ' (เว้นว่าง = ไม่เปลี่ยน)') : 'ยังไม่ได้ตั้งคีย์ — ใส่เพื่อเปิดรับโอนเงิน';
+      const badge = document.getElementById('readyBadge');
+      badge.textContent = d.transferReady ? 'พร้อมรับโอน' : 'รับเงินสดเท่านั้น';
+      badge.className = 'set-state ' + (d.transferReady ? 'on' : 'off');
+      document.getElementById('readyHint').textContent = d.transferReady
+        ? 'ลูกค้าสแกน QR เดลิเวอร์รี่/สั่งที่โต๊ะ เลือก "โอนเงิน" ได้ — ระบบจะตรวจสลิปอัตโนมัติและส่งออเดอร์เข้าครัวเมื่อได้รับเงินจริง'
+        : (slip.configured ? 'ยังต้องเปิดรับชำระเงิน + กรอกพร้อมเพย์/เลขบัญชี ให้ครบก่อน' : 'ยังไม่มีคีย์ EasySlip — ลูกค้าจะชำระเงินสดได้อย่างเดียว');
+      document.getElementById('enabledHint').textContent = s.enabled ? 'เปิดอยู่ — ลูกค้าเห็นตัวเลือกโอนเงิน (ถ้าตั้งคีย์ EasySlip ครบ)' : 'ปิดอยู่ = ลูกค้าชำระเงินสดเท่านั้น';
+    }
+    async function load() {
+      try {
+        const me = await api('/api/shop/me');
+        if (!me.shop) { location.href = '/shop/purchase.html'; return; }
+        document.getElementById('shopName').textContent = me.shop.name || 'ร้านของฉัน';
+        paint(await api('/api/shop/payment-settings'));
+      } catch (e) { location.href = '/shop' ; }
+    }
+    document.getElementById('payForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      document.getElementById('errMsg').textContent = '';
+      document.getElementById('okBox').textContent = '';
+      try {
+        const body = {
+          enabled: document.getElementById('payEnabled').checked,
+          promptpayId: document.getElementById('promptpayId').value.trim(),
+          bankName: document.getElementById('bankName').value.trim(),
+          bankAccount: document.getElementById('bankAccount').value.trim(),
+          bankHolder: document.getElementById('bankHolder').value.trim(),
+          note: document.getElementById('payNote').value.trim(),
+          expireMinutes: Number(document.getElementById('expireMinutes').value) || 10,
+          slipAutoApprove: document.getElementById('slipAutoApprove').checked,
+        };
+        const key = document.getElementById('slipApiKey').value.trim();
+        if (key) body.slipApiKey = key;
+        const r = await api('/api/shop/payment-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        paint(r);
+        document.getElementById('okBox').textContent = r.message || 'บันทึกแล้ว';
+        toast('บันทึกการชำระเงินแล้ว');
+      } catch (err) {
+        document.getElementById('errMsg').textContent = err.message;
+      } finally { btn.disabled = false; }
+    });
+    document.getElementById('reloadBtn').addEventListener('click', () => load().then(() => toast('โหลดใหม่แล้ว')));
+    load();
+  </script>
+</body>
+</html>

@@ -13,6 +13,8 @@ const { sendPublicShopPage } = require('../lib/shop-seo');
 const { getCurrentUser, requireLogin, requireShop } = require('../middleware/auth');
 const { isAdminRole, isShop } = require('../lib/roles');
 const { randomToken } = require('../lib/crypto');
+const shopHours = require('../lib/shop-hours');
+const orderPay = require('../lib/order-pay');
 const { addMonthsSql, toSql, nowSql } = require('../lib/time');
 const { getPaymentSettings, hasAnyChannel, paymentInstructions, generateRef, emailPackagePurchased, entitlementEndFor } = require('../lib/payments');
 
@@ -228,6 +230,8 @@ router.get('/api/shop/me', requireShop, async (req, res) => {
     ok: true, shop, categories, menus, optionGroups, optionItems, menuGroups,
     publicUrl: '/s/' + shop.public_code,
     purchase: await db.findLatestShopPurchase(req.user.id),
+    // สถานะร้านตอนนี้ (เปิด/ปิด + เหตุผล) ให้หน้าจอตั้งค่าแสดงได้ทันที
+    hours: shopHours.openState(shop),
     ...entitlement,
   });
 });
@@ -508,6 +512,156 @@ router.post('/api/shop/upload', requireShop, (req, res) => {
   const name = Date.now().toString(36) + '-' + crypto.randomBytes(4).toString('hex') + '.' + IMAGE_TYPES[m[1]];
   fs.writeFileSync(path.join(UPLOAD_DIR, name), buf);
   res.json({ ok: true, url: '/uploads/shops/' + name });
+});
+
+// ---------------------------------------------------------------------------
+// การชำระเงินของร้าน (เจ้าของร้านตั้งเองได้ทั้งหมด รวมคีย์ EasySlip)
+// ---------------------------------------------------------------------------
+
+const digitsOnly = (v) => String(v == null ? '' : v).replace(/\D/g, '');
+/** มาสก์คีย์ให้เห็นแค่บางส่วน (ไม่ส่งคีย์จริงกลับไปให้หน้าจอ) */
+const maskKey = (key) => {
+  const k = String(key || '');
+  if (!k) return '';
+  return k.length <= 8 ? '••••' : k.slice(0, 4) + '••••' + k.slice(-4);
+};
+const shopPayInfo = (shop) => ({
+  settings: {
+    enabled: Number(shop.pay_enabled) === 1,
+    promptpayId: shop.pay_promptpay_id || '',
+    bankName: shop.pay_bank_name || '',
+    bankAccount: shop.pay_bank_account || '',
+    bankHolder: shop.pay_bank_holder || '',
+    note: shop.pay_note || '',
+    expireMinutes: Number(shop.pay_expire_minutes) || 10,
+  },
+  slip: {
+    configured: Boolean(String(shop.slip_api_key || '').trim()),
+    keyMasked: maskKey(shop.slip_api_key),
+    autoApprove: Number(shop.slip_auto_approve) === 1,
+  },
+  // รับเงินโอนได้จริงไหม = เปิดรับ + มีช่องทางรับเงิน + ต่อคีย์ EasySlip แล้ว
+  transferReady: orderPay.canTransfer(shop),
+});
+
+router.get('/api/shop/payment-settings', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  res.json(Object.assign({ ok: true }, shopPayInfo(shop)));
+});
+
+router.put('/api/shop/payment-settings', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const body = req.body || {};
+  const fields = {};
+
+  if (body.enabled !== undefined) fields.payEnabled = !!body.enabled;
+  if (body.promptpayId !== undefined) {
+    const pp = digitsOnly(body.promptpayId).slice(0, 30);
+    // เบอร์โทร 10 หลัก · เลขบัตรประชาชน 13 หลัก · e-Wallet 15 หลัก
+    if (pp && ![10, 13, 15].includes(pp.length)) {
+      return res.status(400).json({ ok: false, field: 'promptpayId', message: 'หมายเลขพร้อมเพย์ต้องเป็นเบอร์โทร 10 หลัก หรือเลขบัตรประชาชน 13 หลัก' });
+    }
+    fields.payPromptpayId = pp;
+  }
+  if (body.bankName !== undefined) fields.payBankName = clip(body.bankName, 120);
+  if (body.bankAccount !== undefined) fields.payBankAccount = digitsOnly(body.bankAccount).slice(0, 40);
+  if (body.bankHolder !== undefined) fields.payBankHolder = clip(body.bankHolder, 120);
+  if (body.note !== undefined) fields.payNote = clip(body.note, 255);
+  if (body.expireMinutes !== undefined) {
+    const m = Number(body.expireMinutes);
+    fields.payExpireMinutes = Number.isFinite(m) ? Math.min(Math.max(Math.round(m), 1), 60) : 10;
+  }
+  if (body.slipApiKey !== undefined && String(body.slipApiKey).trim()) {
+    fields.slipApiKey = clip(body.slipApiKey, 255);      // ว่าง = เก็บคีย์เดิมไว้
+  }
+  if (body.slipAutoApprove !== undefined) fields.slipAutoApprove = !!body.slipAutoApprove;
+
+  // ตรวจความครบถ้วนจากค่าที่จะกลายเป็นหลังบันทึก
+  const merged = Object.assign({}, shop, {
+    pay_enabled: fields.payEnabled === undefined ? Number(shop.pay_enabled) : (fields.payEnabled ? 1 : 0),
+    pay_promptpay_id: fields.payPromptpayId === undefined ? shop.pay_promptpay_id : fields.payPromptpayId,
+    pay_bank_name: fields.payBankName === undefined ? shop.pay_bank_name : fields.payBankName,
+    pay_bank_account: fields.payBankAccount === undefined ? shop.pay_bank_account : fields.payBankAccount,
+    slip_api_key: fields.slipApiKey === undefined ? shop.slip_api_key : fields.slipApiKey,
+    slip_auto_approve: fields.slipAutoApprove === undefined ? Number(shop.slip_auto_approve) : (fields.slipAutoApprove ? 1 : 0),
+  });
+  if (Number(merged.pay_enabled) === 1) {
+    if (!merged.pay_promptpay_id && !merged.pay_bank_account) {
+      return res.status(400).json({ ok: false, field: 'promptpayId', message: 'เปิดรับชำระเงินแล้ว ต้องกรอกพร้อมเพย์หรือเลขบัญชีธนาคารอย่างน้อยหนึ่งอย่าง' });
+    }
+    if (merged.pay_bank_account && !merged.pay_bank_name) {
+      return res.status(400).json({ ok: false, field: 'bankName', message: 'กรอกเลขบัญชีแล้ว ต้องระบุชื่อธนาคารด้วย' });
+    }
+    if (Number(merged.slip_auto_approve) === 1 && !merged.slip_api_key) {
+      return res.status(400).json({ ok: false, field: 'slipApiKey', message: 'เปิดตรวจสลิปอัตโนมัติแล้ว ต้องใส่คีย์ EasySlip ด้วย' });
+    }
+  }
+
+  await db.updateShop(shop.id, fields);
+  const updated = await db.findShopByUserId(req.user.id);
+  console.log(`💳 บันทึกการชำระเงินของร้าน "${updated.name}" (โอน: ${orderPay.canTransfer(updated) ? 'พร้อม' : 'ยังไม่พร้อม'})`);
+  res.json(Object.assign({ ok: true, message: 'บันทึกการชำระเงินแล้ว' }, shopPayInfo(updated)));
+});
+
+// ---------------------------------------------------------------------------
+// เวลาเปิด–ปิดร้าน · วันเปิดทำการ · ปิดร้านวันนี้
+// ---------------------------------------------------------------------------
+router.put('/api/shop/hours', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const body = req.body || {};
+  const fields = {};
+  const timeRe = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  if (body.openTime !== undefined) {
+    const v = String(body.openTime || '').trim();
+    if (v && !timeRe.test(v)) return res.status(400).json({ ok: false, field: 'openTime', message: 'เวลาเปิดไม่ถูกต้อง (รูปแบบ HH:MM)' });
+    fields.openTime = v || null;
+  }
+  if (body.closeTime !== undefined) {
+    const v = String(body.closeTime || '').trim();
+    if (v && !timeRe.test(v)) return res.status(400).json({ ok: false, field: 'closeTime', message: 'เวลาปิดไม่ถูกต้อง (รูปแบบ HH:MM)' });
+    fields.closeTime = v || null;
+  }
+  if (body.openDays !== undefined) {
+    // ตรวจจากค่าที่ส่งมาจริง (ไม่ใช้ค่าเริ่มต้นของ parseOpenDays) — ส่งมาแล้วว่าง = ปฏิเสธ ไม่ใช่เปิดทุกวัน
+    const rawDays = Array.isArray(body.openDays) ? body.openDays : String(body.openDays || '').split(',');
+    const picked = [...new Set(rawDays.map((x) => Number(String(x).trim())).filter((n) => n >= 1 && n <= 7))].sort((a, b) => a - b);
+    if (!picked.length) return res.status(400).json({ ok: false, field: 'openDays', message: 'เลือกวันเปิดทำการอย่างน้อย 1 วัน' });
+    fields.openDays = picked.join(',');
+  }
+  const mergedTimes = {
+    open_time: fields.openTime === undefined ? shop.open_time : fields.openTime,
+    close_time: fields.closeTime === undefined ? shop.close_time : fields.closeTime,
+  };
+  const from = mergedTimes.open_time ? shopHours.toMinutes(String(mergedTimes.open_time).slice(0, 5)) : null;
+  const to = mergedTimes.close_time ? shopHours.toMinutes(String(mergedTimes.close_time).slice(0, 5)) : null;
+  if ((from == null) !== (to == null)) {
+    return res.status(400).json({ ok: false, field: 'openTime', message: 'กรอกเวลาเปิดและเวลาปิดให้ครบคู่ (หรือเว้นว่างทั้งคู่ = เปิดตลอด)' });
+  }
+
+  await db.updateShop(shop.id, fields);
+  const updated = await db.findShopByUserId(req.user.id);
+  console.log(`🕒 ตั้งเวลาเปิด–ปิดร้าน "${updated.name}": ${updated.open_time ? String(updated.open_time).slice(0, 5) + '–' + String(updated.close_time).slice(0, 5) : 'เปิดตลอด'} · วันที่เปิด ${updated.open_days}`);
+  res.json({ ok: true, message: 'บันทึกเวลาเปิด–ปิดร้านแล้ว', hours: shopHours.openState(updated), delete: null });
+});
+
+/** ปิดร้านวันนี้ (กดแล้วปิดทั้งวัน หมดอายุเองเมื่อขึ้นวันใหม่) */
+router.put('/api/shop/close-today', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const closed = !!req.body?.closed;
+  const today = shopHours.shopDate();
+  await db.updateShop(shop.id, { closedDate: closed ? today : null });
+  const updated = await db.findShopByUserId(req.user.id);
+  console.log(`🚪 ร้าน "${updated.name}": ${closed ? 'ปิดร้านวันนี้ (' + today + ')' : 'เปิดร้านตามปกติ'}`);
+  res.json({
+    ok: true,
+    closed,
+    message: closed ? 'ปิดร้านวันนี้แล้ว — ลูกค้าจะสั่งอาหารไม่ได้จนถึงเที่ยงคืน (เปิดใหม่ได้ทุกเมื่อ)' : 'เปิดร้านตามปกติแล้ว',
+    hours: shopHours.openState(updated),
+  });
 });
 
 module.exports = router;

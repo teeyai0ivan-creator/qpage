@@ -15,6 +15,9 @@ const realtime = require('../lib/realtime');
 const { buildOrderItems } = require('../lib/order-builder');
 const notify = require('../lib/notify');
 const printJobs = require('../lib/print-jobs');
+const shopHours = require('../lib/shop-hours');
+const orderPay = require('../lib/order-pay');
+const slipFiles = require('../lib/slip-files');
 
 const { makeRouter } = require('../lib/router');
 const router = makeRouter();
@@ -94,6 +97,18 @@ router.get('/shop/settings.html', requireShopPage, async (req, res) => {
 router.get('/order/:token', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(PUBLIC_DIR, 'order', 'index.html'));
+});
+
+// หน้าเลือก–สั่งของลูกค้าจาก QR เดลิเวอร์รี่/รับที่ร้าน (หน้าจอเดียวกัน แต่โหมดต่างกัน)
+router.get('/d/:token', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIR, 'order', 'index.html'));
+});
+
+// หน้าจ่ายเงินของบิล (โอนเงิน) — ใช้รหัสอ้างอิงของบิล ไม่ต้องล็อกอิน
+router.get('/pay/:ref', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(PUBLIC_DIR, 'order', 'pay.html'));
 });
 
 // หน้ารายละเอียดโต๊ะ (เจ้าของร้าน) — เปิดจากการกดช่องโต๊ะในหน้าสั่งอาหาร
@@ -388,6 +403,113 @@ router.get('/api/shop/tables/:id/qr', requireShop, async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, message: 'สร้าง QR ไม่สำเร็จ' });
   }
+});
+
+// ---------------------------------------------------------------------------
+// QR เดลิเวอร์รี่ / รับที่ร้าน (1 อันต่อร้าน — ทุกคนสแกนได้)
+// ---------------------------------------------------------------------------
+/** เอาโทเคนของร้าน (สร้างให้ถ้ายังไม่มี) + สถานะร้านตอนนี้ */
+async function ensureDeliveryToken(shop) {
+  if (shop.delivery_token) return shop.delivery_token;
+  let token = '';
+  for (let i = 0; i < 5 && !token; i++) {
+    const candidate = randomToken().slice(0, 16);
+    if (!await db.isTableTokenTaken(candidate)) token = candidate;   // กันซ้ำกับโทเคนโต๊ะ/ที่เลิกใช้แล้ว
+  }
+  if (!token) token = ('d' + Date.now().toString(36)).slice(0, 16);
+  await db.setShopDeliveryToken(shop.id, token);
+  console.log(`🛵 ออก QR เดลิเวอร์รี่ให้ร้าน "${shop.name}"`);
+  return token;
+}
+
+router.get('/api/shop/delivery-qr', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const token = await ensureDeliveryToken(shop);
+  const origin = safeOrigin(req);
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    ok: true,
+    token,
+    url: origin + '/d/' + token,
+    qr_path: '/api/shop/delivery/qr.png?origin=' + encodeURIComponent(origin),
+    hours: shopHours.openState(shop),
+    transfer_ready: orderPay.canTransfer(shop),
+  });
+});
+
+router.get('/api/shop/delivery/qr.png', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const token = await ensureDeliveryToken(shop);
+  const url = `${safeOrigin(req)}/d/${token}`.slice(0, MAX_QR_URL);
+  try {
+    const png = await QRCode.toBuffer(url, { type: 'png', width: 420, margin: 1 });
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'no-store');
+    res.send(png);
+  } catch (err) {
+    res.status(500).json({ ok: false, message: 'สร้าง QR ไม่สำเร็จ' });
+  }
+});
+
+/** บิลเดลิเวอร์รี่/รับที่ร้านที่ยังเปิดอยู่ (ให้หน้าจอ "สั่งอาหาร" แสดงเป็นอีกส่วนหนึ่ง) */
+router.get('/api/shop/orders/remote', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  await db.expireStaleOrderPayments(shop.id);   // บิลรอโอนที่หมดเวลา → ยกเลิกก่อนแสดง
+  const orders = await db.listOpenRemoteOrders(shop.id);
+  const withItems = [];
+  for (const o of orders) withItems.push(Object.assign({}, o, { items: await db.listOrderItems(o.id) }));
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, orders: withItems, hours: shopHours.openState(shop), transfer_ready: orderPay.canTransfer(shop) });
+});
+
+/** ปิดบิลเดลิเวอร์รี่/รับที่ร้าน (เทียบเท่าเช็คบิลของโต๊ะ — ต้องเคลียร์รายการครบก่อน) */
+router.post('/api/shop/orders/:id/close', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const order = await db.findOrderById(Number(req.params.id), shop.id);
+  if (!order) return res.status(404).json({ ok: false, message: 'ไม่พบบิลนี้' });
+  if (order.status !== 'open') return res.status(400).json({ ok: false, message: 'บิลนี้ปิดไปแล้วหรือยังไม่เปิดใช้งาน' });
+
+  const items = await db.listOrderItems(order.id);
+  const uncleared = items.filter((i) => i.status === 'pending' || i.status === 'cooking').reduce((n, i) => n + (Number(i.quantity) || 0), 0);
+  if (uncleared) {
+    return res.status(409).json({ ok: false, message: `ยังเช็คบิลไม่ได้ — ยังมีรายการไม่เคลียร์ ${uncleared} รายการ` });
+  }
+  await db.closeOrder(order.id);
+  realtime.publish(shop.id, 'checkout', { order_type: order.order_type });
+  void notify.notifyShop(shop.id, 'checkout', notify.buildCheckoutText({
+    shopName: shop.name,
+    tableCode: (order.order_type === 'delivery' ? 'เดลิเวอร์รี่ · ' : 'รับที่ร้าน · ') + (order.customer_name || ''),
+    billNo: order.bill_no,
+    total: Number(order.total),
+    items,
+  }));
+  const closed = {
+    order_id: order.id, table_code: '', bill_no: order.bill_no, total: Number(order.total),
+    item_count: items.filter((i) => i.status !== 'cancelled').reduce((n, i) => n + (Number(i.quantity) || 0), 0),
+    order_type: order.order_type, customer_name: order.customer_name || '', payment_method: order.payment_method || '',
+  };
+  await printJobs.enqueue(req, shop, 'receipt', {
+    refId: order.id, urlPath: '/shop/receipt.html?order=' + order.id,
+    tableCode: '', billNo: order.bill_no,
+  });
+  res.json({ ok: true, closed, message: 'ปิดบิลแล้ว' });
+});
+
+/** ดูสลิปโอนเงินของบิลในร้านตัวเอง (ไฟล์เก็บนอก public — เปิดดูได้เฉพาะร้านเจ้าของบิล) */
+router.get('/api/shop/order-slips/:name', requireShop, async (req, res) => {
+  const shop = await myShop(req, res);
+  if (!shop) return;
+  const name = String(req.params.name || '');
+  const owned = await db.findOrderBySlipFile(shop.id, name);
+  if (!owned) return res.status(404).json({ ok: false, message: 'ไม่พบสลิปนี้' });
+  const full = slipFiles.slipPath(name);
+  if (!full) return res.status(404).json({ ok: false, message: 'ไม่พบไฟล์สลิป' });
+  res.set('Cache-Control', 'private, no-store');
+  res.sendFile(full);
 });
 
 // ---------------------------------------------------------------------------
@@ -729,7 +851,7 @@ router.get('/api/shop/orders/history', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
   const tableId = req.query.tableId ? Number(req.query.tableId) : null;
-  const orders = await db.listClosedOrders(shop.id, { tableId, limit: req.query.limit });
+  const orders = await db.listClosedOrders(shop.id, { tableId, limit: req.query.limit, paymentMethod: req.query.payment || null });
   const items = await db.listItemsForOrders(orders.map((o) => o.id));
   const byOrder = {};
   items.forEach((i) => { (byOrder[i.order_id] || (byOrder[i.order_id] = [])).push(i); });

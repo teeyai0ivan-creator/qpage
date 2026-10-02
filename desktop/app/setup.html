@@ -54,6 +54,27 @@
       </div>
     </div>
 
+
+    <div class="card">
+      <div class="sec-title">เวลาเปิด–ปิดร้าน และวันเปิดทำการ <span class="line"></span></div>
+      <div class="hint">ลูกค้าสั่งอาหารได้เฉพาะวันที่เลือกและในช่วงเวลานี้ — สแกน QR นอกเวลา ระบบแจ้งว่าร้านปิดและไม่รับออเดอร์ (เว้นเวลาว่างทั้งคู่ = เปิดตลอด 24 ชั่วโมง)</div>
+      <div class="grid2">
+        <div class="field">
+          <label class="lbl" for="fOpenTime">เวลาเปิดร้าน</label>
+          <input class="inp" type="time" id="fOpenTime">
+        </div>
+        <div class="field">
+          <label class="lbl" for="fCloseTime">เวลาปิดร้าน</label>
+          <input class="inp" type="time" id="fCloseTime">
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl">วันเปิดทำการ</label>
+        <div id="fDays" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+        <div class="hint" id="fHoursPreview">—</div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="sec-title">เนื้อหาบน Google และการ์ดแชร์ลิงก์ <span class="line"></span></div>
       <div class="grid2">

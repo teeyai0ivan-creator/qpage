@@ -28,6 +28,9 @@ function paint() {
   $('fSeoTitle').value = (shop && shop.seo_title) || '';
   $('fSeoDesc').value = (shop && shop.seo_description) || '';
   logoUrl = (shop && shop.logo_url) || '';
+  $('fOpenTime').value = shop && shop.open_time ? String(shop.open_time).slice(0, 5) : '';
+  $('fCloseTime').value = shop && shop.close_time ? String(shop.close_time).slice(0, 5) : '';
+  setDays(shop && shop.open_days);
   $('logoPreview').src = logoUrl || EMPTY_LOGO;
 }
 
@@ -90,6 +93,8 @@ $('btnSave').addEventListener('click', async () => {
   btn.disabled = true;
   setErr('');
   try {
+    // บันทึกเวลาเปิด–ปิด/วันเปิดทำการ (คนละปลายทางกับข้อมูลร้าน)
+    await API.saveHours({ openTime: $('fOpenTime').value, closeTime: $('fCloseTime').value, openDays: chosenDays() });
     const r = await API.save({
       name,
       phone: $('fPhone').value.trim(),
@@ -124,5 +129,38 @@ if (API.onLive) {
     $('liveText').textContent = state === 'open' ? 'อัปเดตสด' : state === 'error' ? 'ขาดการเชื่อมต่อ' : 'กำลังเชื่อมต่อ…';
   });
 }
+
+// ---------- วันเปิดทำการ ----------
+const DAY_SHORT = ['', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.', 'อา.'];
+const DAY_FULL = ['', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์', 'อาทิตย์'];
+function renderDays(selected) {
+  const on = new Set((selected && selected.length ? selected : [1,2,3,4,5,6,7]).map(Number));
+  $('fDays').innerHTML = DAY_SHORT.slice(1).map((n, i) => {
+    const d = i + 1;
+    return '<label class="btn btn-sm" style="cursor:pointer;display:inline-flex;gap:6px;align-items:center;' + (on.has(d) ? 'background:linear-gradient(135deg,#4f46e5,#8b5cf6);color:#fff;border-color:transparent;' : '') + '">'
+      + '<input type="checkbox" data-day value="' + d + '" ' + (on.has(d) ? 'checked' : '') + ' style="accent-color:#4f46e5;"> ' + n + '</label>';
+  }).join('');
+  $('fDays').querySelectorAll('[data-day]').forEach((cb) => cb.addEventListener('change', () => {
+    const p = cb.parentElement;
+    p.style.background = cb.checked ? 'linear-gradient(135deg,#4f46e5,#8b5cf6)' : '';
+    p.style.color = cb.checked ? '#fff' : '';
+    paintHours();
+  }));
+  paintHours();
+}
+function setDays(v) {
+  const days = String(v == null ? '' : v).split(',').map((x) => Number(String(x).trim())).filter((n) => n >= 1 && n <= 7);
+  renderDays(days.length ? days : [1,2,3,4,5,6,7]);
+}
+function chosenDays() { return [...document.querySelectorAll('#fDays [data-day]:checked')].map((c) => Number(c.value)); }
+function paintHours() {
+  const ot = $('fOpenTime').value, ct = $('fCloseTime').value, days = chosenDays();
+  $('fHoursPreview').textContent = (!ot && !ct)
+    ? ('ยังไม่กำหนดเวลา = เปิดตลอด 24 ชั่วโมง' + (days.length && days.length < 7 ? ' (เฉพาะวันที่เลือก)' : ''))
+    : ('เปิด ' + (ot || '—') + '–' + (ct || '—') + ' · วันที่เปิด: ' + (days.length ? days.map((d) => DAY_FULL[d]).join(' · ') : 'ยังไม่เลือกวัน (ลูกค้าจะสั่งไม่ได้)'));
+}
+$('fOpenTime').addEventListener('change', paintHours);
+$('fCloseTime').addEventListener('change', paintHours);
+renderDays([1,2,3,4,5,6,7]);
 
 load();

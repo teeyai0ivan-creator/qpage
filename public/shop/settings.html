@@ -140,6 +140,20 @@
         </div>
 
         <div class="set-card">
+          <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+            <div style="flex:1;min-width:240px;">
+              <div class="set-title">สถานะร้านตอนนี้ <span class="set-state off" id="shopStateBadge">กำลังโหลด…</span></div>
+              <div class="set-sub" id="shopStateHint">—</div>
+            </div>
+            <button class="mini-btn" id="closeTodayBtn" type="button" style="padding:11px 16px;font-weight:800;">🚪 ปิดร้านวันนี้</button>
+          </div>
+          <div class="set-sub" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            กด <b>ปิดร้านวันนี้</b> = วันนี้ลูกค้าสแกน QR แล้วจะสั่งอาหารไม่ได้ (ระบบแจ้งว่าร้านปิด) — เปิดให้เองอัตโนมัติเมื่อขึ้นวันใหม่ หรือกดปุ่มเดิมอีกครั้งเพื่อเปิดร้านคืนทันที
+            · เวลาเปิด–ปิดและวันเปิดทำการ ตั้งได้ที่หน้า <a href="/shop/setup.html">ตั้งค่าข้อมูลร้าน</a>
+          </div>
+        </div>
+
+        <div class="set-card">
           <div class="set-row">
             <label class="switch" title="เปิด = เช็คบิลแล้วปิดใช้งาน QR ของโต๊ะนั้นทันที">
               <input type="checkbox" id="autoDeleteQr">
@@ -218,11 +232,47 @@
         document.getElementById('shopName').textContent = me.shop.name || 'ร้านของฉัน';
         enabled = Number(me.shop.delete_qr_on_checkout) === 1;
         paint();
+        paintShopState(me.hours);
       } catch (e) {
         if (e.status === 403) { location.href = '/shop'; return; }
         showErr(e.message);
       }
     })();
+
+    // ---------- สถานะร้าน + ปุ่ม "ปิดร้านวันนี้" ----------
+    let shopClosedToday = false;
+    function paintShopState(hours) {
+      if (!hours) return;
+      shopClosedToday = hours.reason === 'closed_today';
+      const badge = document.getElementById('shopStateBadge');
+      const hint = document.getElementById('shopStateHint');
+      const btn = document.getElementById('closeTodayBtn');
+      badge.textContent = hours.open ? 'เปิดอยู่' : 'ปิดอยู่';
+      badge.className = 'set-state ' + (hours.open ? 'on' : 'off');
+      hint.textContent = hours.open
+        ? ('ลูกค้าสั่งอาหารได้ตามปกติ' + (hours.open_time ? ' (เปิด ' + hours.open_time + '–' + hours.close_time + ' · ' + hours.open_days_text + ')' : ''))
+        : (hours.message || 'ร้านปิดอยู่') + ' — ลูกค้าจะสั่งอาหารไม่ได้';
+      btn.textContent = shopClosedToday ? '🔓 เปิดร้านวันนี้' : '🚪 ปิดร้านวันนี้';
+    }
+    document.getElementById('closeTodayBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('closeTodayBtn');
+      const want = !shopClosedToday;
+      const okToggle = await uiConfirm({
+        title: want ? 'ปิดร้านวันนี้?' : 'เปิดร้านวันนี้?',
+        message: want
+          ? 'วันนี้ลูกค้าจะสั่งอาหารไม่ได้ (สแกน QR แล้วระบบจะแจ้งว่าร้านปิด) — เปิดคืนได้ทุกเมื่อ และระบบเปิดให้เองเมื่อขึ้นวันใหม่'
+          : 'เปิดร้านตามปกติ ลูกค้าสั่งอาหารได้ตามเวลาเปิด–ปิดที่ตั้งไว้',
+        okText: want ? 'ปิดร้านวันนี้' : 'เปิดร้าน',
+      });
+      if (!okToggle) return;
+      btn.disabled = true;
+      try {
+        const r = await api('/api/shop/close-today', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ closed: want }) });
+        paintShopState(r.hours);
+        toast(r.message || 'บันทึกแล้ว');
+      } catch (err) { showErr(err.message); }
+      finally { btn.disabled = false; }
+    });
   </script>
 </body>
 </html>

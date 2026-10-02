@@ -25,6 +25,57 @@
   </div>
 
   <!-- Modal รายการที่เลือกไว้ (ยังไม่สั่ง) -->
+  <div class="modal-overlay" id="modeModal">
+    <div class="modal" style="max-width:420px;">
+      <h3>รับอาหารแบบไหนดีครับ</h3>
+      <p class="sub">เลือกวิธีรับอาหาร แล้วระบบจะพาไปกรอกข้อมูลต่อ</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin:12px 0 4px;">
+        <button class="mini-btn" id="modePickupBtn" type="button" style="padding:14px;font-size:15px;">🏠 รับที่ร้าน</button>
+        <button class="mini-btn primary" id="modeDeliveryBtn" type="button" style="padding:14px;font-size:15px;">🛵 จัดส่งที่บ้าน</button>
+      </div>
+      <div class="modal-foot"><button class="mini-btn" id="modeCancel" type="button">ยกเลิก</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="shipModal">
+    <div class="modal">
+      <h3 id="shipTitle">ข้อมูลจัดส่ง</h3>
+      <p class="sub" id="shipSub">กรอกข้อมูลให้ครบ เพื่อให้ร้านติดต่อและส่งอาหารได้ถูกที่</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin:10px 0;">
+        <label style="font-size:13px;font-weight:700;">ชื่อผู้รับ *
+          <input class="mini-input" id="shipName" style="width:100%;margin-top:4px;" maxlength="120" placeholder="เช่น คุณสมชาย">
+        </label>
+        <label style="font-size:13px;font-weight:700;">เบอร์โทร *
+          <input class="mini-input" id="shipPhone" style="width:100%;margin-top:4px;" inputmode="tel" maxlength="30" placeholder="0812345678">
+        </label>
+        <div id="shipAddrWrap">
+          <label style="font-size:13px;font-weight:700;">ปักหมุดแผนที่ / ลิงก์ตำแหน่ง
+            <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+              <button class="mini-btn" id="shipPinBtn" type="button">📍 ปักหมุดตำแหน่งฉัน</button>
+              <span class="sub" id="shipPinState" style="font-size:12px;">ยังไม่ได้ปักหมุด</span>
+            </div>
+            <input class="mini-input" id="shipMapLink" style="width:100%;margin-top:6px;" maxlength="500" placeholder="หรือวางลิงก์ Google Maps ที่นี่">
+          </label>
+          <label style="font-size:13px;font-weight:700;display:block;margin-top:10px;">รายละเอียดสถานที่จัดส่ง *
+            <textarea class="mini-input" id="shipAddr" style="width:100%;margin-top:4px;min-height:64px;" maxlength="500" placeholder="เช่น บ้านเลขที่ 12/3 ซ.ลาดพร้าว 15 ตรงข้าม 7-11 ประตูสีฟ้า"></textarea>
+          </label>
+        </div>
+        <label style="font-size:13px;font-weight:700;">หมายเหตุถึงร้าน (ไม่ใส่ก็ได้)
+          <input class="mini-input" id="shipNote" style="width:100%;margin-top:4px;" maxlength="500" placeholder="เช่น ไม่ใส่ผักชี">
+        </label>
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:6px;">วิธีชำระเงิน *</div>
+          <div id="payChoices" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </div>
+      <div class="error-msg" id="shipErr"></div>
+      <div class="modal-foot">
+        <button class="mini-btn" id="shipCancel" type="button">ย้อนกลับ</button>
+        <button class="mini-btn primary" id="shipOk" type="button">ยืนยันสั่งออเดอร์</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="cartModal">
     <div class="modal">
       <h3>รายการที่เลือกไว้ <span id="cartModalCount" style="color:var(--muted);font-size:13px;font-weight:600;"></span></h3>
@@ -76,6 +127,10 @@
 
   <script>
     const token = (location.pathname.split('/').filter(Boolean).pop() || '').trim();
+    // โหมดของหน้านี้: '/order/<token>' = โต๊ะในร้าน · '/d/<token>' = QR เดลิเวอร์รี่/รับที่ร้าน
+    const MODE = /^\/d\//.test(location.pathname) ? 'delivery' : 'table';
+    let DELIVERY = null;   // { orderType: 'pickup'|'delivery', payMethod: 'cash'|'transfer' }
+    let MAP_PIN = null;    // { lat, lng }
     const f2 = (n) => Math.round(n * 100) / 100;
     const ST_LABEL = { pending: 'รอทำ', cooking: 'กำลังทำ', done: 'เสร็จแล้ว', cancelled: 'ยกเลิก' };
     const ST_CLASS = { pending: 'st-pending', cooking: 'st-cooking', done: 'st-done', cancelled: 'st-cancelled' };
@@ -156,7 +211,11 @@
             ${shop.logo_url ? `<img class="pub-logo" src="${esc(shop.logo_url)}" alt="${esc(shop.name)}">` : '<div class="pub-logo"></div>'}
             <h1>${esc(shop.name)}</h1>
             <div class="pub-head-sub">
-              <div class="pub-meta"><strong>โต๊ะ ${esc(S.table.code)}</strong> · บิล <strong>${billNoFmt(S.bill.bill_no)}</strong></div>
+              ${MODE === 'delivery'
+                ? '<div class="pub-meta"><strong>🛵 สั่งเดลิเวอร์รี่ / รับที่ร้าน</strong></div>'
+                : `<div class="pub-meta"><strong>โต๊ะ ${esc(S.table.code)}</strong> · บิล <strong>${billNoFmt(S.bill.bill_no)}</strong></div>`}
+              ${S.hours && !S.hours.open ? `<div class="closed-note">🚪 ${esc(S.hours.message || 'ร้านปิดทำการ')} — ตอนนี้สั่งอาหารไม่ได้</div>` : ''}
+              ${S.hours && S.hours.open && S.hours.open_time ? `<div class="pub-meta" style="font-size:12px;">เปิด ${esc(S.hours.open_time)}–${esc(S.hours.close_time)}</div>` : ''}
             </div>
             ${billItems.length ? `<button class="bill-pill" id="billBtn" type="button">🧾 รายการทั้งหมด (${orderedCount} รายการ) · ${money(billTotal)}</button>` : ''}
             <div class="pub-chips">${pubContactInfoChips(shop)}</div>
@@ -184,7 +243,7 @@
       renderOrderBar();
       renderBill();
       markActiveCat(); // มาร์คหมวดที่กำลังดูอยู่ตั้งแต่เปิดหน้า (ไม่ต้องรอเลื่อนจอ)
-      document.title = shop.name + ' · โต๊ะ ' + S.table.code;
+      document.title = shop.name + (MODE === 'delivery' ? ' · สั่งเดลิเวอร์รี่' : ' · โต๊ะ ' + S.table.code);
     }
 
     function setRowQty(id, n) {
@@ -420,6 +479,13 @@
     async function submitOrder() {
       const entries = Object.values(sel).filter((x) => x.quantity > 0);
       if (!entries.length) return;
+      // ร้านปิดอยู่ → สั่งไม่ได้ (แจ้งเหตุผลให้ลูกค้า)
+      if (S.hours && !S.hours.open) {
+        uiAlert({ title: 'ร้านปิดอยู่', message: (S.hours.message || 'ร้านปิดทำการ') + ' — กรุณาสั่งใหม่ในเวลาเปิดร้าน' });
+        return;
+      }
+      // โหมดเดลิเวอร์รี่: ยังไม่รับออเดอร์ตรงนี้ → ให้เลือกรับที่ร้าน/จัดส่ง + กรอกข้อมูล + วิธีชำระก่อน
+      if (MODE === 'delivery') { openModeModal(); return; }
       const btns = [document.getElementById('orderBtn'), document.getElementById('cartOrderBtn')].filter(Boolean);
       btns.forEach((b) => { b.disabled = true; });
       try {
@@ -441,6 +507,120 @@
     }
     document.getElementById('orderBtn').addEventListener('click', submitOrder);
     document.getElementById('cartOrderBtn').addEventListener('click', submitOrder);
+
+    // ---------- โหมดเดลิเวอร์รี่/รับที่ร้าน (สแกน QR เดลิเวอร์รี่) ----------
+    const modeModal = document.getElementById('modeModal');
+    const shipModal = document.getElementById('shipModal');
+
+    /** กด "สั่งออเดอร์" → ยังไม่รับออเดอร์ ให้เลือกรับที่ร้าน/จัดส่งก่อน */
+    function openModeModal() {
+      if (S.hours && !S.hours.open) { uiAlert({ title: 'ร้านปิดอยู่', message: S.hours.message || 'ร้านปิดทำการ' }); return; }
+      if (!Object.values(sel).filter((x) => x.quantity > 0).length) return;
+      modeModal.classList.add('show');
+    }
+    document.getElementById('modeCancel').addEventListener('click', () => modeModal.classList.remove('show'));
+    document.getElementById('modePickupBtn').addEventListener('click', () => { modeModal.classList.remove('show'); openShipForm('pickup'); });
+    document.getElementById('modeDeliveryBtn').addEventListener('click', () => { modeModal.classList.remove('show'); openShipForm('delivery'); });
+
+    /** ฟอร์มข้อมูลผู้รับ + วิธีชำระเงิน */
+    function openShipForm(orderType) {
+      DELIVERY = { orderType, payMethod: '' };
+      const isDelivery = orderType === 'delivery';
+      document.getElementById('shipTitle').textContent = isDelivery ? 'ข้อมูลจัดส่ง' : 'ข้อมูลผู้รับ (รับที่ร้าน)';
+      document.getElementById('shipSub').textContent = isDelivery
+        ? 'กรอกข้อมูลให้ครบ เพื่อให้ร้านส่งอาหารได้ถูกที่'
+        : 'กรอกชื่อและเบอร์โทร เพื่อให้ร้านติดต่อได้ตอนอาหารเสร็จ';
+      document.getElementById('shipAddrWrap').style.display = isDelivery ? '' : 'none';
+      document.getElementById('shipErr').textContent = '';
+      document.getElementById('shipPinState').textContent = MAP_PIN ? ('ปักหมุดแล้ว: ' + MAP_PIN.lat.toFixed(5) + ', ' + MAP_PIN.lng.toFixed(5)) : 'ยังไม่ได้ปักหมุด';
+      renderPayChoices();
+      shipModal.classList.add('show');
+      setTimeout(() => document.getElementById('shipName').focus(), 60);
+    }
+    document.getElementById('shipCancel').addEventListener('click', () => { shipModal.classList.remove('show'); openModeModal(); });
+
+    /** ตัวเลือกวิธีชำระ — ถ้าร้านยังไม่ต่อ EasySlip จะเห็นแค่ "เงินสด" */
+    function renderPayChoices() {
+      const pay = (S && S.payment) || {};
+      const opts = [];
+      opts.push(`<label class="pay-pick"><input type="radio" name="paym" value="cash"${DELIVERY.payMethod === 'cash' ? ' checked' : ''}><span><b>💵 ชำระเงินสด</b><br><span class="sub">${DELIVERY.orderType === 'delivery' ? 'จ่ายเงินสดตอนรับอาหาร' : 'จ่ายเงินสดที่ร้าน'} — ระบบส่งออเดอร์เข้าครัวทันที</span></span></label>`);
+      if (pay.transfer) {
+        opts.push(`<label class="pay-pick"><input type="radio" name="paym" value="transfer"${DELIVERY.payMethod === 'transfer' ? ' checked' : ''}><span><b>📲 ชำระเงินโอน</b><br><span class="sub">สแกน QR พร้อมเพย์ แล้วแนบสลิปภายใน ${pay.expire_minutes || 10} นาที — ตรวจสลิปอัตโนมัติ ได้เงินแล้วส่งเข้าครัวทันที</span></span></label>`);
+      } else {
+        opts.push(`<div class="sub" style="padding:6px 2px;">ร้านนี้ยังไม่เปิดรับชำระเงินโอน — ชำระเงินสดได้อย่างเดียว</div>`);
+      }
+      document.getElementById('payChoices').innerHTML = opts.join('');
+      document.querySelectorAll('#payChoices input[name="paym"]').forEach((r) => r.addEventListener('change', () => { DELIVERY.payMethod = r.value; }));
+      if (!DELIVERY.payMethod) DELIVERY.payMethod = 'cash';
+    }
+
+    /** ปักหมุดตำแหน่งปัจจุบัน (ใช้ GPS ของเบราว์เซอร์ ไม่ต้องมีคีย์แผนที่) */
+    document.getElementById('shipPinBtn').addEventListener('click', () => {
+      const st = document.getElementById('shipPinState');
+      if (!navigator.geolocation) { st.textContent = 'เบราว์เซอร์นี้ไม่รองรับการปักหมุด'; return; }
+      st.textContent = 'กำลังหาตำแหน่ง…';
+      navigator.geolocation.getCurrentPosition((pos) => {
+        MAP_PIN = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        st.textContent = 'ปักหมุดแล้ว: ' + MAP_PIN.lat.toFixed(5) + ', ' + MAP_PIN.lng.toFixed(5);
+        const link = document.getElementById('shipMapLink');
+        if (!link.value) link.value = 'https://maps.google.com/?q=' + MAP_PIN.lat.toFixed(6) + ',' + MAP_PIN.lng.toFixed(6);
+      }, (err) => { st.textContent = 'ปักหมุดไม่ได้ (' + (err.message || 'ไม่อนุญาตให้เข้าถึงตำแหน่ง') + ') — กรอกข้อความสถานที่แทนได้'; }, { timeout: 10000 });
+    });
+
+    /** ยืนยันสั่งออเดอร์ (เดลิเวอร์รี่/รับที่ร้าน) */
+    async function submitDeliveryOrder() {
+      const err = document.getElementById('shipErr');
+      err.textContent = '';
+      const name = document.getElementById('shipName').value.trim();
+      const phone = document.getElementById('shipPhone').value.trim();
+      const address = document.getElementById('shipAddr').value.trim();
+      const mapLink = document.getElementById('shipMapLink').value.trim();
+      const note = document.getElementById('shipNote').value.trim();
+      if (name.length < 2) { err.textContent = 'กรุณากรอกชื่อผู้รับ'; return; }
+      if (phone.replace(/\D/g, '').length < 9) { err.textContent = 'กรุณากรอกเบอร์โทรให้ครบ'; return; }
+      if (DELIVERY.orderType === 'delivery' && (address.length < 5 && !mapLink)) {
+        err.textContent = 'กรุณากรอกรายละเอียดสถานที่จัดส่ง หรือปักหมุด/แนบลิงก์แผนที่';
+        return;
+      }
+      const entries = Object.values(sel).filter((x) => x.quantity > 0);
+      if (!entries.length) { err.textContent = 'ยังไม่มีรายการอาหาร'; return; }
+      const btn = document.getElementById('shipOk');
+      btn.disabled = true;
+      btn.textContent = 'กำลังส่งออเดอร์…';
+      try {
+        const data = await api('/api/public/delivery/' + encodeURIComponent(token) + '/order', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderType: DELIVERY.orderType,
+            customer: {
+              name, phone,
+              address: [address, mapLink ? 'แผนที่: ' + mapLink : ''].filter(Boolean).join(' | '),
+              note,
+              lat: MAP_PIN ? MAP_PIN.lat : null,
+              lng: MAP_PIN ? MAP_PIN.lng : null,
+            },
+            payment: { method: DELIVERY.payMethod || 'cash' },
+            items: entries.map((c) => ({ menuId: c.menuId, quantity: c.quantity, optionItemIds: c.optionItemIds })),
+          }),
+        });
+        sel = {};
+        shipModal.classList.remove('show');
+        if (data.payment_method === 'transfer') {
+          // ไปหน้าจ่ายเงิน (QR + แนบสลิปในเวลาที่กำหนด) — จำหน้าที่จะกลับมาเมื่อหมดเวลาไว้
+          try { sessionStorage.setItem('qpage_back_url', location.pathname + location.search); } catch (e) {}
+          location.href = '/pay/' + encodeURIComponent(data.pay_ref);
+          return;
+        }
+        uiAlert({ title: 'รับออเดอร์แล้ว 🎉', message: 'บิล #' + data.bill_no + ' — ร้านได้รับออเดอร์และส่งเข้าครัวแล้ว' + (DELIVERY.orderType === 'delivery' ? ' กรุณาเตรียมเงินสดตอนรับอาหาร' : ' กรุณารับอาหารที่ร้าน') });
+        render();
+      } catch (e) {
+        err.textContent = e.message || 'ส่งออเดอร์ไม่สำเร็จ';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'ยืนยันสั่งออเดอร์';
+      }
+    }
+    document.getElementById('shipOk').addEventListener('click', submitDeliveryOrder);
 
     // ---------- โมดัล "รายการทั้งหมด" (บิลของโต๊ะ) ----------
     const billModal = document.getElementById('billModal');
@@ -520,6 +700,13 @@
     // ---------- โหลด ----------
     async function load() {
       try {
+        if (MODE === 'delivery') {
+          // QR เดลิเวอร์รี่/รับที่ร้าน — ไม่มีบิลประจำโต๊ะ ไม่ต้องเฝ้าบิล
+          S = await api('/api/public/delivery/' + encodeURIComponent(token));
+          sel = {};
+          render();
+          return;
+        }
         S = await api('/api/public/order/' + encodeURIComponent(token));
         sel = {};
         // จำบิลที่หน้านี้กำลังสั่งอยู่ (ถ้าร้านเช็คบิล บิลจะเปลี่ยนเลข → พาออกไปหน้าดูร้าน)

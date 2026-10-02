@@ -110,8 +110,24 @@ const CUSTOMER_TEXT = {
   slip_pending: 'สลิปธนาคารกรุงเทพที่เพิ่งโอนไม่เกิน 5 นาที ต้องรอสักครู่แล้วแจ้งใหม่',
 };
 
-function getSlipSettings() {
+/**
+ * ค่าตั้งการตรวจสลิป
+ * @param {object|null} shop ส่งร้านมา → ใช้ค่าของร้านนั้น (คีย์ EasySlip + บัญชีรับเงินของร้านเอง)
+ *                            ไม่ส่ง = ค่าระดับแพลตฟอร์ม (ใช้กับการซื้อแพ็กเกจของเจ้าของระบบ)
+ */
+function getSlipSettings(shop = null) {
   const digits = (v) => String(v == null ? '' : v).replace(/\D/g, '');
+  if (shop) {
+    const candidates = [shop.pay_bank_account, shop.pay_promptpay_id].map(digits).filter(Boolean);
+    const apiKey = String(shop.slip_api_key || '');
+    return {
+      provider: 'easyslip',
+      apiKey,
+      receiverAccounts: [...new Set(candidates)],
+      autoApprove: Number(shop.slip_auto_approve) === 1,
+      configured: Boolean(apiKey),
+    };
+  }
   // บัญชีผู้รับที่คาดหวัง — ใช้ค่าที่ตั้งไว้เอง ถ้าไม่มีก็ดึงจากช่องทางรับเงินที่กรอกไว้ (ไม่ต้องกรอกซ้ำ)
   const candidates = [
     db.getSetting('slip_receiver_account'),
@@ -150,8 +166,9 @@ function accountMatches(wantRaw, gotRaw) {
 }
 
 /** เรียก EasySlip ตรวจสลิปธนาคาร (ส่งรูปเป็น base64) → ผลลัพธ์รูปแบบเดียว */
-async function verifySlip(buffer, expectedAmount) {
-  const s = getSlipSettings();
+async function verifySlip(buffer, expectedAmount, settingsOverride) {
+  // ใช้ค่าของ 'ร้าน' ที่ส่งมา ถ้าไม่ส่ง = ค่าระดับแพลตฟอร์ม (ซื้อแพ็กเกจ)
+  const s = settingsOverride || getSlipSettings();
   if (!s.apiKey) return { ok: false, code: 'not_configured', message: 'ยังไม่ได้ตั้งค่า API key ของ EasySlip', customerMessage: '' };
 
   const body = { base64: buffer.toString('base64'), checkDuplicate: true, matchAccount: true };

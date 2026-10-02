@@ -364,6 +364,114 @@ async function submitForm() {
   finally { btn.disabled = false; }
 }
 
+/** กล่องยืนยัน/แจ้งข้อมูลของโปรแกรม (ไม่ใช้กล่องของเบราว์เซอร์) */
+function ask(title, message, okText, hasCancel) {
+  return new Promise((resolve) => {
+    $('askTitle').textContent = title;
+    $('askMsg').innerHTML = String(message || '').split('\n').map(esc).join('<br>');
+    $('askOk').textContent = okText || 'ตกลง';
+    $('askCancel').style.display = hasCancel ? '' : 'none';
+    $('askOverlay').classList.add('show');
+    const done = (v) => { $('askOverlay').classList.remove('show'); $('askOk').onclick = null; $('askCancel').onclick = null; resolve(v); };
+    $('askOk').onclick = () => done(true);
+    $('askCancel').onclick = () => done(false);
+  });
+}
+const askConfirm = (title, message, okText) => ask(title, message, okText, true);
+const showInfo = (title, message) => ask(title, message, 'ปิด', false);
+
+// ---------------------------------------------------------------------------
+// เดลิเวอร์รี่ / รับที่ร้าน (QR เดียวต่อร้าน + บิลที่ยังเปิดอยู่)
+// ---------------------------------------------------------------------------
+let remoteList = [];
+let dlvInfo = null;      // { dataUrl, url, token, hours, transferReady }
+
+async function loadDelivery() {
+  try {
+    const [qr, remote] = await Promise.all([API.deliveryQr(), API.remoteOrders()]);
+    dlvInfo = qr;
+    remoteList = remote.orders || [];
+    renderDelivery();
+    renderRemoteBills();
+  } catch (err) {
+    $('dlvState').textContent = 'โหลดไม่สำเร็จ';
+    $('dlvSub').textContent = err.message;
+  }
+}
+
+function renderDelivery() {
+  if (!dlvInfo) return;
+  $('dlvQr').src = dlvInfo.dataUrl;
+  $('dlvUrl').value = dlvInfo.url || '';
+  const h = dlvInfo.hours || {};
+  const st = $('dlvState');
+  st.textContent = h.open ? 'ร้านเปิดอยู่' : (h.reason === 'closed_today' ? 'ปิดร้านวันนี้' : 'ปิดอยู่');
+  st.className = 'badge ' + (h.open ? 'ok' : 'wait');
+  $('dlvSub').textContent = h.open
+    ? (h.open_time ? ('เปิด ' + h.open_time + '–' + h.close_time + ' · ' + h.open_days_text) : 'เปิดให้สั่งทุกวัน — ลูกค้าสแกน QR นี้แล้วเลือกจัดส่ง/รับที่ร้านได้')
+    : ((h.message || 'ร้านปิดอยู่') + ' — ลูกค้าจะสั่งอาหารไม่ได้จนกว่าจะเปิดร้าน');
+  $('dlvPay').textContent = dlvInfo.transferReady
+    ? 'รับชำระเงินโอนแล้ว (ตรวจสลิปอัตโนมัติ) — ลูกค้าแนบสลิปแล้วออเดอร์เข้าครัวทันที'
+    : 'ยังไม่เปิดรับโอนเงิน — ลูกค้าชำระเงินสดเท่านั้น (ตั้งค่าได้ที่หน้าจอ "การชำระเงิน")';
+}
+
+function renderRemoteBills() {
+  const box = $('remoteBills');
+  if (!remoteList.length) {
+    box.innerHTML = '<div class="empty-state" style="padding:18px;">ยังไม่มีบิลเดลิเวอร์รี่/รับที่ร้านที่เปิดอยู่</div>';
+    return;
+  }
+  box.innerHTML = remoteList.map((o) => {
+    const isDelivery = o.order_type === 'delivery';
+    const paid = o.payment_status === 'paid';
+    const plates = (o.items || []).filter((i) => i.status !== 'cancelled').reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+    return `<div class="remote-item">
+      <div style="flex:1;min-width:200px;">
+        <div class="t">${isDelivery ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน'} · บิล ${billNo(o.bill_no)}</div>
+        <div class="s">${esc(o.customer_name || '')} · ${esc(o.customer_phone || '')} · ${plates} จาน · ${money(o.total)}</div>
+        ${o.customer_address ? `<div class="s" style="margin-top:2px;">📍 ${esc(o.customer_address)}</div>` : ''}
+      </div>
+      <span class="badge ${paid ? 'ok' : 'wait'}">${paid ? 'โอนแล้ว' : (o.payment_method === 'cash' ? 'เก็บเงินปลายทาง' : 'รอชำระเงิน')}</span>
+      <div class="acts" style="display:flex;gap:7px;flex-wrap:wrap;">
+        <button class="btn btn-sm" data-remote-view="${o.id}" type="button">ดูรายการ</button>
+        <button class="btn btn-sm" data-remote-close="${o.id}" data-code="${esc(o.customer_name || '')}" type="button">ปิดบิล</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  box.querySelectorAll('[data-remote-view]').forEach((b) => b.addEventListener('click', () => {
+    const o = remoteList.find((x) => Number(x.id) === Number(b.dataset.remoteView));
+    if (!o) return;
+    const lines = (o.items || []).map((i) => `${Number(i.quantity) || 0}× ${i.menu_name} — ${money(i.line_total)}`).join('\n');
+    const payText = o.payment_status === 'paid' ? '(ชำระเงินโอนแล้ว)' : (o.payment_method === 'cash' ? '(เก็บเงินปลายทาง)' : '(ยังไม่ชำระเงิน)');
+    showInfo(
+      (o.order_type === 'delivery' ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน') + ' · บิล ' + billNo(o.bill_no),
+      [o.customer_name || '', o.customer_phone || ''].filter(Boolean).join(' · ')
+        + (o.customer_address ? '\n📍 ' + o.customer_address : '')
+        + (o.customer_note ? '\n📝 ' + o.customer_note : '')
+        + '\n\n' + lines
+        + '\n\nรวม ' + money(o.total) + ' ' + payText
+    );
+  }));
+  box.querySelectorAll('[data-remote-close]').forEach((b) => b.addEventListener('click', () => closeRemote(Number(b.dataset.remoteClose), b)));
+}
+
+async function closeRemote(orderId, btn) {
+  const okClose = await askConfirm('ปิดบิล', 'ปิดบิลนี้และพิมพ์ใบเสร็จ? (ปิดได้เมื่อครัวเคลียร์รายการครบแล้ว)', 'ปิดบิล + พิมพ์ใบเสร็จ');
+  if (!okClose) return;
+  if (btn) btn.disabled = true;
+  try {
+    const r = await API.closeRemote(orderId);
+    toast('ปิดบิลแล้ว');
+    if (r.closed) API.printReceipt({ orderId: r.closed.order_id, url_path: '/shop/receipt.html?order=' + r.closed.order_id });
+    await loadAll();
+  } catch (err) {
+    toast('ปิดบิลไม่สำเร็จ: ' + err.message);
+    if (btn) btn.disabled = false;
+  }
+}
+
+
 // ---------------------------------------------------------------------------
 // โหลดข้อมูล + อัปเดตสด
 // ---------------------------------------------------------------------------
@@ -386,6 +494,7 @@ async function loadAll() {
     if (cat) catalog = cat;
     renderPlan();
     if (currentTable) renderDrawer();
+    await loadDelivery();
   } catch (err) {
     $('plan').innerHTML = '<div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ' + esc(err.message) + '</div>';
   }
@@ -401,6 +510,23 @@ API.onEvent((evt) => {
 });
 
 $('btnReload').addEventListener('click', () => loadAll().then(() => toast('อัปเดตแล้ว')));
+$('dlvCopy').addEventListener('click', async () => {
+  const v = $('dlvUrl').value;
+  if (!v) return;
+  try { await navigator.clipboard.writeText(v); toast('คัดลอกลิงก์แล้ว'); } catch (e) { toast('คัดลอกไม่ได้ — เลือกข้อความในช่องแล้วคัดลอกเอง'); }
+});
+$('dlvPrint').addEventListener('click', () => {
+  API.printReceipt({ url_path: '/shop/delivery-qr.html' + (dlvInfo && dlvInfo.token ? '?token=' + dlvInfo.token : '') });
+  toast('กำลังพิมพ์ QR เดลิเวอร์รี่');
+});
+$('dlvDownload').addEventListener('click', async () => {
+  if (!dlvInfo) return;
+  try {
+    const r = await API.saveQrDataUrl({ dataUrl: dlvInfo.dataUrl, name: 'QR-เดลิเวอร์รี่.png' });
+    showInfo('บันทึก QR แล้ว', 'ไฟล์อยู่ที่:\n' + r.path);
+    API.reveal(r.path);
+  } catch (e) { toast('บันทึกไม่สำเร็จ: ' + e.message); }
+});
 $('btnAddTable').addEventListener('click', () => openForm('table'));
 $('btnAddZone').addEventListener('click', () => openForm('zone'));
 $('dClose').addEventListener('click', closeDrawer);

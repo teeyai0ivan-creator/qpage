@@ -53,6 +53,18 @@ function ageText(iso, status, doneAt) {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
   return h > 0 ? h + ':' + pad(m) + ':' + pad(sec) : pad(m) + ':' + pad(sec);
 }
+/** ชื่อจุดที่สั่ง: โต๊ะในร้าน หรือ เดลิเวอร์รี่/รับที่ร้าน (พร้อมชื่อลูกค้า) */
+function placeTitle(i) {
+  if (i.table_code) return 'โต๊ะ ' + i.table_code;
+  const t = i.order_type === 'delivery' ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน';
+  return i.customer_name ? (t + ' · ' + i.customer_name) : t;
+}
+/** ป้ายการชำระเงินของบิล (โอนแล้ว = เข้าครัวหลังตรวจสลิปผ่าน) */
+function payTag(i) {
+  if (i.order_type === 'dine_in' || !i.order_type) return '';
+  if (i.payment_status === 'paid') return ' · โอนแล้ว';
+  return i.payment_method === 'cash' ? ' · เงินสด' : '';
+}
 const hhmm = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : pad(d.getHours()) + ':' + pad(d.getMinutes()) + ' · '; };
 
 function rowHtml(i) {
@@ -69,7 +81,7 @@ function rowHtml(i) {
     <div class="info">
       <div class="name">${esc(i.menu_name)}</div>
       ${opts ? `<div class="opts">${esc(opts)}</div>` : ''}
-      <div class="meta">สั่ง ${hhmm(i.created_at)}<span class="age" data-since="${esc(i.created_at)}" data-status="${esc(i.status)}" data-done="${esc(i.done_at || '')}">${ageText(i.created_at, i.status, i.done_at)}</span></div>
+      <div class="meta">${hhmm(i.created_at)}<span class="age" data-since="${esc(i.created_at)}" data-status="${esc(i.status)}" data-done="${esc(i.done_at || '')}">${ageText(i.created_at, i.status, i.done_at)}</span></div>
     </div>
     ${badge}
     <div class="acts">${acts.join('')}</div>
@@ -90,7 +102,7 @@ function groups() {
   const map = new Map();
   for (const i of list) {
     const key = String(i.order_id);
-    if (!map.has(key)) map.set(key, { title: 'โต๊ะ ' + (i.table_code || '-'), sub: 'บิล ' + billNo(i.bill_no), items: [], ctx: false, orderId: i.order_id });
+    if (!map.has(key)) map.set(key, { title: placeTitle(i), sub: 'บิล ' + billNo(i.bill_no) + payTag(i), items: [], ctx: false, orderId: i.order_id });
     map.get(key).items.push(i);
   }
   return [...map.values()];

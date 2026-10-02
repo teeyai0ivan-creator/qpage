@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR เดลิเวอร์รี่ | QPage</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    @page { margin: 12mm; }
+    body { font-family: 'Sarabun', 'Noto Sans Thai', Tahoma, sans-serif; background: #fff; color: #101828; }
+    .wrap { max-width: 420px; margin: 0 auto; text-align: center; padding: 10px; }
+    .shop { font-size: 22px; font-weight: 800; margin: 4px 0 2px; }
+    .sub { color: #667085; font-size: 13px; margin-bottom: 10px; }
+    .qr { width: 300px; height: 300px; }
+    .big { font-size: 19px; font-weight: 800; margin-top: 8px; }
+    .hint { font-size: 13px; color: #475467; margin-top: 6px; line-height: 1.7; }
+    .box { border: 2px dashed #d0d5dd; border-radius: 16px; padding: 14px; display: inline-block; margin-top: 6px; }
+    .btns { margin-top: 14px; }
+    .btns button { font-family: inherit; font-size: 14px; font-weight: 700; padding: 10px 16px; border-radius: 10px; border: 1px solid #d0d5dd; background: #fff; cursor: pointer; margin: 0 4px; }
+    @media print { .btns { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="shop" id="shopName">ร้านค้า</div>
+    <div class="sub" id="shopPhone"></div>
+    <div class="box">
+      <div class="big">🛵 สแกนสั่งอาหาร</div>
+      <div class="hint">เดลิเวอร์รี่ / รับที่ร้าน<br>เปิดกล้องแล้วสแกนได้เลย</div>
+      <img class="qr" id="qr" alt="QR เดลิเวอร์รี่">
+    </div>
+    <div class="hint" id="hoursText"></div>
+    <div class="btns">
+      <button type="button" id="printBtn">🖨 พิมพ์</button>
+      <button type="button" id="closeBtn">ปิดหน้านี้</button>
+    </div>
+  </div>
+
+  <script>
+    const token = new URLSearchParams(location.search).get('token') || '';
+    const $ = (id) => document.getElementById(id);
+    (async () => {
+      try {
+        const me = await (await fetch('/api/shop/me')).json();
+        if (me && me.shop) $('shopName').textContent = me.shop.name || 'ร้านค้า';
+        if (me && me.shop && me.shop.phone) $('shopPhone').textContent = 'โทร ' + me.shop.phone;
+        if (me && me.hours) {
+          $('hoursText').textContent = me.hours.open_time
+            ? ('เปิด ' + me.hours.open_time + '–' + me.hours.close_time + ' · ' + me.hours.open_days_text)
+            : 'เปิดให้สั่งทุกวัน';
+        }
+      } catch (e) { /* ข้าม */ }
+      $('qr').src = '/api/shop/delivery/qr.png' + (token ? '?token=' + encodeURIComponent(token) : '');
+      $('qr').onload = () => setTimeout(() => { try { window.print(); } catch (e) {} }, 400);
+    })();
+    $('printBtn').addEventListener('click', () => window.print());
+    $('closeBtn').addEventListener('click', () => { window.close(); setTimeout(() => { if (!window.closed) location.replace('/shop/orders.html'); }, 300); });
+  </script>
+</body>
+</html>
