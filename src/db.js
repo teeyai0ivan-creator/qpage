@@ -1938,6 +1938,19 @@ async function listOrderItems(orderId) {
   return rows;
 }
 
+/** รายการอาหารของบิล พร้อม "จุดที่ต้องทำ" (ครัว/แคชเชียร์ ตามหมวดหมู่อาหาร) */
+async function listOrderItemsDetailed(orderId) {
+  const [rows] = await pool.execute(
+    `SELECT oi.*, COALESCE(c.station, 'kitchen') AS station
+       FROM order_items oi
+       LEFT JOIN menus m ON m.id = oi.menu_id
+       LEFT JOIN categories c ON c.id = m.category_id
+      WHERE oi.order_id = ? ORDER BY oi.id ASC`,
+    [orderId]
+  );
+  return rows;
+}
+
 async function recalcOrderTotal(orderId) {
   await pool.execute(
     "UPDATE orders SET total = (SELECT COALESCE(SUM(line_total),0) FROM order_items WHERE order_id = ? AND status <> 'cancelled') WHERE id = ?",
@@ -2560,7 +2573,7 @@ module.exports = {
   expireOrderPayment,
   findOrderById,
   createOrder,
-  listOrderItems,
+  listOrderItems, listOrderItemsDetailed,
   addOrderItems,
   closeOrder,
   deleteOrder,

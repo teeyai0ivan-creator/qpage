@@ -391,14 +391,18 @@ const askConfirm = (title, message, okText) => ask(title, message, okText, true)
 const showInfo = (title, message) => ask(title, message, 'ปิด', false);
 
 // ---------------------------------------------------------------------------
-// QR เดลิเวอร์รี่ / รับที่ร้าน (คิวบิลอยู่ที่หน้าจอ "รับที่บ้าน" แล้ว)
+// QR เดลิเวอร์รี่ / รับที่ร้าน + ออเดอร์เดลิเวอร์รี่ที่ยังไม่ปิดบิล (ปุ่ม "นำส่ง")
 // ---------------------------------------------------------------------------
 let dlvInfo = null;      // { dataUrl, url, token, hours, transferReady }
+let remoteList = [];
 
 async function loadDelivery() {
   try {
-    dlvInfo = await API.deliveryQr();
+    const [qr, remote] = await Promise.all([API.deliveryQr(), API.remoteOrders()]);
+    dlvInfo = qr;
+    remoteList = remote.orders || [];
     renderDelivery();
+    renderRemoteBills();
   } catch (err) {
     $('dlvState').textContent = 'โหลดไม่สำเร็จ';
     $('dlvSub').textContent = err.message;
@@ -419,6 +423,73 @@ function renderDelivery() {
   $('dlvPay').textContent = dlvInfo.transferReady
     ? 'รับชำระเงินโอนแล้ว (ตรวจสลิปอัตโนมัติ) — ลูกค้าแนบสลิปแล้วออเดอร์เข้าครัวทันที'
     : 'ยังไม่เปิดรับโอนเงิน — ลูกค้าชำระเงินสดเท่านั้น (ตั้งค่าได้ที่หน้าจอ "การชำระเงิน")';
+}
+
+const STN_LABEL = { kitchen: 'ครัว', cashier: 'แคชเชียร์' };
+const ST_LABEL = { pending: 'รอทำ', cooking: 'กำลังทำ', done: 'เสร็จแล้ว', cancelled: 'ยกเลิก' };
+function payBadgeHtml(o) {
+  if (o.status === 'awaiting_payment') return '<span class="badge wait">รอลูกค้าชำระเงิน (โอน)</span>';
+  if (o.payment_status === 'paid') return '<span class="badge ok">' + (o.payment_method === 'cash' ? 'รับเงินสดแล้ว' : 'ลูกค้าโอนแล้ว') + '</span>';
+  return '<span class="badge wait">รอชำระเงินสด (เก็บปลายทาง)</span>';
+}
+
+function renderRemoteBills() {
+  const box = $('remoteBills');
+  if (!remoteList.length) {
+    box.innerHTML = '<div class="empty-state" style="padding:16px;">ยังไม่มีออเดอร์เดลิเวอร์รี่/รับที่ร้านที่เปิดอยู่</div>';
+    return;
+  }
+  box.innerHTML = remoteList.map((o) => {
+    const isD = o.order_type === 'delivery';
+    const p = o.progress || {};
+    const ready = o.status === 'open' && p.ready;
+    const items = (o.items || []).filter((i) => i.status !== 'cancelled').map((i) =>
+      `<div class="s" style="display:flex;gap:8px;align-items:center;padding:2px 0;">
+        <span style="flex:1;">${Number(i.quantity) || 0}× ${esc(i.menu_name)} <small>(${STN_LABEL[i.station] || 'ครัว'})</small>
+          <span class="badge ${i.status === 'done' ? 'ok' : 'wait'}" style="font-size:10.5px;padding:1px 7px;">${ST_LABEL[i.status] || i.status}</span></span>
+        <span>${money(i.line_total)}</span>
+      </div>`).join('');
+    const btn = o.status !== 'open'
+      ? '<span class="s">รอลูกค้าชำระเงินก่อนจึงจะนำส่งได้</span>'
+      : `<button class="btn btn-sm btn-primary" data-send="${o.id}" type="button"${ready ? '' : ' disabled title="รอครัว/แคชเชียร์ทำรายการให้ครบก่อน"'}>✅ นำส่ง</button>`;
+    return `<div class="remote-item" style="flex-direction:column;align-items:stretch;gap:6px;border-left-color:${ready ? '#059669' : '#4f46e5'};">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <span class="t">${isD ? '🛵 เดลิเวอร์รี่' : '🏠 รับที่ร้าน'} · บิล ${billNo(o.bill_no)}</span>
+        <span class="s">${esc(o.customer_name || '')} · ${esc(o.customer_phone || '-')}</span>
+        <span style="flex:1;"></span>${payBadgeHtml(o)}
+      </div>
+      ${o.customer_address ? `<div class="s">📍 ${esc(o.customer_address)}</div>` : ''}
+      ${o.customer_note ? `<div class="s">📝 ${esc(o.customer_note)}</div>` : ''}
+      ${items}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <b>${money(o.total)}</b>
+        <span class="s">· ครัว/แคชเชียร์ทำแล้ว ${p.done || 0}/${p.plates || 0} จาน${ready ? ' · ครบแล้ว' : ''}</span>
+        <span style="flex:1;"></span>${btn}
+      </div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', () => sendOrder(Number(b.dataset.send), b)));
+}
+
+async function sendOrder(orderId, btn) {
+  const o = remoteList.find((x) => Number(x.id) === orderId);
+  const cash = o && o.payment_method === 'cash' && o.payment_status !== 'paid';
+  const okSend = await askConfirm('นำส่งออเดอร์',
+    'ยืนยันว่า' + (o && o.order_type === 'delivery' ? 'ส่งอาหารให้ลูกค้าแล้ว' : 'ลูกค้ามารับอาหารแล้ว')
+      + (cash ? ' และเก็บเงินสด ' + money(o.total) + ' เรียบร้อย' : '')
+      + '\n\nระบบจะปิดบิลและพิมพ์ใบเสร็จ',
+    'นำส่ง · ปิดบิล');
+  if (!okSend) return;
+  if (btn) btn.disabled = true;
+  try {
+    const r = await API.closeRemote(orderId);
+    toast('นำส่งแล้ว — ปิดบิลเรียบร้อย');
+    if (r.closed) API.printReceipt({ orderId: r.closed.order_id, url_path: '/shop/receipt.html?order=' + r.closed.order_id });
+    await loadAll();
+  } catch (err) {
+    toast('นำส่งไม่สำเร็จ: ' + err.message);
+    if (btn) btn.disabled = false;
+  }
 }
 
 

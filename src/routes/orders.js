@@ -496,7 +496,7 @@ router.get('/api/shop/orders/remote', requireShop, async (req, res) => {
   const orders = await db.listOpenRemoteOrders(shop.id);
   const withItems = [];
   for (const o of orders) {
-    const items = await db.listOrderItems(o.id);
+    const items = await db.listOrderItemsDetailed(o.id);
     withItems.push(Object.assign({}, o, { items, progress: progressOf(items) }));
   }
   res.set('Cache-Control', 'no-store');

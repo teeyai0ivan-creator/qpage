@@ -152,6 +152,12 @@
     </div>
 
     <div class="shop-card">
+      <h2>🛵 ออเดอร์เดลิเวอร์รี่ / รับที่ร้าน <span class="count" id="remoteCount"></span></h2>
+      <p class="hist-sub" style="margin:0 0 10px;">ออเดอร์ที่ยังไม่ปิดบิล — แสดงรายการอาหารและสถานะการทำของครัว/แคชเชียร์ · กด <b>นำส่ง</b> ได้เมื่อทำครบทุกจุด (บิลเงินสดระบบจะบันทึกว่ารับเงินแล้วให้)</p>
+      <div id="remoteList"></div>
+    </div>
+
+    <div class="shop-card">
       <h2>โต๊ะ &amp; QR <span class="count" id="tableCount"></span></h2>
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px;">
         <button class="mini-btn primary" id="newQrBtn" type="button">＋ เพิ่มโต๊ะใหม่</button>
@@ -519,10 +525,10 @@
 
     // โหลดบิลก่อน แล้วค่อยวาดรายการโต๊ะ (บล็อกโต๊ะใช้ข้อมูลบิลที่เปิดอยู่ด้วย)
     // โหลดข้อมูลให้ครบก่อนวาดตาราง: ชื่อโต๊ะ/โซน ต้องมาก่อน เพราะตารางหน้าแรกใช้ทั้งชื่อและสถานะบิล
-    // ---------- QR เดลิเวอร์รี่ / รับที่ร้าน (คิวบิลอยู่ที่หน้า "รับที่บ้าน") ----------
+    // ---------- QR เดลิเวอร์รี่ / รับที่ร้าน + ออเดอร์เดลิเวอร์รี่ที่ยังไม่ปิดบิล ----------
     async function loadDelivery() {
       try {
-        const qr = await api("/api/shop/delivery-qr");
+        const [qr, remote] = await Promise.all([api("/api/shop/delivery-qr"), api("/api/shop/orders/remote")]);
         document.getElementById("dlvQr").src = qr.qr_path + "&t=" + Date.now();
         document.getElementById("dlvUrl").value = qr.url || "";
         document.getElementById("dlvPrint").href = "/shop/delivery-qr.html?token=" + encodeURIComponent(qr.token || "");
@@ -532,9 +538,76 @@
         document.getElementById("dlvHint").textContent = h.open
           ? (h.open_time ? ("เปิด " + h.open_time + "–" + h.close_time + " · " + h.open_days_text) : "เปิดให้สั่งทุกวัน — ลูกค้าสแกน QR นี้แล้วเลือกจัดส่ง/รับที่ร้านได้")
           : ((h.message || "ร้านปิดอยู่") + " — ลูกค้าจะสั่งอาหารไม่ได้จนกว่าจะเปิดร้าน");
+        renderRemote(remote.orders || []);
       } catch (err) {
         document.getElementById("dlvHint").textContent = "โหลด QR ไม่สำเร็จ: " + err.message;
       }
+    }
+
+    const ST_LABEL = { pending: "รอทำ", cooking: "กำลังทำ", done: "เสร็จแล้ว", cancelled: "ยกเลิก" };
+    const STN_LABEL = { kitchen: "ครัว", cashier: "แคชเชียร์" };
+    let remoteOrdersCache = [];
+    function payBadgeHtml(o) {
+      if (o.status === "awaiting_payment") return '<span class="st-badge st-pending">รอลูกค้าชำระเงิน (โอน)</span>';
+      if (o.payment_status === "paid") return '<span class="st-badge st-done">' + (o.payment_method === "cash" ? "รับเงินสดแล้ว" : "ลูกค้าโอนแล้ว") + '</span>';
+      return '<span class="st-badge st-cooking">รอชำระเงินสด (เก็บปลายทาง)</span>';
+    }
+    function renderRemote(orders) {
+      remoteOrdersCache = orders;
+      const box = document.getElementById("remoteList");
+      document.getElementById("remoteCount").textContent = orders.length ? "(" + orders.length + ")" : "";
+      if (!orders.length) { box.innerHTML = '<div class="cat-empty">ยังไม่มีออเดอร์เดลิเวอร์รี่/รับที่ร้านที่เปิดอยู่</div>'; return; }
+      box.innerHTML = orders.map(function (o) {
+        const isD = o.order_type === "delivery";
+        const p = o.progress || {};
+        const ready = o.status === "open" && p.ready;
+        const items = (o.items || []).filter(function (i) { return i.status !== "cancelled"; }).map(function (i) {
+          return '<div class="bill-item" style="padding:3px 0;">'
+            + '<span>' + (Number(i.quantity) || 0) + ' × ' + esc(i.menu_name)
+            + ' <small style="color:var(--muted);">(' + (STN_LABEL[i.station] || "ครัว") + ')</small>'
+            + ' <span class="st-badge ' + (i.status === "done" ? "st-done" : (i.status === "cooking" ? "st-cooking" : "st-pending")) + '">' + (ST_LABEL[i.status] || i.status) + '</span></span>'
+            + '<span>' + (i.status === "cancelled" ? "—" : money(i.line_total)) + '</span>'
+            + '</div>';
+        }).join("");
+        const btn = o.status !== "open"
+          ? '<span class="hist-sub">รอลูกค้าชำระเงินก่อนจึงจะนำส่งได้</span>'
+          : '<button class="mini-btn primary" data-send="' + o.id + '" type="button"' + (ready ? '' : ' disabled title="รอครัว/แคชเชียร์ทำรายการให้ครบก่อน"') + '>✅ นำส่ง</button>';
+        return '<div class="hist-sub" style="border:1px solid var(--border);border-left:4px solid ' + (ready ? '#059669' : '#4f46e5') + ';border-radius:12px;padding:10px 12px;margin-bottom:10px;">'
+          + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+          + '<b>' + (isD ? "🛵 เดลิเวอร์รี่" : "🏠 รับที่ร้าน") + ' · บิล ' + billNoFmt(o.bill_no) + '</b>'
+          + '<span>' + esc(o.customer_name || "") + '</span>'
+          + '<span>· ' + esc(o.customer_phone || "-") + '</span>'
+          + '<span style="flex:1;"></span>' + payBadgeHtml(o)
+          + '</div>'
+          + (o.customer_address ? '<div style="margin-top:3px;">📍 ' + esc(o.customer_address) + '</div>' : '')
+          + (o.customer_note ? '<div style="margin-top:3px;">📝 ' + esc(o.customer_note) + '</div>' : '')
+          + '<div style="margin-top:6px;">' + (items || '<span>ไม่มีรายการ</span>') + '</div>'
+          + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">'
+          + '<b>' + money(o.total) + '</b>'
+          + '<span style="color:var(--muted);font-size:12.5px;">· ครัว/แคชเชียร์ทำแล้ว ' + (p.done || 0) + '/' + (p.plates || 0) + ' จาน' + (ready ? " · ครบแล้ว" : "") + '</span>'
+          + '<span style="flex:1;"></span>' + btn
+          + '</div>'
+          + '</div>';
+      }).join("");
+      box.querySelectorAll("[data-send]").forEach(function (b) { b.addEventListener("click", function () { sendOrder(Number(b.dataset.send), b); }); });
+    }
+    async function sendOrder(orderId, btn) {
+      const o = remoteOrdersCache.find(function (x) { return Number(x.id) === orderId; });
+      const cash = o && o.payment_method === "cash" && o.payment_status !== "paid";
+      const okSend = await uiConfirm({
+        title: "นำส่งออเดอร์?",
+        message: "ยืนยันว่า" + (o && o.order_type === "delivery" ? "ส่งอาหารให้ลูกค้าแล้ว" : "ลูกค้ามารับอาหารแล้ว")
+          + (cash ? " และเก็บเงินสด " + money(o.total) + " เรียบร้อย" : "")
+          + "\n\nระบบจะปิดบิลและพิมพ์ใบเสร็จ",
+        okText: "นำส่ง · ปิดบิล",
+      });
+      if (!okSend) return;
+      btn.disabled = true;
+      try {
+        await api("/api/shop/orders/" + orderId + "/close", { method: "POST" });
+        toast("นำส่งแล้ว — ปิดบิลเรียบร้อย");
+        await loadAll();
+      } catch (e) { uiAlert({ title: "ทำรายการไม่สำเร็จ", message: e.message }); btn.disabled = false; }
     }
     document.getElementById("dlvCopy").addEventListener("click", async function () {
       const v = document.getElementById("dlvUrl").value;
