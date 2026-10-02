@@ -2351,30 +2351,8 @@ async function listOpenRemoteOrders(shopId) {
 }
 
 /**
- * ปิดบิลเดลิเวอร์รี่/รับที่ร้านอัตโนมัติ เมื่อครัวเคลียร์รายการครบและ "ชำระเงินโอนแล้ว"
- * (บิลเงินสดไม่ปิดเอง — รอพนักงานกด "รับแล้ว" ตอนเก็บเงิน)
- * คืนข้อมูลบิลเมื่อปิดสำเร็จ · คืน null เมื่อยังปิดไม่ได้
+ * บิลเงินสดของเดลิเวอร์รี่/รับที่ร้าน — บันทึกว่า "รับเงินแล้ว" (ใช้ตอนพนักงานกด "นำส่ง"/"รับแล้ว")
  */
-async function maybeAutoClosePrepaidRemoteOrder(orderId) {
-  const [rows] = await pool.execute(
-    `SELECT id, shop_id, bill_no, order_type, payment_method, payment_status, status, customer_name, total
-       FROM orders WHERE id = ? LIMIT 1`,
-    [Number(orderId)]
-  );
-  const o = rows[0];
-  if (!o) return null;
-  if (!o.order_type || o.order_type === 'dine_in') return null;
-  if (o.status !== 'open' || o.payment_status !== 'paid') return null;
-  const [left] = await pool.execute(
-    "SELECT COUNT(*) AS n FROM order_items WHERE order_id = ? AND status IN ('pending', 'cooking')",
-    [o.id]
-  );
-  if (Number(left[0].n) > 0) return null;
-  await closeOrder(o.id);
-  return o;
-}
-
-/** บิลเงินสดของเดลิเวอร์รี่/รับที่ร้าน — บันทึกว่า "รับเงินแล้ว" (ใช้ตอนพนักงานกด "รับแล้ว") */
 async function markRemoteCashPaid(orderId) {
   await pool.execute(
     "UPDATE orders SET payment_status = 'paid', paid_at = COALESCE(paid_at, UTC_TIMESTAMP())"
@@ -2581,7 +2559,7 @@ module.exports = {
   listClosedOrders,
   // เดลิเวอร์รี่ / รับที่ร้าน + การชำระเงินของบิล
   findDeliveryShopByToken, setShopDeliveryToken, createRemoteOrder,
-  listOpenRemoteOrders, maybeAutoClosePrepaidRemoteOrder, markRemoteCashPaid,
+  listOpenRemoteOrders, markRemoteCashPaid,
   listRemoteOrders, findOrderByPayRef, expireStaleOrderPayments,
   setOrderSlip, markOrderPaid, findOrderBySlipHash, findOrderBySlipFile,
   listItemsForOrders,

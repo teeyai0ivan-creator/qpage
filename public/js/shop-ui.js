@@ -185,14 +185,14 @@
 })();
 
 /* ---------------------------------------------------------------------------
-   เมนูด้านซ้ายของร้าน — เติมรายการ "รับที่บ้าน" และ "การชำระเงิน" ให้ทุกหน้าอัตโนมัติ
+   เมนูด้านซ้ายของร้าน — เติมรายการ "เดลิเวอร์รี่" และ "การชำระเงิน" ให้ทุกหน้าอัตโนมัติ
    (หน้าเว็บของร้านมีเมนูฝังในแต่ละไฟล์ การเติมจากที่เดียวจึงไม่ต้องแก้ทีละหน้า)
    --------------------------------------------------------------------------- */
 (function () {
   if (typeof document === 'undefined') return;
   const DLV_ITEM = '<a class="menu-item" href="/shop/delivery.html" data-path="/shop/delivery.html">'
     + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h10v9H3zM13 10h4l4 4v2h-8z" stroke-linejoin="round"/><circle cx="7" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/></svg>'
-    + 'รับที่บ้าน</a>';
+    + 'เดลิเวอร์รี่</a>';
   const PAY_ITEM = '<a class="menu-item" href="/shop/payments.html" data-path="/shop/payments.html">'
     + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20" stroke-linecap="round"/><path d="M6 15h4" stroke-linecap="round"/></svg>'
     + 'การชำระเงิน</a>';

@@ -515,7 +515,7 @@ function buildMenu() {
         { label: 'สั่งอาหาร', click: go('/shop/orders.html') },
         { label: 'ครัว', click: go('/shop/kitchen.html') },
         { label: 'แคชเชียร์', click: go('/shop/cashier.html') },
-        { label: 'รับที่บ้าน', click: go('/shop/delivery.html') },
+        { label: 'เดลิเวอร์รี่', click: go('/shop/delivery.html') },
         { label: 'ประวัติ', click: go('/shop/history.html') },
         { label: 'ประวัติสั่งครัว', click: go('/shop/kitchen-history.html') },
         { type: 'separator' },

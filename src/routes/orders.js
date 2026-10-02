@@ -480,15 +480,7 @@ function notifyRemoteClosed(shop, order, items) {
   }));
 }
 
-/** ครัวเคลียร์รายการครบ → ปิดบิลเดลิเวอร์รี่/รับที่ร้านที่ "โอนแล้ว" ให้อัตโนมัติ (ไม่พิมพ์ใบเสร็จ) */
-async function autoClosePrepaidIfDone(shop, orderId) {
-  const closed = await db.maybeAutoClosePrepaidRemoteOrder(orderId);
-  if (!closed) return false;
-  notifyRemoteClosed(shop, closed, await db.listOrderItems(closed.id));
-  return true;
-}
-
-/** บิลเดลิเวอร์รี่/รับที่ร้านที่ยังไม่ปิด (คิวงานของหน้า "รับที่บ้าน") */
+/** บิลเดลิเวอร์รี่/รับที่ร้านที่ยังไม่ปิด (คิวงานของหน้า "เดลิเวอร์รี่") */
 router.get('/api/shop/orders/remote', requireShop, async (req, res) => {
   const shop = await myShop(req, res);
   if (!shop) return;
@@ -743,7 +735,6 @@ router.post('/api/shop/order-items/:id/status', requireShop, async (req, res) =>
     void notify.notifyShop(shop.id, 'item_cancel', notify.buildItemCancelText({
       shopName: shop.name, tableCode: item.table_code, item, reason,
     }));
-    await autoClosePrepaidIfDone(shop, item.order_id);   // ยกเลิกจนไม่เหลือรายการค้าง → ปิดบิลที่โอนแล้วให้เลย
     return res.json({ ok: true, message: `ยกเลิกรายการแล้ว (${reason})` });
   }
 
@@ -753,7 +744,6 @@ router.post('/api/shop/order-items/:id/status', requireShop, async (req, res) =>
     void notify.notifyShop(shop.id, 'item_done', notify.buildItemDoneText({
       shopName: shop.name, tableCode: item.table_code, item,
     }));
-    await autoClosePrepaidIfDone(shop, item.order_id);   // เช็คบิลแล้วอาหารครบ → บิลโอนปิดเอง (บิลเงินสดรอกด "รับแล้ว")
   }
   res.json({ ok: true, message: msg });
 });
