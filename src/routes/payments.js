@@ -13,7 +13,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const express = require('express');
-const QRCode = require('qrcode');
+const qrCache = require('../lib/qr-cache');
 const generatePromptPayPayload = require('promptpay-qr');
 const db = require('../db');
 const { requireLogin, requireOwner, getCurrentUser } = require('../middleware/auth');
@@ -187,8 +187,7 @@ router.get('/api/payment/promptpay-qr', requireLogin, wrap(async (req, res) => {
     return res.status(400).json({ ok: false, message: 'หมายเลข PromptPay ที่ตั้งไว้ไม่ถูกต้อง' });
   }
 
-  const png = await QRCode.toBuffer(payload, { type: 'png', width: 360, margin: 1 });
-  res.type('png').set('Cache-Control', 'no-store').send(png);
+  await qrCache.sendQr(res, req, payload, { width: 360, margin: 1 });
 }));
 
 // รายการชำระเงินของฉัน (ยกเลิกรายการที่หมดเวลาก่อน แล้วค่อยส่งข้อมูล)

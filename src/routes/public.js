@@ -5,7 +5,7 @@
 
 const express = require('express');
 const crypto = require('node:crypto');
-const QRCode = require('qrcode');
+const qrCache = require('../lib/qr-cache');
 const generatePromptPayPayload = require('promptpay-qr');
 const db = require('../db');
 const { buildOrderItems } = require('../lib/order-builder');
@@ -456,8 +456,7 @@ router.get('/api/public/pay/:ref/qr.png', async (req, res) => {
   let payload;
   try { payload = generatePromptPayPayload(promptpayId, { amount: Math.round(Number(order.total) * 100) / 100 }); }
   catch (err) { return res.status(400).json({ ok: false, message: 'หมายเลขพร้อมเพย์ของร้านไม่ถูกต้อง' }); }
-  const png = await QRCode.toBuffer(payload, { type: 'png', width: 420, margin: 1 });
-  res.type('png').set('Cache-Control', 'no-store').send(png);
+  await qrCache.sendQr(res, req, payload, { width: 420, margin: 1 });
 });
 
 /** ลูกค้าปิดหน้า/หมดเวลา → ยกเลิกบิลที่ยังไม่ชำระ */

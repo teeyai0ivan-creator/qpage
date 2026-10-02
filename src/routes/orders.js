@@ -6,6 +6,7 @@
 const path = require('node:path');
 const express = require('express');
 const QRCode = require('qrcode');
+const qrCache = require('../lib/qr-cache');
 const db = require('../db');
 const { sendShopPage } = require('../lib/shop-page');
 const { getCurrentUser, requireShop } = require('../middleware/auth');
@@ -447,10 +448,7 @@ router.get('/api/shop/tables/:id/qr', requireShop, async (req, res) => {
 
   const url = `${safeOrigin(req)}/order/${table.token}`.slice(0, MAX_QR_URL);
   try {
-    const png = await QRCode.toBuffer(url, { type: 'png', width: 320, margin: 1 });
-    res.set('Content-Type', 'image/png');
-    res.set('Cache-Control', 'no-store');
-    res.send(png);
+    await qrCache.sendQr(res, req, url, { width: 320, margin: 1 });
   } catch (err) {
     res.status(500).json({ ok: false, message: 'สร้าง QR ไม่สำเร็จ' });
   }
@@ -495,10 +493,7 @@ router.get('/api/shop/delivery/qr.png', requireShop, async (req, res) => {
   const token = await ensureDeliveryToken(shop);
   const url = `${safeOrigin(req)}/d/${token}`.slice(0, MAX_QR_URL);
   try {
-    const png = await QRCode.toBuffer(url, { type: 'png', width: 420, margin: 1 });
-    res.set('Content-Type', 'image/png');
-    res.set('Cache-Control', 'no-store');
-    res.send(png);
+    await qrCache.sendQr(res, req, url, { width: 420, margin: 1 });
   } catch (err) {
     res.status(500).json({ ok: false, message: 'สร้าง QR ไม่สำเร็จ' });
   }
