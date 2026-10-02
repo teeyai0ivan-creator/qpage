@@ -258,7 +258,7 @@
 }
 .pub-hero-inner.pub-grid .pub-logo { grid-area: logo; align-self: center; }
 .pub-hero-inner.pub-grid h1 { grid-area: name; margin: 0; min-width: 0; line-height: 1.25; }
-.pub-hero-inner.pub-grid .pub-head-sub { grid-area: meta; margin: 0; min-height: 0; }
+.pub-hero-inner.pub-grid .pub-head-sub { grid-area: meta; margin: 0; min-height: 0; min-width: 0; }
 .pub-hero-inner.pub-grid .bill-pill { grid-area: bill; justify-self: start; }
 /* แถวปุ่มติดต่อ: LINE · เบอร์โทร · แผนที่ (เรียงซ้าย→ขวา ชิดขวาของปก) */
 .pub-hero-inner.pub-grid .pub-chips { grid-area: chips; justify-self: end; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -549,7 +549,7 @@ button.cart-info strong { color: var(--text); }
   .pub-hero-inner.pub-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .pub-hero-inner.pub-grid .pub-logo { flex: 0 0 auto; }
   .pub-hero-inner.pub-grid h1 { flex: 1 1 auto; font-size: 20px; }
-  .pub-hero-inner.pub-grid .pub-head-sub { flex: 0 0 auto; }
+  .pub-hero-inner.pub-grid .pub-head-sub { flex: 1 1 100%; min-width: 0; }
   .pub-hero-inner.pub-grid .pub-chips { flex: 0 0 auto; margin-left: auto; order: 1; }
   .pub-hero-inner.pub-grid .pub-chips .pub-chip { padding: 6px 10px; }
   .pub-hero-inner.pub-grid .bill-pill { flex: 0 0 auto; margin-left: auto; order: 2; }
